@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "qa-practice-lab",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-11-14",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qa-practice-lab-db",
+      // Local-only placeholder. Replace it with `wrangler d1 create` output
+      // before the first remote deployment. No remote resources are created in Phase 1.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "db/migrations"
+    }
+  ]
+}
