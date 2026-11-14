@@ -24,7 +24,7 @@ describe('GET /api/health', () => {
     expect(body).toMatchObject({
       status: 'ok',
       service: 'qa-practice-lab',
-      version: '0.1.0',
+      version: '0.2.0',
       database: 'ok',
       schemaVersion: '1',
     })

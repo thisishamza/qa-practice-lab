@@ -1,0 +1,196 @@
+/* Dashboard hero --------------------------------------------------------- */
+
+.hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(250px, 0.7fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(38rem 20rem at 0% 0%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 70%),
+    radial-gradient(30rem 18rem at 100% 100%, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 70%),
+    var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.hero-copy h1 {
+  max-width: 21ch;
+  margin: 0.4rem 0 0.9rem;
+  font-size: clamp(2.1rem, 5vw, 3.35rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+.hero-accent {
+  color: var(--accent);
+}
+
+.hero-copy .page-lede {
+  max-width: 54ch;
+  margin-bottom: 1.35rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.hero-points {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+}
+
+.hero-points li {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.hero-points svg {
+  margin-top: 0.22rem;
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.hero-aside {
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.hero-aside-label {
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hero-aside-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted-strong);
+  font-size: 0.81rem;
+}
+
+.hero-aside-row strong {
+  color: var(--ink-strong);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-aside-note {
+  margin-top: 0.55rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+/* Shared dashboard layout ------------------------------------------------ */
+
+.split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Quick practice --------------------------------------------------------- */
+
+.quick-practice {
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.quick-practice-icon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.quick-practice h3 {
+  font-size: 1rem;
+}
+
+.quick-practice p {
+  flex: 1;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.quick-practice .button {
+  align-self: flex-start;
+}
+
+/* Practice page ---------------------------------------------------------- */
+
+.practice-split {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+/* Guides ----------------------------------------------------------------- */
+
+.guide-layout {
+  align-items: start;
+}
+
+.guide-article {
+  gap: 2rem;
+}
+
+.guide-article .content-section {
+  gap: 0.75rem;
+}
+
+.guide-aside {
+  position: sticky;
+  top: calc(var(--topbar-height) + 1rem);
+}
+
+/* Responsive ------------------------------------------------------------- */
+
+@media (max-width: 980px) {
+  .hero-panel,
+  .split-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guide-aside {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-copy h1 {
+    max-width: 100%;
+  }
+
+  .hero-panel {
+    padding: 1.25rem;
+  }
+}

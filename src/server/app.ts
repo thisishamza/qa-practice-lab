@@ -11,7 +11,7 @@ export type AppEnv = {
 
 const SERVICE_NAME = 'qa-practice-lab'
 // Keep in sync with package.json.
-const SERVICE_VERSION = '0.1.0'
+const SERVICE_VERSION = '0.2.0'
 
 export const app = new Hono<AppEnv>().basePath('/api')
 
