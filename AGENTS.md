@@ -2,9 +2,10 @@
 
 ## Current repo state
 
-- **Phase 1 (foundation) is implemented.** Phase 2 and later are not started.
+- **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented.** Phase 3 and later are not started.
 - Stack: React 19 + TypeScript + Vite 7, React Router, Hono on Cloudflare Pages Functions, Cloudflare D1, Wrangler.
-- No commerce, auth, bug-hunt, SQL playground, performance, or security features exist yet. Do not infer them from the roadmap.
+- The interface is real; the exercises are not. All 24 catalog scenarios are non-runnable placeholders, and progress/activity data on the dashboard and progress page is labelled demo data.
+- No commerce app, auth, bug-hunt mode, SQL playground, performance runner, or security lab exists yet. Do not infer them from the roadmap.
 - `PROJECT_STATE.md` is the authoritative plan and progress log. Read it first, then reconcile it with the repo.
 
 ## Commands (verified on Node 26)
@@ -27,6 +28,16 @@
 - Pages serves SPA deep links natively **only while `dist/` has no top-level `404.html`**. Do not add a `_redirects` catch-all like `/* /index.html 200`; Wrangler rejects it as an infinite loop.
 - Node **>=22.12** is required (Vitest 5). Dev script needs a built `dist/`; use `dev:web` only if the API is already running separately.
 
+## Frontend structure
+
+- Routes live in `src/app/App.tsx`: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`, `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, plus a 404 fallback. All render inside `AppShell`.
+- Typed learning content lives in `src/data` (`types.ts`, `tracks.ts`, `scenarios.ts`, `guides.ts`, `categories.ts`, `demo.ts`). Update content there, not inside page components.
+- Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
+- Styling is hand-written CSS in `src/styles/{tokens,base,layout,components,pages}.css`, imported by `global.css`. There is no Tailwind. Prefer design tokens, and be careful with cascade order: a later, equal-specificity rule wins across files.
+- Themes use `document.documentElement.dataset.theme`, the `qa-practice-lab-theme` storage key, and the inline bootstrap in `index.html`. Keep the bootstrap and `ThemeProvider` in sync.
+- Sidebar collapse uses the `qa-practice-lab-sidebar-collapsed` storage key.
+- Scenario placeholders must stay `runnable: false` with a non-`ready` status until a phase actually implements the exercise. Do not make demo progress look persisted.
+
 ## Safety invariants (non-negotiable)
 
 - Never expose shared D1 as a generic SQL console; SQL exercises must use a browser-isolated SQLite/WASM sandbox.
@@ -42,5 +53,5 @@
 
 ## Workflow
 
-- Work on one phase/vertical slice at a time. **Next task is Phase 2 — app shell & guides**, not yet started.
+- Work on one phase/vertical slice at a time. **Next task is Phase 3 — commerce practice app**, not yet started.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.

@@ -1,13 +1,34 @@
 # QA Practice Lab
 
 A safe, phased practice environment for software testing. The project is being built one
-verifiable slice at a time; **Phase 1 (repository foundation)** is the only implemented phase.
+verifiable slice at a time; **Phases 1 and 2 are implemented**.
 
-The current slice proves the full local stack: a React + TypeScript shell, a Hono API running on
-Cloudflare Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
+Phase 1 proves the full local stack: a React + TypeScript shell, a Hono API running on Cloudflare
+Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
 
-No commerce scenarios, authentication, bug-hunt mode, SQL playground, performance tests, or
-security challenges exist yet.
+Phase 2 adds the learner-facing interface: a responsive app shell, twelve learning tracks, a
+searchable scenario catalog, six full guides, progress and practice pages, and light/dark themes.
+
+The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
+No commerce application, authentication, bug-hunt mode, SQL playground, performance runner, or
+security challenge exists yet.
+
+## What you can do now
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Dashboard: tracks, categories, recommendations, demo progress, quick practice |
+| `/tracks` | Browse the twelve testing disciplines |
+| `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
+| `/scenarios` | Search and filter every scenario by track, difficulty, mode, and status |
+| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability |
+| `/guides` | Guides grouped by discipline |
+| `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
+| `/progress` | Progress layout populated with clearly labelled demo data |
+| `/practice` | Live health check plus the planned practice formats and safety boundaries |
+
+Theme choice and sidebar collapse are remembered in `localStorage`. Dashboard progress, streaks,
+and recent activity are sample data and are never presented as real completions.
 
 ## Requirements
 
@@ -57,8 +78,16 @@ npx vitest run tests/server/health.test.ts
 ## Local architecture
 
 ```text
-index.html                 Vite entry
-src/                       React app, shared types, and the Hono app (src/server)
+index.html                 Vite entry + pre-paint theme bootstrap
+src/app/                   Router and route composition
+src/components/layout/     App shell: top bar, sidebar, mobile navigation
+src/components/ui/         Reusable badges, states, callouts, icons, theme provider
+src/data/                  Typed tracks, categories, scenarios, guides, demo data
+src/features/              Track, catalog, guide, and health components
+src/lib/                   Catalog filtering, labels, navigation, theme hooks
+src/pages/                 Route-level pages
+src/styles/                Design tokens and layered CSS
+src/server/app.ts          Hono app exported for tests (also under src/)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
 db/migrations/             D1 SQL migrations
 tests/                     Vitest tests (Node environment)
@@ -72,7 +101,24 @@ wrangler.jsonc             Pages config + D1 binding + compatibility date
 - Local D1 data lives under `.wrangler/state/v3/d1/` and is git-ignored. Delete `.wrangler/` and
   re-run the migration to reset it.
 - `wrangler.jsonc` uses `pages_build_output_dir: "./dist"` and a **placeholder** `database_id`.
-  This is intentional: Phase 1 never creates or touches remote Cloudflare resources.
+  This is intentional: the project has not created or touched remote Cloudflare resources.
+
+### Frontend and content
+
+- Route definitions are in `src/app/App.tsx`; all pages render inside `src/components/layout/AppShell.tsx`.
+- Learning content is typed and centralised in `src/data/`. Add or edit scenarios in
+  `src/data/scenarios.ts`, guides in `src/data/guides.ts`, and tracks in `src/data/tracks.ts`;
+  pages only read from those modules.
+- Filtering and search live in `src/lib/catalog.ts` and are unit-tested independently of React.
+- Styling is plain CSS split across `src/styles/` and imported by `global.css`. There is no CSS
+  framework. Files load in this order: tokens, base, layout, components, pages. Because all rules
+  have similar specificity, a later file wins ties, so responsive overrides for layout primitives
+  belong at the end of `pages.css`.
+- Theme and sidebar preferences are stored under `qa-practice-lab-theme` and
+  `qa-practice-lab-sidebar-collapsed`. The inline script in `index.html` applies the theme before
+  first paint; keep it aligned with `src/lib/theme.ts`.
+- Scenarios remain `runnable: false` and non-`ready` in Phase 2. Demo progress in
+  `src/data/demo.ts` is sample data and is labelled as such wherever it appears.
 
 ### API
 
@@ -119,9 +165,13 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 ## Known constraints
 
+- All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
+  progress; dashboard and progress figures are demo data.
+- Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
+  guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance
   recommends Workers with static assets for new projects, and Hono marks its
-  `hono/cloudflare-pages` adapter deprecated for Hono v5. This is a deliberate Phase 1 choice;
+  `hono/cloudflare-pages` adapter deprecated for Hono v5. This is a deliberate project choice;
   revisit before upgrading Hono or if Pages limitations block later phases.
 - `npm audit` reports moderate, development-only advisories from the ESLint/TypeScript tooling
   chain. Production dependencies are limited to React, React DOM, React Router, and Hono;

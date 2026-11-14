@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 1 (repository foundation) complete and verified locally. Phase 2 (app shell and guides) has not started.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. Phase 3 (commerce practice app) has not started.
 - **Last updated:** 2026-11-14.
 
 ## 2. Product principles
@@ -27,6 +27,8 @@
 ### Application
 
 - **Frontend (implemented):** React 19 + TypeScript 5.9 + Vite 7, React Router 7. Responsive plain-CSS shell with accessible landmarks and keyboard focus handling.
+- **Design system (implemented in Phase 2):** Hand-written CSS split into `tokens`/`base`/`layout`/`components`/`pages`, CSS custom properties, and a light/dark theme driven by `data-theme` plus `localStorage`. No CSS framework or UI dependency was added.
+- **Learning content (implemented in Phase 2):** Typed content modules in `src/data` (tracks, categories, scenarios, guides, demo data), with pure filtering logic in `src/lib/catalog.ts`. Scenario content is original to this project.
 - **Routing:** React Router `BrowserRouter`; Pages serves SPA deep links natively while no top-level `404.html` exists.
 - **Backend (implemented):** Hono 4 exporting a testable app from `src/server/app.ts`, bridged to a single Pages Functions catch-all (`functions/api/[[route]].ts`).
 - **API namespace:** `/api/v1/...` is reserved for versioned practice APIs. Infrastructure endpoints use `/api/...` (`GET /api/health` is implemented).
@@ -149,46 +151,121 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 10. Hardening & launch | Accessibility, responsive polish, docs, observability, rate limits, retention, backup/export, deploy | Production smoke tests pass and free-tier monitoring/limits are documented |
 
 Phase 1 exit criteria were verified locally on 2026-11-14: the app runs, `/api/health` reports the
-migrated D1 database, and the Pages preview serves the production build and Functions. Phases 2–10
-remain unstarted.
+migrated D1 database, and the Pages preview serves the production build and Functions.
 
-## 10. Repository shape (current after Phase 1)
+Phase 2 exit criteria were verified locally on 2026-11-14: a learner can navigate twelve learning
+tracks, search and filter the scenario catalog, open a structured guide, and read scenario detail
+pages. Every scenario is explicitly marked as not runnable. Phases 3–10 remain unstarted.
+
+## 10. Repository shape (current after Phase 2)
 
 ```text
 qa-practice-lab/
 ├── AGENTS.md
 ├── PROJECT_STATE.md
 ├── README.md
-├── package.json / package-lock.json
-├── index.html
+├── package.json / package-lock.json   # v0.2.0
+├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
-├── wrangler.jsonc                # Pages config + local D1 binding
+├── wrangler.jsonc                     # Pages config + local D1 binding
 ├── eslint.config.js
-├── tsconfig.json                 # references app/node/functions projects
-├── tsconfig.app.json             # src, excludes src/server
-├── tsconfig.node.json            # Vite/Vitest config files
-├── tsconfig.functions.json       # functions, src/server, tests
+├── tsconfig.json                      # references app/node/functions projects
+├── tsconfig.app.json                  # src, excludes src/server
+├── tsconfig.node.json                 # Vite/Vitest config files
+├── tsconfig.functions.json            # functions, src/server, tests
 ├── functions/
-│   └── api/[[route]].ts          # Hono -> Pages Functions catch-all
+│   └── api/[[route]].ts               # Hono -> Pages Functions catch-all
 ├── src/
-│   ├── app/                      # App, HomePage, NotFoundPage
-│   ├── features/system/          # HealthStatus
-│   ├── server/app.ts             # testable Hono app, basePath /api
-│   ├── shared/health.ts          # shared response type
-│   └── styles/global.css
+│   ├── app/App.tsx                    # ThemeProvider + AppShell routes
+│   ├── components/
+│   │   ├── layout/                    # AppShell, TopBar, Sidebar, MobileNav
+│   │   └── ui/                        # Icon, badges, states, callouts, progress, theme
+│   ├── data/                          # typed tracks, categories, scenarios, guides, demo
+│   ├── features/
+│   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
+│   │   ├── guides/                    # GuideCard
+│   │   ├── system/                    # HealthStatus
+│   │   └── tracks/                    # TrackCard
+│   ├── lib/                           # catalog filtering, labels, navigation, theme hooks
+│   ├── pages/                         # 10 route-level pages (dashboard … not found)
+│   ├── server/app.ts                  # testable Hono app, basePath /api
+│   ├── shared/health.ts               # shared response type
+│   ├── styles/                        # tokens, base, layout, components, pages, global
+│   └── main.tsx
 ├── db/
 │   └── migrations/0001_initial_schema.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
+    ├── data/content.test.ts           # content integrity and non-runnable guarantees
+    ├── lib/catalog.test.ts            # filtering, search, counts
     └── server/health.test.ts
 ```
 
-Planned but intentionally not created yet: `src/features/guides`, `scenarios`, `commerce`,
-`progress`, `db/seed`, `contracts/openapi`, `examples/playwright`, `examples/postman`, and
-`docs/guides`. Add them only when their phase starts.
+Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
+`/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, and a
+catch-all 404.
+
+Planned but intentionally not created yet: a commerce practice application, practice APIs,
+persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
+`examples/playwright`, `examples/postman`, and `docs/guides` exports. Add them only when their
+phase starts.
 
 ## 11. Progress log
+
+### 2026-11-14 — Phase 2 app shell, learning tracks, catalog, and guides
+
+- **Completed:** A full learner-facing interface on top of the Phase 1 foundation:
+  - App shell with sticky top bar, collapsible sidebar (state persisted in `localStorage`), mobile navigation dialog with Escape/focus handling, breadcrumbs, skip link, footer, and a 404 page.
+  - Light/dark theme with a pre-paint bootstrap in `index.html`, a `ThemeProvider`, and a persisted `data-theme` choice.
+  - Dashboard with welcome hero, availability snapshot, twelve-track preview (six shown), eight testing categories, recommended scenarios, demo progress, recent activity, and quick practice access.
+  - Twelve learning tracks, each with description, difficulty, objectives, planned exercise count, getting-started steps, a starting guide where one exists, and two representative scenario placeholders.
+  - Searchable/filterable scenario catalog (query, track, difficulty, mode, status), result counts, reset, and a dedicated empty state.
+  - Scenario detail pages with objectives, prerequisites, related guides, track/category facts, and an explicit "not runnable yet" callout.
+  - Six full guides grouped by discipline, with introduction, concepts, examples, step-by-step instructions, expected results, common mistakes, related exercises, and an on-page table of contents.
+  - Progress and practice pages that clearly separate real functionality from demo data and planned formats.
+  - Shared loading, empty, and error state components; typed scenario/guide/track content; pure filtering logic covered by tests.
+- **Bugs found and fixed during verification:**
+  - The dashboard hero and split grids stayed two-column on mobile because `pages.css` loaded after the component media queries; responsive overrides were moved to the end of `pages.css`.
+  - The mobile menu trigger leaked onto desktop because `.icon-button { display: inline-grid }` outranked `.topbar-menu { display: none }`; the rule now uses `.topbar .topbar-menu` and was rechecked at 1440, 1024, 981, 980, and 390 px.
+  - Filter inputs removed their focus outline; the global focus-visible ring now remains visible on text inputs and selects.
+- **Files created:**
+  - Content: `src/data/types.ts`, `categories.ts`, `tracks.ts`, `scenarios.ts`, `guides.ts`, `demo.ts`.
+  - Logic: `src/lib/catalog.ts`, `labels.ts`, `navigation.ts`, `theme.ts`, `useTheme.ts`, `useDocumentTitle.ts`.
+  - UI: `src/components/ui/{Icon,Badge,DomainBadges,PageHeader,PageChrome,ProgressBar,StatCard,States,Callout,ThemeToggle,ThemeProvider,ThemeContext}`.
+  - Layout: `src/components/layout/{AppShell,TopBar,Sidebar,MobileNav}.tsx`.
+  - Features: `src/features/tracks/TrackCard.tsx`, `src/features/catalog/{ScenarioCard,ScenarioFilterBar}.tsx`, `src/features/guides/GuideCard.tsx`.
+  - Pages: `src/pages/{Dashboard,Tracks,TrackDetail,Scenarios,ScenarioDetail,Guides,GuideDetail,Progress,Practice,NotFound}Page.tsx`.
+  - Styles: `src/styles/{tokens,base,layout,components,pages}.css`.
+  - Tests: `tests/lib/catalog.test.ts`, `tests/data/content.test.ts`.
+- **Files modified:** `src/app/App.tsx` (theme provider + nested routes), `src/styles/global.css` (imports the stylesheet layers), `index.html` (theme bootstrap and metadata), `src/server/app.ts` (service version `0.2.0`), `tests/server/health.test.ts` (version expectation), `package.json` / `package-lock.json` (version `0.2.0`).
+- **Files removed:** `src/app/HomePage.tsx`, `src/app/NotFoundPage.tsx` (replaced by `src/pages/*`).
+- **Decisions:**
+  - No new runtime or dev dependencies; the design system is hand-written CSS using custom properties, `color-mix()`, and container-agnostic grid layouts.
+  - All Phase 2 scenarios are placeholders with `runnable: false` and a `planned`/`in-design` status. The `ready` status exists in the type so later phases can promote content without changing the UI contract.
+  - Each track lists two representative placeholders while `plannedExerciseCount` records the intended total (71 planned across twelve tracks).
+  - Six disciplines have a full guide; the other six link to the closest guide or state that a dedicated guide is scheduled.
+  - Dashboard progress, streaks, weekly goal, and recent activity are demo data. Every surface that renders them also renders a disclaimer, and nothing is persisted.
+  - Search matches across titles, summaries, descriptions, objectives, prerequisites, ids, and hyphen-to-space variants so queries such as "ui automation" and "bug hunt" work.
+  - The fictional commerce domain is **Aster Market**; no commerce code exists yet.
+  - `role="search"`, labelled filters, `aria-live` result counts, keyboard-operable controls, and visible focus styles were treated as acceptance criteria, not polish.
+- **Commands executed and results:**
+  - `npm run check` — passed: ESLint clean, all three TypeScript projects clean, 3 test files / 30 tests passing.
+  - `npm run build` — passed: JS 373.62 kB (112.74 kB gzip), CSS 37.15 kB (7.25 kB gzip).
+  - `npx wrangler pages dev dist --port 8788` route smoke test — `/`, `/tracks`, `/tracks/manual-testing`, `/scenarios`, `/scenarios/api-order-idempotency`, `/guides`, `/guides/guide-api-request-response`, `/progress`, `/practice`, and unknown deep links all returned `200 text/html` via the Pages SPA fallback. `/api/health` returned `200` with `version: "0.2.0"` and `schemaVersion: "1"`; `/api/nope` returned `404` JSON.
+  - Playwright against the production preview — 30/30 interaction checks passed (navigation, theme toggle, catalog search/filters/reset/empty state, track/scenario/guide detail, progress, practice health, 404, mobile navigation) with no console or page errors. An additional 7/7 checks passed for dark theme from storage, sidebar collapse and persistence, mobile filtering, and mobile detail stacking.
+  - A route sweep at 390 px, 768 px, and 1440 px confirmed exactly one `h1` per page, no horizontal overflow, and no console/page errors. The skip link is the first tab stop, focuses `#main-content`, and filter inputs/selects retain a 3 px focus-visible outline.
+  - Screenshot review at 1440 px, 1024 px, 980 px, 390 px, collapsed sidebar, and dark theme confirmed layout coherence and no horizontal overflow.
+- **Known issues / deliberate gaps:**
+  - Every scenario is a placeholder; no exercise launches, scores, or stores results.
+  - Demo progress and activity are not persisted and are not derived from real work.
+  - Six of twelve tracks do not yet have a dedicated guide.
+  - The Playwright verification scripts live in `/tmp` and are not part of the repository. Automated component/route tests cover content and filtering; browser interaction checks were run manually rather than committed.
+  - The Phase 2 working tree is not committed yet; Phase 1 remains commit `2c75168`.
+  - `npm audit` still reports seven moderate, development-only advisories; production audit is clean.
+  - Pages/Hono deprecation risk from Phase 1 is unchanged.
+- **Unfinished work:** Phase 3 onward — no commerce application, practice API, authentication, bug-hunt mode, SQL sandbox, contract lab, performance runner, security exercises, or progress persistence exists.
+- **Next exact action:** Start Phase 3 — commerce practice app: build the Aster Market catalog/cart/checkout UI with synthetic data, deterministic clean behaviour, and a resettable bug-hunt mode behind first-party routes. Keep Phase 2 navigation and content intact, and do not add real payments or credentials.
 
 ### 2026-11-14 — Phase 1 repository foundation
 
@@ -252,4 +329,4 @@ Planned but intentionally not created yet: `src/features/guides`, `scenarios`, `
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 1 is complete; resume at Phase 2 (app shell & guides) and work only on one phase/vertical slice at a time. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete; resume at Phase 3 (commerce practice app) and work only on one phase/vertical slice at a time. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

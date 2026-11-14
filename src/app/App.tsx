@@ -1,36 +1,36 @@
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
-import { HomePage } from './HomePage'
-import { NotFoundPage } from './NotFoundPage'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AppShell } from '../components/layout/AppShell'
+import { ThemeProvider } from '../components/ui/ThemeProvider'
+import { DashboardPage } from '../pages/DashboardPage'
+import { GuidesPage } from '../pages/GuidesPage'
+import { GuideDetailPage } from '../pages/GuideDetailPage'
+import { NotFoundPage } from '../pages/NotFoundPage'
+import { PracticePage } from '../pages/PracticePage'
+import { ProgressPage } from '../pages/ProgressPage'
+import { ScenarioDetailPage } from '../pages/ScenarioDetailPage'
+import { ScenariosPage } from '../pages/ScenariosPage'
+import { TracksPage } from '../pages/TracksPage'
+import { TrackDetailPage } from '../pages/TrackDetailPage'
 
 export function App() {
   return (
-    <BrowserRouter>
-      <a className="skip-link" href="#main-content">
-        Skip to main content
-      </a>
-      <div className="site-shell">
-        <header className="site-header">
-          <Link className="brand" to="/" aria-label="QA Practice Lab home">
-            <span className="brand-mark" aria-hidden="true">
-              QA
-            </span>
-            <span>QA Practice Lab</span>
-          </Link>
-          <span className="phase-badge">Phase 1 · Foundation</span>
-        </header>
-
-        <main id="main-content" className="site-main" tabIndex={-1}>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="tracks" element={<TracksPage />} />
+            <Route path="tracks/:trackId" element={<TrackDetailPage />} />
+            <Route path="scenarios" element={<ScenariosPage />} />
+            <Route path="scenarios/:scenarioId" element={<ScenarioDetailPage />} />
+            <Route path="guides" element={<GuidesPage />} />
+            <Route path="guides/:guideId" element={<GuideDetailPage />} />
+            <Route path="progress" element={<ProgressPage />} />
+            <Route path="practice" element={<PracticePage />} />
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </main>
-
-        <footer className="site-footer">
-          <p>Built in small, verifiable phases. No AI service is required at runtime.</p>
-          <p className="footer-meta">v0.1.0</p>
-        </footer>
-      </div>
-    </BrowserRouter>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }

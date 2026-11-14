@@ -1,0 +1,547 @@
+import type { Scenario } from './types'
+
+/**
+ * Phase 2 catalogue placeholders. Each track lists two representative scenarios so
+ * the content structure and UI can be validated before exercises are implemented.
+ * Every entry is explicitly non-runnable.
+ */
+export const scenarios: Scenario[] = [
+  {
+    id: 'manual-cart-totals',
+    title: 'Verify cart totals across quantity and discount changes',
+    summary:
+      'Work through cart pricing states by hand and decide which combinations deserve dedicated cases.',
+    description:
+      'Change quantities, remove the last item, and apply a discount in different orders. The goal is a prioritised set of manual checks that proves the totals stay internally consistent, not an exhaustive click-through.',
+    trackId: 'manual-testing',
+    categoryId: 'functional',
+    difficulty: 'beginner',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 25,
+    objectives: [
+      'Derive boundary cases for quantity and discount combinations.',
+      'Record totals, tax, and shipping as separate observable values.',
+      'Write reproducible steps for any inconsistency you observe.',
+    ],
+    prerequisites: ['Read the cart requirements', 'No tooling required'],
+    runnable: false,
+    relatedGuideIds: ['guide-manual-test-design'],
+  },
+  {
+    id: 'manual-address-edge-cases',
+    title: 'Bug hunt: malformed delivery addresses at checkout',
+    summary:
+      'Investigate a checkout that accepts addresses it should reject, and separate defects from missing requirements.',
+    description:
+      'A synthetic defect report claims that some malformed delivery addresses pass validation. Explore the boundary between permissive formatting and genuinely invalid input, then document the smallest reproducible case.',
+    trackId: 'manual-testing',
+    categoryId: 'exploratory',
+    difficulty: 'intermediate',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 35,
+    objectives: [
+      'Reproduce the reported acceptance of malformed input.',
+      'Distinguish validation defects from ambiguous requirements.',
+      'Write a bug report with input, environment, expected, and actual results.',
+    ],
+    prerequisites: ['Complete the cart totals exercise', 'Familiarity with browser dev tools'],
+    runnable: false,
+    relatedGuideIds: ['guide-manual-test-design'],
+  },
+  {
+    id: 'api-catalog-pagination',
+    title: 'Validate catalogue pagination and filters',
+    summary:
+      'Exercise list endpoints with page sizes, cursors, and combined filters to verify stable pagination.',
+    description:
+      'Use the catalogue endpoints to confirm that page boundaries do not duplicate or skip records. Compare filtered results with unfiltered totals and check how the API reports invalid parameters.',
+    trackId: 'api-testing',
+    categoryId: 'functional',
+    difficulty: 'beginner',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 30,
+    objectives: [
+      'Verify page size limits and out-of-range page values.',
+      'Check filter combinations for consistent totals and ordering.',
+      'Confirm error responses use the documented envelope.',
+    ],
+    prerequisites: ['An HTTP client or curl', 'Read the catalogue endpoint contract'],
+    runnable: false,
+    relatedGuideIds: ['guide-api-request-response'],
+  },
+  {
+    id: 'api-order-idempotency',
+    title: 'Bug hunt: duplicate orders from retried checkout requests',
+    summary:
+      'Probe an idempotency claim by replaying checkout requests and inspecting the resulting orders.',
+    description:
+      'The checkout endpoint advertises idempotent retries. Replay the same request with and without the idempotency key, then compare order counts and response bodies. Decide whether the defect is in the API, the client contract, or the documentation.',
+    trackId: 'api-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 45,
+    objectives: [
+      'Reproduce duplicate order creation with a controlled replay.',
+      'Evaluate idempotency-key reuse and conflict handling.',
+      'Report the defect with request evidence and expected semantics.',
+    ],
+    prerequisites: ['Complete the pagination exercise', 'Understand HTTP retry semantics'],
+    runnable: false,
+    relatedGuideIds: ['guide-api-request-response'],
+  },
+  {
+    id: 'ui-signin-smoke',
+    title: 'Automate the account sign-in smoke path',
+    summary:
+      'Create a first browser test using accessible locators and an explicit signed-in assertion.',
+    description:
+      'Build a small but resilient sign-in test. The exercise focuses on role-based locators, deterministic setup, and an assertion that proves the session actually changed rather than only that a button was clicked.',
+    trackId: 'ui-automation',
+    categoryId: 'automation',
+    difficulty: 'beginner',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 35,
+    objectives: [
+      'Locate form controls by accessible role and name.',
+      'Assert the signed-in state instead of a transient UI detail.',
+      'Run the test independently of other scenarios.',
+    ],
+    prerequisites: ['Node.js and a browser automation runtime', 'Basic TypeScript'],
+    runnable: false,
+    relatedGuideIds: ['guide-ui-automation-first-test'],
+  },
+  {
+    id: 'ui-cart-flakiness',
+    title: 'Bug hunt: diagnose a flaky cart quantity test',
+    summary:
+      'Investigate an intermittently failing automation test and find the real source of instability.',
+    description:
+      'A cart test passes locally but fails in CI. Inspect the waits, locators, and shared state, then decide whether the fix belongs in the test, the application, or the test environment. Retrying the failure is not an acceptable answer.',
+    trackId: 'ui-automation',
+    categoryId: 'exploratory',
+    difficulty: 'intermediate',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 40,
+    objectives: [
+      'Identify fixed sleeps and race conditions in the test.',
+      'Reproduce the failure under constrained timing.',
+      'Propose a deterministic fix and explain why it works.',
+    ],
+    prerequisites: ['Complete the sign-in smoke exercise', 'Ability to read a test trace'],
+    runnable: false,
+    relatedGuideIds: ['guide-ui-automation-first-test'],
+  },
+  {
+    id: 'api-automation-schema-suite',
+    title: 'Build a reusable response-schema assertion suite',
+    summary:
+      'Create a small typed assertion layer and apply it to several catalogue responses.',
+    description:
+      'Replace repeated ad-hoc checks with a reusable schema helper. The exercise emphasises failure messages that identify the exact field and endpoint, so the suite is useful when it fails, not only when it passes.',
+    trackId: 'api-automation',
+    categoryId: 'automation',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 40,
+    objectives: [
+      'Encapsulate request setup in a reusable client.',
+      'Assert response shape and domain invariants together.',
+      'Produce failure output that names the offending field.',
+    ],
+    prerequisites: ['Complete the API pagination exercise', 'Comfortable with TypeScript generics'],
+    runnable: false,
+    relatedGuideIds: ['guide-api-request-response'],
+  },
+  {
+    id: 'api-automation-token-refresh',
+    title: 'Bug hunt: automation blind spots in token refresh',
+    summary:
+      'Find why an API suite that passes locally fails after short-lived credentials expire.',
+    description:
+      'The automation suite assumes a token remains valid for the whole run. Introduce expiry and observe how the client behaves. The defect may be in the suite, but only evidence from the request log can prove it.',
+    trackId: 'api-automation',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'planned',
+    estimatedMinutes: 45,
+    objectives: [
+      'Reproduce the failure with an expired credential.',
+      'Trace where refresh should occur and where it currently does not.',
+      'Harden the suite without masking genuine authentication errors.',
+    ],
+    prerequisites: ['Response-schema suite exercise', 'Understanding of bearer tokens'],
+    runnable: false,
+    relatedGuideIds: ['guide-api-request-response', 'guide-auth-session-testing'],
+  },
+  {
+    id: 'db-order-consistency',
+    title: 'Verify order and line-item consistency',
+    summary:
+      'Compare checkout results with stored rows and prove that totals reconcile.',
+    description:
+      'After completing a synthetic order, query the order and line-item records. Check that stored subtotals, tax, and totals reconcile, and that every line item references a valid product snapshot.',
+    trackId: 'database-testing',
+    categoryId: 'data',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 35,
+    objectives: [
+      'Map a checkout action to the rows it creates.',
+      'Reconcile stored totals against the order summary.',
+      'Check referential integrity for line items and products.',
+    ],
+    prerequisites: ['Read the database schema', 'Basic SQL SELECT and JOIN'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'db-orphaned-carts',
+    title: 'Bug hunt: orphaned cart rows after cancellation',
+    summary:
+      'Investigate records left behind when a checkout is cancelled at different stages.',
+    description:
+      'Cancel checkout at several points and inspect cart, reservation, and order tables. Determine whether leftover rows are harmless history or evidence of an incomplete state transition.',
+    trackId: 'database-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 40,
+    objectives: [
+      'Reproduce orphaned records with a defined cancellation sequence.',
+      'Distinguish intended audit history from leaked state.',
+      'Document the defect with before-and-after query output.',
+    ],
+    prerequisites: ['Order consistency exercise', 'Comfortable writing JOIN queries'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'contract-catalog-consumer',
+    title: 'Write a consumer contract for catalogue search',
+    summary:
+      'Capture only the response fields a search consumer truly depends on.',
+    description:
+      'Model a consumer that lists products by category. Write the smallest contract that still expresses its needs, then verify the provider and confirm unrelated fields can change freely.',
+    trackId: 'contract-testing',
+    categoryId: 'integration',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 35,
+    objectives: [
+      'Identify consumer-critical fields and their types.',
+      'Keep the contract minimal and intention-revealing.',
+      'Verify the provider against the contract.',
+    ],
+    prerequisites: ['Read the catalogue API contract', 'Basic JSON schema knowledge'],
+    runnable: false,
+    relatedGuideIds: ['guide-contract-testing-basics'],
+  },
+  {
+    id: 'contract-breaking-change',
+    title: 'Bug hunt: detect a breaking field rename',
+    summary:
+      'Catch a provider change that passes integration tests but breaks a real consumer.',
+    description:
+      'A provider renames a response field while keeping an alias for compatibility. Determine whether existing tests detect the change and write the contract that would have failed first.',
+    trackId: 'contract-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'planned',
+    estimatedMinutes: 35,
+    objectives: [
+      'Classify the rename as additive, breaking, or ambiguous.',
+      'Show why the existing integration test still passes.',
+      'Add a contract assertion that fails on the breaking change.',
+    ],
+    prerequisites: ['Consumer contract exercise', 'Experience reading API diffs'],
+    runnable: false,
+    relatedGuideIds: ['guide-contract-testing-basics'],
+  },
+  {
+    id: 'perf-catalog-baseline',
+    title: 'Measure catalogue latency against a defined baseline',
+    summary:
+      'Establish p50 and p95 latency for catalogue search with a repeatable local profile.',
+    description:
+      'Define a realistic goal, run a short warm-up and steady-state profile against the first-party lab target, and report results with environment details. Averages alone are not an acceptable result.',
+    trackId: 'performance-testing',
+    categoryId: 'nonfunctional',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 40,
+    objectives: [
+      'Set latency and error-rate goals before measuring.',
+      'Run a repeatable load profile with warm-up.',
+      'Report percentiles and environment constraints together.',
+    ],
+    prerequisites: ['A local load-testing tool', 'Read the performance safety rules'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'perf-checkout-regression',
+    title: 'Bug hunt: investigate a checkout latency regression',
+    summary:
+      'Find the cause of a slower checkout with evidence from client, server, and data layers.',
+    description:
+      'Checkout latency has doubled after a release. Compare a baseline against the current build and isolate whether time is spent in the browser, the API, or a dependent query. The exercise rewards a hypothesis-driven approach over broad load generation.',
+    trackId: 'performance-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 50,
+    objectives: [
+      'Reproduce the regression with a comparable load profile.',
+      'Localise the slowdown to a specific layer.',
+      'Present a finding with before-and-after evidence.',
+    ],
+    prerequisites: ['Catalogue baseline exercise', 'Ability to read timing traces'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'security-object-access',
+    title: 'Probe object-level access control',
+    summary:
+      'Test whether one synthetic account can read another account’s order by changing an identifier.',
+    description:
+      'Authenticate as two synthetic users and attempt to access each other’s orders through documented endpoints. Focus on object-level authorisation rather than route-level access, and stop as soon as the behaviour is proven.',
+    trackId: 'security-testing',
+    categoryId: 'security-access',
+    difficulty: 'advanced',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 40,
+    objectives: [
+      'Test authorisation per object, not only per route.',
+      'Compare responses for owned and unowned identifiers.',
+      'Write a finding with impact, evidence, and severity.',
+    ],
+    prerequisites: ['Two synthetic accounts', 'Read the security testing scope'],
+    runnable: false,
+    relatedGuideIds: ['guide-auth-session-testing'],
+  },
+  {
+    id: 'security-search-input',
+    title: 'Bug hunt: reflected input handling in catalogue search',
+    summary:
+      'Evaluate whether search input is safely handled across response, storage, and logs.',
+    description:
+      'Use bounded, non-destructive payloads to see how the catalogue search reflects and stores input. The goal is to identify unsafe handling and recommend a fix; exploitation beyond proof of concept is out of scope.',
+    trackId: 'security-testing',
+    categoryId: 'exploratory',
+    difficulty: 'intermediate',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 35,
+    objectives: [
+      'Identify where input is reflected or persisted.',
+      'Prove unsafe handling with a minimal, harmless payload.',
+      'Recommend encoding and validation at the correct layer.',
+    ],
+    prerequisites: ['Object access exercise', 'Understanding of output encoding'],
+    runnable: false,
+    relatedGuideIds: ['guide-auth-session-testing'],
+  },
+  {
+    id: 'microservices-order-trace',
+    title: 'Trace an order across catalogue, cart, and payments',
+    summary:
+      'Map a single checkout to the services and messages it touches, then verify each boundary.',
+    description:
+      'Follow one successful order from cart submission to confirmation. Identify synchronous calls, asynchronous events, and the correlation identifiers that tie them together. The deliverable is a traceable map plus boundary-level checks.',
+    trackId: 'microservices-testing',
+    categoryId: 'integration',
+    difficulty: 'advanced',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 50,
+    objectives: [
+      'Draw the service and message path for checkout.',
+      'Verify each boundary with a targeted check.',
+      'Use correlation identifiers to connect logs and traces.',
+    ],
+    prerequisites: ['Read the service overview', 'Basic log and trace navigation'],
+    runnable: false,
+    relatedGuideIds: ['guide-contract-testing-basics'],
+  },
+  {
+    id: 'microservices-payment-timeout',
+    title: 'Bug hunt: graceful degradation when payments time out',
+    summary:
+      'Test what the checkout journey does when a dependency becomes slow and then unavailable.',
+    description:
+      'Introduce a controlled timeout in the payments dependency and observe the user-facing outcome. Determine whether the system fails safely, retries forever, or leaves an ambiguous order state.',
+    trackId: 'microservices-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 50,
+    objectives: [
+      'Introduce a controlled dependency failure.',
+      'Observe user-facing and persisted states during the failure.',
+      'Decide whether recovery is safe, ambiguous, or lost.',
+    ],
+    prerequisites: ['Order trace exercise', 'Access to the lab fault controls'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'async-order-confirmation',
+    title: 'Verify the order-confirmation event pipeline',
+    summary:
+      'Prove that a checkout event produces the expected confirmation state without relying on sleeps.',
+    description:
+      'Checkout emits an order event that feeds confirmation email and order history. Define the observable outcome, wait deterministically for it, and verify that the event is processed exactly once.',
+    trackId: 'async-testing',
+    categoryId: 'integration',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 40,
+    objectives: [
+      'Define a user-visible signal that proves event processing.',
+      'Replace fixed delays with deterministic waiting.',
+      'Check for exactly-once effects where the domain requires it.',
+    ],
+    prerequisites: ['Read the event catalogue', 'Basic queue terminology'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'async-duplicate-events',
+    title: 'Bug hunt: duplicate notification delivery',
+    summary:
+      'Investigate why a replayed event sends the same confirmation twice.',
+    description:
+      'Replay a previously processed order event and observe the notification pipeline. Determine whether consumer idempotency is missing, broken, or simply undocumented, then document the user impact.',
+    trackId: 'async-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 40,
+    objectives: [
+      'Reproduce duplicate delivery with a controlled replay.',
+      'Inspect consumer state for an idempotency marker.',
+      'Report the defect with event identifiers and timestamps.',
+    ],
+    prerequisites: ['Order confirmation exercise', 'Ability to inspect consumer logs'],
+    runnable: false,
+    relatedGuideIds: [],
+  },
+  {
+    id: 'auth-session-expiry',
+    title: 'Validate session expiry and renewal',
+    summary:
+      'Test the boundary between an active session, a renewable session, and an expired one.',
+    description:
+      'Sign in, shorten the session window, and verify renewal before and after expiry. The exercise checks both the happy path and the failure mode, including what the user sees when renewal is no longer possible.',
+    trackId: 'auth-testing',
+    categoryId: 'security-access',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 35,
+    objectives: [
+      'Identify the session lifetime and renewal window.',
+      'Verify renewal succeeds before expiry and fails afterwards.',
+      'Confirm the post-expiry user experience is explicit.',
+    ],
+    prerequisites: ['A synthetic account', 'Read the session contract'],
+    runnable: false,
+    relatedGuideIds: ['guide-auth-session-testing'],
+  },
+  {
+    id: 'auth-role-boundaries',
+    title: 'Bug hunt: role boundary gaps in seller tools',
+    summary:
+      'Look for actions a buyer or support role can perform inside seller-only screens.',
+    description:
+      'Use synthetic accounts with different roles and attempt seller-only actions through the UI and API. Focus on whether authorisation is enforced server-side, not merely hidden in the interface.',
+    trackId: 'auth-testing',
+    categoryId: 'exploratory',
+    difficulty: 'advanced',
+    mode: 'bug-hunt',
+    status: 'in-design',
+    estimatedMinutes: 45,
+    objectives: [
+      'Attempt seller actions with non-seller accounts.',
+      'Check whether the API enforces the same boundary as the UI.',
+      'Document each gap with role, action, and response.',
+    ],
+    prerequisites: ['Session expiry exercise', 'Accounts for two roles'],
+    runnable: false,
+    relatedGuideIds: ['guide-auth-session-testing'],
+  },
+  {
+    id: 'a11y-checkout-keyboard',
+    title: 'Complete checkout using only a keyboard',
+    summary:
+      'Navigate the full checkout journey with Tab, Shift+Tab, Enter, and Space.',
+    description:
+      'Put the pointer aside and complete checkout. Record unreachable controls, hidden focus, unexpected focus jumps, and any modal that traps focus without an escape route.',
+    trackId: 'accessibility-testing',
+    categoryId: 'accessibility',
+    difficulty: 'beginner',
+    mode: 'clean',
+    status: 'planned',
+    estimatedMinutes: 30,
+    objectives: [
+      'Reach and operate every checkout control by keyboard.',
+      'Verify focus visibility and logical focus order.',
+      'Document blockers with the exact focus sequence.',
+    ],
+    prerequisites: ['No special tooling', 'A synthetic account'],
+    runnable: false,
+    relatedGuideIds: ['guide-accessibility-keyboard'],
+  },
+  {
+    id: 'a11y-catalog-screenreader',
+    title: 'Audit catalogue filters with a screen reader',
+    summary:
+      'Check whether filter controls expose accurate names, roles, and result updates.',
+    description:
+      'Use a screen reader to apply and clear catalogue filters. Verify that controls are announced correctly and that result counts are communicated without stealing focus or flooding the announcement queue.',
+    trackId: 'accessibility-testing',
+    categoryId: 'accessibility',
+    difficulty: 'intermediate',
+    mode: 'clean',
+    status: 'in-design',
+    estimatedMinutes: 40,
+    objectives: [
+      'Evaluate accessible names and roles for custom filter controls.',
+      'Check result-count announcements after filtering.',
+      'Report issues in terms of user impact and recovery.',
+    ],
+    prerequisites: ['Keyboard checkout exercise', 'A screen reader available locally'],
+    runnable: false,
+    relatedGuideIds: ['guide-accessibility-keyboard'],
+  },
+]
+
+export const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, scenario]))
+
+export function getScenario(scenarioId: string): Scenario | undefined {
+  return scenariosById.get(scenarioId)
+}
+
+export function getScenariosForTrack(trackId: string): Scenario[] {
+  return scenarios.filter((scenario) => scenario.trackId === trackId)
+}
