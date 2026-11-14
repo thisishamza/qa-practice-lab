@@ -213,6 +213,14 @@ phase starts.
 
 ## 11. Progress log
 
+### 2026-11-14 — Repo hygiene: ignore Python cache artifacts
+
+- Added `__pycache__/` and `*.py[cod]` to `.gitignore` and untracked the three committed `__pycache__/*.pyc` files under `.opencode/skills/ui-ux-pro-max/scripts/` (local files left in place; they regenerate on every script run).
+- **Files changed:** `.gitignore`, `PROJECT_STATE.md` (this entry).
+- **Tests run:** none — repo hygiene only.
+- **Note:** `main` was pushed directly after PR #1 was merged on GitHub (merge `e4dd324`).
+- **Next exact action:** Unchanged — Phase 3 (commerce practice app), starting with the `ui-ux-pro-max` skill.
+
 ### 2026-11-14 — Agent guidance: ui-ux-pro-max skill invocation
 
 - Inspected the installed `ui-ux-pro-max` skill before Phase 3 and documented how to use it so future sessions invoke it consistently instead of improvising UI direction.
