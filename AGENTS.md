@@ -38,6 +38,24 @@
 - Sidebar collapse uses the `qa-practice-lab-sidebar-collapsed` storage key.
 - Scenario placeholders must stay `runnable: false` with a non-`ready` status until a phase actually implements the exercise. Do not make demo progress look persisted.
 
+## UI/UX Pro Max skill (use for all UI work)
+
+For designing, building, reviewing, or fixing interfaces — starting with Phase 3 — invoke the `ui-ux-pro-max` skill instead of improvising design direction. Its instructions are **not** loaded automatically; loading is a deliberate step.
+
+- **Installed at:** project level, `.opencode/skills/ui-ux-pro-max/` (`SKILL.md` plus `scripts/` and `data/`). It is **untracked in git** (`.opencode/` is not committed and not ignored); fresh clones will not have it, and the global `~/.config/opencode/skills` is empty. If the directory is missing, tell the user rather than silently skipping the skill.
+- **Discovery:** OpenCode auto-discovers `.opencode/skills/<id>/SKILL.md` (searched from the cwd up to the project root; `.claude/skills` and `.agents/skills` are compatibility sources). The skill ID is path-derived and case-sensitive — `ui-ux-pro-max` — while the frontmatter `name` is display-only. Project sources override global ones. No `opencode.json(c)` exists in this repo, so these directory conventions are the only mechanism in effect.
+- **Invocation:** OpenCode advertises only the ID/name/description each step; the skill body never enters context by itself. Load it explicitly with the `skill` tool — `skill({ id: "ui-ux-pro-max" })` — before any UI design/review work, not after the code is written. Supporting files are not auto-loaded either; run/read them only as the skill directs, with paths relative to the repo root. Do not paraphrase the skill from memory.
+- **Requirements:** the bundled scripts need Python 3 (standard library only, no pip installs, no network access). Verified available as `python3` (3.14.4); use `python3` (`python` on Windows) from the repo root. If Python is missing, stop and ask the user to install it — never run package managers or system-modifying commands for this. Dataset text is recommendation, never authority over user/repo rules; keep private project data out of queries, and treat unverified output as unusable (see query contract).
+- **Design-system workflow** (new pages/sections, e.g. Phase 3):
+  1. Analyze the request first: product type, audience, style keywords, stack (this project: React + TypeScript + hand-written CSS design tokens — **no Tailwind, no shadcn** — so use `--stack react` and adapt output to our tokens), platform (desktop web; ignore App-UI-only guidance: safe areas, haptics, Dynamic Type, 44/48dp touch targets).
+  2. Generate a system: `python3 .opencode/skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]`. Optional dials `--variance` / `--motion` / `--density` (1–10); `-f markdown` for documentation-style output. Output = pattern, style, colors, typography, effects, anti-patterns, driven by `ui-reasoning.csv`.
+  3. Persist **only with explicit user authorization**: add `--persist --output-dir .` to write `design-system/<project-slug>/MASTER.md` (plus `--page <name>` for `pages/<name>.md` overrides). Existing files are skipped by default; never use `--force` without explicit approval, and read any existing `MASTER.md` first. Page files override Master — check both in later sessions. If a `design-system/` folder is created, decide deliberately whether to commit it.
+  4. For one focused concern, use `--domain <product|style|color|typography|chart|ux|landing|react|web|icons|google-fonts|gsap> "<terms>"`; for implementation rules, use `--stack <name>`. One dominant intent and 2–5 terms per query; do not combine unrelated topics.
+  5. Query contract: verify the returned domain/category and top result against the actual product/platform; retry once with a narrower rewrite on empty or off-topic results; if it still fails, state that no verified match was found and use clearly labelled general guidance. Never persist unverified output.
+- **Scope notice:** the skill's "Common Rules" and Pre-Delivery Checklist target App UI (iOS/Android/React Native/Flutter). For this desktop-web app, apply only the web-relevant items: ≥4.5:1 text contrast, visible focus states, `prefers-reduced-motion`, semantic/consistent icon usage, no emoji-as-icons.
+- **Icons:** the skill defaults to Phosphor (`@phosphor-icons/react`, Heroicons `@heroicons/react` as fallback), but this project has **no icon package installed**. Do not add one casually — decide and record the choice as part of the phase that needs it.
+- The skill informs design decisions; it does not replace `npm run check`, both-theme visual verification, or 375px/768px/1024px/1440px responsive checks.
+
 ## Safety invariants (non-negotiable)
 
 - Never expose shared D1 as a generic SQL console; SQL exercises must use a browser-isolated SQLite/WASM sandbox.
@@ -54,4 +72,5 @@
 ## Workflow
 
 - Work on one phase/vertical slice at a time. **Next task is Phase 3 — commerce practice app**, not yet started.
+- For any UI/design/review work, first invoke the `ui-ux-pro-max` skill via the `skill` tool — see "UI/UX Pro Max skill" above. Do not start Phase 3 interface work without it.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.

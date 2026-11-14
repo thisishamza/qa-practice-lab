@@ -213,6 +213,15 @@ phase starts.
 
 ## 11. Progress log
 
+### 2026-11-14 — Agent guidance: ui-ux-pro-max skill invocation
+
+- Inspected the installed `ui-ux-pro-max` skill before Phase 3 and documented how to use it so future sessions invoke it consistently instead of improvising UI direction.
+- **Findings:** the skill lives at project level in `.opencode/skills/ui-ux-pro-max/` (untracked in git; global `~/.config/opencode/skills` empty). OpenCode discovers it via the project `.opencode/skills/<id>/SKILL.md` convention; the ID is path-derived (`ui-ux-pro-max`). Loading is manual — OpenCode advertises only ID/name/description, and the skill body plus its Python scripts/CSV data enter context only when the `skill` tool is called with `{ "id": "ui-ux-pro-max" }`. Scripts need Python 3 (stdlib only; verified `python3` 3.14.4 works). Persistence (`--persist`, `design-system/<slug>/MASTER.md`) requires explicit user authorization; page overrides beat Master. The skill's Common Rules/checklist target App UI, so only the web-relevant items apply here.
+- **No application code was changed.** A read-only `search.py --design-system` query was run to verify the CLI works; nothing was persisted.
+- **Files changed:** `AGENTS.md` (new "UI/UX Pro Max skill" section + Workflow pointer), `PROJECT_STATE.md` (this entry).
+- **Tests run:** none — documentation-only change.
+- **Next exact action:** Unchanged — Phase 3 (commerce practice app), starting by invoking the `ui-ux-pro-max` skill to generate the commerce app design system.
+
 ### 2026-11-14 — Phase 2 app shell, learning tracks, catalog, and guides
 
 - **Completed:** A full learner-facing interface on top of the Phase 1 foundation:
