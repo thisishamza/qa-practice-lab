@@ -365,9 +365,13 @@ phase starts.
   deliberately not bundled into this review; sweep deletes a signed-in customer's order
   history when the practice session expires after 7 days (the designed, documented retention
   policy); account pages still show guest prompt during wishful "loading" windows.
-- **Git:** one follow-up commit on the branch (`fix: address PR self-review findings`);
-  `main` untouched, nothing pushed by this session, no PR created yet (compare URL prepared;
-  the branch has no GitHub credentials in this environment).
+- **Git:** one follow-up commit on the branch (`fix: address PR self-review findings`,
+  `cd4865f`); **PR #4 opened** — https://github.com/thisishamza/qa-practice-lab/pull/4
+  (`feat/phase-3-commerce-practice` → `main`, 10 commits, 117 files, +20,542/−127,
+  mergeable). Note: GitHub's Dependabot banner reports 1 moderate advisory on the default
+  branch (README documents the same moderates, dev-only; production deps clean). Branch push
+  was performed explicitly (`git push` via the environment's credential flow); no force-push,
+  no merge, `main` untouched. Phase 4 remains unstarted.
 - **Next exact action:** user opens the PR from the prepared compare URL (body in the final
   report); review thread lands there. Phase 4 remains unstarted.
 
