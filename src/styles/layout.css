@@ -525,3 +525,56 @@
     gap: 0.35rem;
   }
 }
+
+/* Account sign-in indicator (P3-M5) --------------------------------------- */
+
+.topbar-account {
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 2.5rem;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+  transition:
+    background-color var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.topbar-account:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+.topbar-account-label {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .topbar-account {
+    width: 2.5rem;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .topbar-account-label {
+    display: none;
+  }
+}
+
+/* 640px and below the top bar cannot fit another icon without overflow;
+   the Account entry lives in the sidebar / mobile drawer there. */
+@media (max-width: 640px) {
+  .topbar-account {
+    display: none;
+  }
+}

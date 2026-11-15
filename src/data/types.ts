@@ -76,6 +76,8 @@ export type IconName =
   | 'cart'
   | 'minus'
   | 'plus'
+  | 'user'
+  | 'logout'
 
 export interface GettingStarted {
   summary: string

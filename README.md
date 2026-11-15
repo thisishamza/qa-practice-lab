@@ -46,11 +46,55 @@ persistence** yet. No SQL playground, performance runner, or security challenge 
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
 | `/checkout` | Practice checkout: synthetic details, simulated payment outcome, order placement |
 | `/orders/:reference` | Order confirmation: reference, statuses, item snapshot, session-scoped |
+| `/login` | Training sign-in: fictional demo accounts, accessible form, suspended-account case |
+| `/account` | Synthetic customer profile (guest state, sign-out, protected resource) |
+| `/account/orders` | Order history owned by the signed-in synthetic customer |
+| `/account/orders/:reference` | Order details, readable only by the owning synthetic customer |
 
 Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
 saved; the progress page shows labelled sample data and says so. The cart and orders are the real
 pieces of server-side practice state: they persist in D1 under an opaque `mpl_session` cookie
 (HttpOnly, `SameSite=Strict`, 7-day expiry) and are never shared between browser sessions.
+Signing in adds a second, independent `mpl_customer` cookie (HttpOnly, `SameSite=Strict`,
+8-hour expiry) bound to that same practice session — the two cookies are never interchangeable,
+and a customer session is only honoured while its owning practice session is live.
+
+## Training-only synthetic sign-in
+
+**These are fictional practice accounts for the QA training environment. They are not real
+people, they are not credentials for any real service, and the passwords below are
+intentionally public. Never reuse them anywhere.**
+
+| Name | Email | Password (public, training-only) | Role | Status |
+| --- | --- | --- | --- | --- |
+| Amara Okafor | `amara.okafor@example.com` | `demo-amara-1001` | Customer | Active |
+| Ben Whitmore | `ben.whitmore@example.net` | `demo-ben-1002` | Customer | Active |
+| Priya Raman | `priya.raman@example.org` | `demo-priya-1003` | Customer | Active |
+| Dana Reyes | `dana.reyes@example.com` | `demo-dana-1004` | Customer | **Suspended** (sign-in is refused with `403 account_suspended` — an intended practice case) |
+| Rowan Ellison | `rowan.ellison@example.com` | `demo-rowan-9001` | Staff | Active |
+
+The login page (`/login`) lists the same accounts (name, email, role, status — never any
+credential material) and fills the email field for you. Passwords are PBKDF2-HMAC-SHA256
+digests (100,000 iterations, fixed salts) seeded by `db/migrations/0005_customers.sql`; the API
+never returns hashes or raw tokens in any response. Customer A/B isolation is the point of the
+exercise: sign in as Amara in one browser and Ben in another — neither can read the other's
+orders, and URL/id tampering is refused with a concealed `404 not_found`.
+
+**Identity architecture (read this before testing authZ):**
+
+- **Practice session** (`mpl_session`): anonymous, owns the cart and unassociated orders; the
+  isolation boundary for exercises. Deleting the cookie starts a fresh anonymous session.
+- **Customer identity** (`mpl_customer`): a fictional customer signed in to the training
+  storefront. Only its SHA-256 hash is stored, in `customer_sessions`, bound to the practice
+  session that established it. A customer signed in on practice session A is *not* signed in on
+  practice session B.
+- Signing in **rotates** the customer token (any pre-existing customer session for this practice
+  session is destroyed at login), which defeats session fixation by construction.
+- Orders placed while signed in are associated **explicitly and transactionally** with
+  `orders.customer_id` at placement time. Orders placed as a guest, or before sign-in, keep
+  `customer_id NULL` and are **never** silently adopted by a later login — they stay
+  session-scoped exactly as before. Guest checkout is unchanged and remains available without an
+  account.
 
 ## Requirements
 
@@ -113,6 +157,8 @@ src/server/app.ts          Hono app exported for tests (also under src/)
 src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
 src/server/cart.ts         Session cart routes (/api/v1/cart) with server-side totals
 src/server/checkout.ts     Checkout & orders routes (/api/v1/checkout, /api/v1/orders)
+src/server/auth.ts         Synthetic customer auth & account routes (/api/v1/auth/*, /api/v1/account/*)
+src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
@@ -223,6 +269,43 @@ Checkout and orders:
   exposed. The items are snapshots taken at placement time — product name, slug, unit price
   (integer cents), quantity and line total are rewritten by no later catalogue change.
 
+Synthetic customer authentication and the account area (P3-M5):
+
+- `GET /api/v1/auth/accounts` — safe directory of the demo accounts (name, email, role, status).
+  Never includes credentials or hashes.
+- `POST /api/v1/auth/login` — sign in. Body: `{ "email": "…", "password": "…" }`. Unknown email and
+  wrong password both answer an identical `401 invalid_credentials` envelope (the unknown-email
+  path still performs a PBKDF2 verification against a dummy digest, so timing does not enumerate
+  accounts). A suspended account answers `403 account_suspended`. Success answers `200` with the
+  customer profile, sets the `mpl_customer` cookie (HttpOnly, `SameSite=Strict`, `Path=/`,
+  Max-Age 28800) and destroys any pre-existing customer session for this practice session
+  (token rotation). If the browser had no practice session, a fresh one is minted and returned in
+  the same response. Responses never contain password hashes or token hashes.
+- `POST /api/v1/auth/logout` — destroy the presented customer session and clear the cookie.
+  Idempotent; `200 { ok: true }` in all cases.
+- `GET /api/v1/auth/me` — the currently authenticated customer, or `401 unauthorized` (a stale or
+  wrong-practice-session cookie is cleared in the same response). A customer suspended
+  mid-session answers `403 account_suspended`.
+- `GET /api/v1/account` — the same profile (name, email, role, status, synthetic address, member
+  since). Protected.
+- `GET /api/v1/account/orders` — the signed-in customer's own order history (newest first, ≤50).
+  Scoped to `orders.customer_id`, any practice session. Guest orders are never included.
+- `GET /api/v1/account/orders/:reference` — own order details. Unknown reference and another
+  customer's reference answer the **identical** `404 not_found` envelope (existence concealed,
+  consistent with the session-scoped confirmation endpoint). Out-of-format references answer
+  `400 invalid_request`.
+
+**Authorization policy (consistent across the account area):** `401 unauthorized` = not
+authenticated (or the cookie failed validation/binding); `403 account_suspended` = authenticated
+but the synthetic account is suspended; `404 not_found` = the resource is unknown **or** not owned
+by the caller (existence concealed). `403` is deliberately not used for cross-customer access, so
+the 401/403/404 triple each has one unambiguous meaning.
+
+**Guest checkout remains fully supported.** Sign-in is never required for the existing catalogue,
+cart or checkout flows. Orders placed before sign-in stay attached to the practice session; after
+sign-in they remain readable through `GET /api/v1/orders` and `/orders/:reference` only, not
+through the account area.
+
 **Simulated payment behaviour (read this before relying on it):** `paymentSimulation` chooses
 a deterministic outcome from the fictional practice gateway. `approved` places the practice
 order; `declined` places nothing and changes nothing. There is no payment processor, card
@@ -268,13 +351,15 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 - All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
   progress; the progress page shows labelled sample data and says so.
-- The storefront catalogue, cart and checkout are real and backed by the API and D1.
-  Authentication, bug-hunt mode and learner accounts do **not** exist yet — everything is
-  synthetic practice data; the checkout's payment outcome is a simulation and nothing is really
-  paid for or shipped. Deleting cookies or letting the 7-day session expire starts with a
-  fresh empty cart and no order history (orders cascade with the session); sessions are not
-  swept automatically until P3-M9. Unavailable lines stay in the cart flagged as such and
-  block checkout with a `422` envelope until adjusted.
+- The storefront catalogue, cart, checkout and the synthetic customer account area are real and
+  backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
+  PBKDF2 password digests and the session tokens are fixtures; there is no registration, password
+  reset, MFA, email verification, role-based access beyond `customer|staff`, or external identity
+  provider. The checkout's payment outcome is a simulation and nothing is really paid for or
+  shipped. Deleting cookies or letting the 7-day session expire starts with a fresh empty cart and
+  no order history (orders cascade with the session); customer sessions expire after 8 hours;
+  sessions are not swept automatically until P3-M9. Unavailable lines stay in the cart flagged as
+  such and block checkout with a `422` envelope until adjusted.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

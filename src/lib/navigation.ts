@@ -52,6 +52,12 @@ export const primaryNav: NavItem[] = [
     icon: 'shop',
     description: 'Meridian Outfitters practice storefront',
   },
+  {
+    label: 'Account',
+    to: '/account',
+    icon: 'user',
+    description: 'Demo sign-in, profile and order history',
+  },
 ]
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {

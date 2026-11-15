@@ -64,6 +64,7 @@ import {
   type PaymentSimulation,
 } from '../shared/commerce'
 import type { AppEnv } from './app'
+import { resolveCustomerContext } from './customer'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -71,7 +72,8 @@ import {
   isTokenFormat,
 } from './session'
 
-const ORDER_REFERENCE_PATTERN = /^ORD-[0-9A-F]{16}$/
+/** Opaque order reference format, e.g. ORD-1A2B3C4D5E6F7089. */
+export const ORDER_REFERENCE_PATTERN = /^ORD-[0-9A-F]{16}$/
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const NAME_PATTERN = /^[\p{L}][\p{L} .,'-]{1,99}$/u
@@ -436,7 +438,10 @@ async function findIdempotencyRecord(
     .first<IdempotencyRow>()
 }
 
-async function orderDetailById(db: D1Database, orderId: number): Promise<OrderDetail | null> {
+export async function orderDetailById(
+  db: D1Database,
+  orderId: number,
+): Promise<OrderDetail | null> {
   const order = await db
     .prepare(
       `SELECT o.reference, o.status, o.payment_status, o.customer_name, o.customer_email,
@@ -560,6 +565,15 @@ checkoutRoutes.post('/checkout', async (c) => {
     )
   }
 
+  // Attach the synthetic customer explicitly, and only when the browser is
+  // signed in to an ACTIVE account. Orders placed before sign-in keep
+  // customer_id NULL and are never silently adopted by a later login.
+  const customerResolution = await resolveCustomerContext(c)
+  const customerId =
+    customerResolution.kind === 'ok' && customerResolution.customer.status === 'active'
+      ? customerResolution.customer.id
+      : null
+
   const lines = await readFulfillableLines(c.env.DB, session.cartId)
 
   const requestHash = await requestHashFor(details)
@@ -634,8 +648,8 @@ checkoutRoutes.post('/checkout', async (c) => {
       sql: `INSERT INTO orders (
               session_id, reference, status, payment_status,
               customer_name, customer_email, shipping_line, shipping_city, shipping_postcode,
-              subtotal_cents, total_cents
-            ) VALUES (?, ?, 'placed', 'approved', ?, ?, ?, ?, ?, ?, ?)`,
+              subtotal_cents, total_cents, customer_id
+            ) VALUES (?, ?, 'placed', 'approved', ?, ?, ?, ?, ?, ?, ?, ?)`,
       params: [
         session.sessionId,
         reference,
@@ -646,6 +660,7 @@ checkoutRoutes.post('/checkout', async (c) => {
         details.shippingPostcode,
         subtotalCents,
         totalCents,
+        customerId,
       ],
     },
     ...items.map((line) => ({

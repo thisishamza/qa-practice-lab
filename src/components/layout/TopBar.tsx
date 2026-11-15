@@ -4,6 +4,7 @@ import { ThemeToggle } from '../ui/ThemeToggle'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 import { useCart } from '../../features/cart/useCart'
+import { useAuth } from '../../features/auth/useAuth'
 
 interface TopBarProps {
   mobileOpen: boolean
@@ -21,9 +22,16 @@ export function TopBar({
   const location = useLocation()
   const navigate = useNavigate()
   const { cart } = useCart()
+  const { customer, loadState } = useAuth()
   const cartCount = cart?.itemCount ?? 0
   const cartLabel =
     cartCount === 0 ? 'Cart, 0 items' : `Cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`
+  const accountLabel =
+    loadState.status === 'ready' && customer
+      ? `Account — signed in as ${customer.name}`
+      : 'Sign in to the demo storefront'
+  const accountText = customer ? customer.name.split(' ')[0] : 'Sign in'
+  const accountDestination = customer ? '/account' : '/login'
   const inputRef = useRef<HTMLInputElement>(null)
   const locationQuery =
     location.pathname === '/scenarios'
@@ -178,6 +186,10 @@ export function TopBar({
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             ) : null}
+          </Link>
+          <Link className="topbar-account" to={accountDestination} aria-label={accountLabel}>
+            <Icon name="user" size={18} />
+            <span className="topbar-account-label">{accountText}</span>
           </Link>
           <ThemeToggle />
         </div>

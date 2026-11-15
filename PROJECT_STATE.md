@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders, simulated payments, atomic D1 placement) are implemented and verified; P3-M5 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders) and P3-M5 (synthetic customers & auth simulation) are implemented and verified; P3-M6 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -147,8 +147,9 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
-P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart) and P3-M4
-(checkout & orders) are implemented and verified on that branch.
+P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
+(checkout & orders) and P3-M5 (synthetic customers & auth simulation) are implemented and
+verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -196,6 +197,8 @@ qa-practice-lab/
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
 │   │   ├── cart/                      # CartContext (provider), cart-context, useCart,
 │   │   │                              # CartView, api (cart client)
+│   │   ├── auth/                      # AuthContext (provider), auth-context, useAuth,
+│   │   │                              # api (account/auth client)
 │   │   ├── checkout/                  # CheckoutView, OrderConfirmationView, api
 │   │   ├── guides/                    # GuideCard
 │   │   ├── shop/                      # ProductCard, ProductDetail, ProductStates,
@@ -203,19 +206,25 @@ qa-practice-lab/
 │   │   ├── system/                    # HealthStatus
 │   │   └── tracks/                    # TrackCard
 │   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
-│   ├── pages/                         # route-level pages (dashboard … about, shop, shop product, 404)
+│   ├── pages/                         # route-level pages (dashboard … about, shop, shop product,
+│   │                                  # cart, checkout, orders confirmation, login, account,
+│   │                                  # account orders, account order detail, 404)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
 │   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search)
 │   ├── server/cart.ts                 # Phase 3 session cart routes (/api/v1/cart)
 │   ├── server/checkout.ts             # Phase 3 checkout & order routes (/api/v1/checkout, /api/v1/orders)
 │   ├── server/session.ts              # anonymous practice sessions (SHA-256-hashed tokens)
+│   ├── server/auth.ts                 # P3-M5 auth + protected account routes (/api/v1/auth/*,
+│   │                                  # /api/v1/account/*); PBKDF2 verify, token rotation, 401/403/404
+│   ├── server/customer.ts             # P3-M5 customer sessions (mpl_customer cookie, hashed tokens,
+│   │                                  # practice-session binding, suspended handling)
 │   ├── shared/health.ts               # shared response type
 │   ├── shared/commerce.ts             # shared catalogue + cart + order contracts (Phase 3)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
 │   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
-│                                      # 0003_cart.sql, 0004_orders.sql
+│                                      # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
@@ -226,11 +235,13 @@ qa-practice-lab/
     │                                  # also implements all-or-nothing batch())
     ├── server/catalogue.test.ts       # /api/v1 catalogue API against the seeded schema (incl. q search)
     ├── server/cart.test.ts            # session cart API: isolation, validation, totals, transactions
+    ├── server/checkout.test.ts        # checkout & orders: transaction, rollback, idempotency
+    ├── server/auth.test.ts            # auth & authorization: login/logout/me, rotation, expiry,
+    │                                  # practice-session binding, ownership, compatibility
     ├── server/health.test.ts
+    ├── lib/checkout.test.ts           # checkout form validation
     └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
                                        # (+ cart/checkout views & API client tests since P3-M3/M4)
-│   ├── server/checkout.test.ts        # checkout & orders: transaction, rollback, idempotency
-│   ├── lib/checkout.test.ts           # checkout form validation
 ```
 
 Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
@@ -241,6 +252,10 @@ the real `/api/v1` catalogue. Phase 3 (P3-M3) added `/cart`, which reads/writes 
 session cart through `/api/v1/cart`. Phase 3 (P3-M4) added `/checkout` and
 `/orders/:reference` — both render inside `AppShell`; `/checkout` reads the same cart and
 places a simulated order, `/orders/:reference` renders the session-scoped confirmation.
+Phase 3 (P3-M5) added `/login`, `/account`, `/account/orders` and `/account/orders/:reference` —
+all render inside `AppShell`; `/account` shows the synthetic customer profile (or an honest guest
+state), order history and detail are protected resources owned by the signed-in customer. The
+top bar carries an account indicator and the sidebar/mobile nav an Account entry.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -274,6 +289,132 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M5: synthetic customers and authentication simulation
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `9b00d71` (P3-M4), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work; verified guidance applied
+  (WCAG 2.2 accessible authentication — password managers/paste allowed,
+  `autocomplete="current-password"`; focusable error summary at the top of the form with linked
+  field errors; `role="alert"`; inline field errors). The login view follows the existing
+  Checkout form patterns and tokens (`checkout-form`, `checkout-field`, `checkout-error-summary`,
+  `catalogue-availability`, `cart-layout`), so no new design language was introduced.
+- **Identity architecture (documented in README.md + code comments):** TWO independent concepts.
+  1. **Practice session** — `mpl_session`, opaque 128-bit token, SHA-256 hash in
+     `practice_sessions`, 7-day expiry; owns the cart and unassociated orders; the isolation
+     boundary for exercises; unchanged from P3-M3/M4.
+  2. **Simulated customer identity** — `mpl_customer`, a SEPARATE opaque 128-bit token; only its
+     SHA-256 hash is stored, in `customer_sessions`, bound to `practice_session_id`. A customer
+     session is honoured only while its owning practice session is live in the same browser; a
+     token replayed against another practice session (or without one) resolves to 401 with the
+     cookie cleared. The two cookies are never interchangeable, and customer identity never
+     replaces the practice session. Deleting the practice cookie or expiry detaches the customer
+     session with it.
+- **Token lifecycle:** login ALWAYS mints a brand-new customer token and first destroys every
+  `customer_sessions` row for the current practice session (rotation — a pre-existing browser
+  token can never remain valid after sign-in; fixation impossible by construction). Logout deletes
+  the presented token's row (idempotent, `200 {ok:true}`) and clears the cookie. Expired rows are
+  deleted on first contact. Cookies: HttpOnly, SameSite=Strict, Path=/, Max-Age 28800 (8 h),
+  `Secure` only over HTTPS (same convention as `mpl_session`). Tokens and hashes never appear in
+  any API response; DB stores only hashes (verified by test).
+- **Password strategy:** PBKDF2-HMAC-SHA256, **100,000 iterations**, 8-byte FIXED salts — the
+  fixtures are deterministic (`pbkdf2:<iterations>:<salt_hex>:<hash_hex>`), so a fresh migration
+  always yields the same digests; stored hashes were verified against the documented plaintexts
+  via `crypto.subtle`. Web Crypto `crypto.subtle` (Workers-compatible) is the only KDF; no new
+  dependency, no Node-only crypto API in production paths. Login answers an IDENTICAL
+  `401 invalid_credentials` for unknown email and wrong password; the unknown-email path still
+  runs a PBKDF2 verification against a dummy digest so response timing does not enumerate
+  accounts. Suspended accounts get `403 account_suspended` (only reachable with the correct
+  password); suspending mid-session flips protected endpoints to the same 403.
+- **Seed data (deterministic, RFC 2606 domains, zero real data):** migration
+  `db/migrations/0005_customers.sql` — `customers` (id, email UNIQUE COLLATE NOCASE, name,
+  password_hash, role `customer|staff`, status `active|suspended`, synthetic address
+  line/city/postcode, created_at), `customer_sessions` (token_hash UNIQUE, customer_id →
+  customers ON DELETE CASCADE, practice_session_id → practice_sessions ON DELETE CASCADE,
+  expires_at; indexes on customer/practice/expires), and `orders.customer_id` (nullable →
+  customers ON DELETE SET NULL; indexed). `schema_version` → `5`. Five fictional fixtures:
+  Amara Okafor (`amara.okafor@example.com`, `demo-amara-1001`, customer, active),
+  Ben Whitmore (`ben.whitmore@example.net`, `demo-ben-1002`, active),
+  Priya Raman (`priya.raman@example.org`, `demo-priya-1003`, active) — two independent active
+  identities for IDOR practice; Dana Reyes (`dana.reyes@example.com`, `demo-dana-1004`,
+  **suspended** — documented sign-in refusal case); Rowan Ellison
+  (`rowan.ellison@example.com`, `demo-rowan-9001`, **staff** — role seeded for M6).
+  Credentials documented in README.md ("Training-only synthetic sign-in") — never in the UI bundle.
+- **API (`src/server/auth.ts` + `src/server/customer.ts`, mounted in `/api/v1`):**
+  `GET /api/v1/auth/accounts` (safe directory — name/email/role/status only, never secrets),
+  `POST /api/v1/auth/login` (400 on malformed bodies; identical 401 `invalid_credentials`;
+  403 `account_suspended`; lazy-mints a practice session+pair when the browser has neither;
+  binds the new customer session to it; anti-fixation rotation),
+  `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, protected `GET /api/v1/account`
+  (profile incl. synthetic address + member-since), `GET /api/v1/account/orders` (≤50, newest
+  first, scoped to `customer_id`), `GET /api/v1/account/orders/:reference` (own details only).
+  Shared guard `requireActiveCustomer` (401 unauthorized / 403 account_suspended); stale or
+  malformed/foreign-bound cookies are cleared in the same response.
+- **Ownership policy (documented + tested):** 401 = unauthenticated; 403 = authenticated but
+  suspended; 404 = unknown OR not owned (existence concealed, consistent with the session-scoped
+  confirmation policy). Account order history = orders with this `customer_id` (any practice
+  session — it is the same fictional person); account order detail requires BOTH reference AND
+  caller's `customer_id`; unknown and not-owned references return the IDENTICAL 404 envelope;
+  out-of-format references get 400. `403` is deliberately never used for cross-customer access.
+- **Order ownership decision:** orders placed while signed in get `orders.customer_id` set in the
+  placement batch (explicit, transactional, practice-session-scoped binding). Orders placed as a
+  guest or before sign-in keep `customer_id NULL` and are NEVER silently adopted; they stay
+  readable through the session-scoped `/api/v1/orders*` endpoints. Guest cart and guest checkout
+  are fully unchanged — sign-in is never a prerequisite for them. Pre-M5 orders in existing local
+  D1 remain valid (column added nullable, no backfill).
+- **Frontend:** `/login`, `/account`, `/account/orders`, `/account/orders/:reference` inside
+  `AppShell`; `AuthProvider` (`src/features/auth/`) reads `/api/v1/auth/me` on mount and after
+  sign-in/out — refresh restores identity from the cookie, nothing in localStorage/sessionStorage;
+  login page with clearly-labelled fictional demo-account directory (email fill buttons, no
+  passwords shown, suspended case labelled), aggregated `role="alert"` error summary with linked
+  field errors, `autocomplete="username"/"current-password"`, paste allowed; account profile view
+  (FactList, synthetic address card, member since, sign-out, suspended callout, guest state with
+  sign-in CTA); order history list (reference links, status/payment tags, item count, total);
+  order detail reuses `OrderConfirmationView` (new optional `crumbs` prop only). Top bar gained an
+  account indicator (first name when signed in; "Sign in" otherwise; hidden ≤640px where the
+  sidebar/mobile drawer instead carries an **Account** entry added to `primaryNav`). New inline
+  icons `user`, `logout`. Both themes + 375/768/1024/1440 verified.
+- **Compatibility:** anonymous cart and cart UX unchanged; anonymous checkout unchanged (guest
+  orders confirmed readable via `/api/v1/orders/:reference` after later sign-in); catalogue
+  untouched; 212 pre-existing tests kept green (schema_version assertions bumped 4→5).
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **239/239 tests**, was 212; +27 new auth/ownership/compatibility tests incl. token-hash-only
+  storage assertions, rotation, expiry purge, cross-practice-session replay, suspended mid-
+  session 403, guest/non-adoption, byte-identical login failure payloads). `npm run build` —
+  passed (JS **448.08 kB** / gzip 131.88 kB vs 447.98/448.08 at M4, CSS **68.39 kB** / gzip
+  13.27 kB; no new runtime dependencies). Playwright/Chrome probe against the production build on
+  port **8791** (8788/5173 untouched): **51/51 checks pass** — guest navigation on all new
+  routes, non-enumerating login failure, empty-submit error summary with field links, sign-in,
+  refresh persistence, signed-in order placement appearing in account history, Ben unable to see
+  Amara's order (history + direct reference → concealed not-found state), Amara's own detail,
+  logout → guest state on /account and /account/orders, session scoping of the cart, all new
+  routes × 375/768/1024/1440 × light/dark (zero overflow, exactly one h1), reduced-motion render,
+  zero unexpected console errors (the by-design 401 guest probe and concealed-order 404 are
+  filtered). Port 8791 confirmed closed afterwards. One layout bug found and fixed during
+  verification: the extra top-bar control overflowed 375 px by 37 px — the account indicator is
+  now hidden ≤640 px and Account lives in the sidebar/mobile drawer (`primaryNav`).
+- **Local D1 note:** `npm run db:migrate:local` applied `0005_customers.sql` to the existing
+  local database (additive; pre-existing orders keep `customer_id NULL`); seeds verified
+  (5 customers, correct roles/statuses) and all fixture digests verify against README passwords.
+  Local probes accumulated synthetic signed-in orders in local state (throwaway).
+- **Docs:** README.md (routes, training-only credential table, identity architecture, auth +
+  account endpoint reference, authorization policy, guest-checkout compatibility, limitations),
+  `docs/phase-3-commerce-practice-plan.md` (M5 marked implemented with as-built deviations),
+  AGENTS.md (state lines), PROJECT_STATE.md.
+- **Known limitations / open items:** NO rate limiting on login (or cart/checkout) — deferred to
+  M9 with the rest; no registration/password-reset/MFA (deliberately out of scope); no staff-only
+  endpoint yet (`staff` role seeded for M6); customer sessions are not swept until M9 (expired
+  rows are deleted lazily on first contact); the staff account's role is stored but unused by any
+  endpoint yet; login does not prefill the checkout form (deliberate — keeps the form honest);
+  `node:sqlite` harness remains the only database test path; interaction-level auth testing relies
+  on the (uncommitted) Playwright probe + SSR markup tests, same convention as before; local dev
+  D1 accumulates probe orders (throwaway local state).
+- **Git:** single milestone commit `feat: implement synthetic customer authentication` (hash in
+  the final report). `main` untouched, nothing pushed, P3-M6 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M6 (inventory depth)** — do not
+  begin without approval.
 
 ### 2026-11-15 — Phase 3 P3-M4: checkout & order workflow
 
@@ -964,7 +1105,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 | P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | **Done & verified 2026-11-15** (this branch) |
 | P3-M3 | Cart (session-keyed, server-side totals) | **Done & verified 2026-11-15** (this branch) |
 | P3-M4 | Checkout & orders (simulated payments, transactional D1 placement, idempotency) | **Done & verified 2026-11-15** (this branch) |
-| P3-M5 | Synthetic customers & auth simulation (roles, ownership) | Planned |
+| P3-M5 | Synthetic customers & auth simulation (roles, ownership) | **Done & verified 2026-11-15** (this branch) |
 | P3-M6 | Inventory depth (stock re-check in order transaction, restock) | Planned |
 | P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | Planned |
 | P3-M8 | Bug-hunt defect set & scenario wiring (5–7 defects) | Planned |
@@ -1026,7 +1167,8 @@ page shows the slug as “Catalogue code”; storefront search is LIKE-based (fi
 SSR string-markup tests assert rendering, browser probes cover interaction and are not committed;
 `npm run check` passes but the Node 26 / `node:sqlite` harness is the only database test path.
 
-Known limitations: auth/bug-hunt still unimplemented (P3-M5+); checkout has no
+Known limitations (recorded at P3-M4): customer auth/bug-hunt unimplemented at that time
+(P3-M5 has since shipped; bug-hunt is P3-M7+); checkout has no
 shipping/discounts/tax (total == subtotal); expired sessions/carts are not swept yet
 (M9); stock checks are per-request reads + guarded writes, not a reservation system (M6 owns the
 transactional depth); per-request rate limits are deferred to M9; quantity cap is 99/line;
@@ -1052,18 +1194,35 @@ wording). 212/212 tests green; live probe against the production build incl. a l
 replay after cart-emptying. Known gaps: no rate limits (M9); no order-history UI (API only);
 orders cascade-delete with expired sessions; no checkout reservation system (M6 owns depth).
 
-Known limitations: auth/orders ownership/bug-hunt still unimplemented (P3-M5+); the cart and
-checkout have no shipping/discounts/tax (total == subtotal); expired sessions/carts/orders are
+Known limitations: bug-hunt engine still unimplemented (P3-M7+); the cart and checkout have no
+shipping/discounts/tax (total == subtotal); expired sessions/carts/orders/customer sessions are
 not swept yet (M9); stock checks are per-request reads + guarded writes in one batch, not a
 reservation system (M6 owns the transactional depth); per-request rate limits deferred to M9;
-quantity cap is 99/line; interaction-level checkout testing beyond SSR markup tests + Playwright
-probe is not automated; `practice_sessions` lacks `mode`/`hunt_id` until M7.
+quantity cap is 99/line; interaction-level testing beyond SSR markup tests + Playwright probe is
+not automated; `practice_sessions` lacks `mode`/`hunt_id` until M7.
 
-Next recommended milestone: **P3-M5 — synthetic customers & auth simulation** (requires explicit
-instruction; do not start without approval).
+P3-M5 detail: synthetic customer auth & ownership on top of M1–M4 — migration
+`0005_customers.sql` (`customers` with PBKDF2 digests + fixed salts, RFC 2606 example domains;
+`customer_sessions` bound to `practice_sessions`; `orders.customer_id` nullable → explicit,
+transactional adoption at placement only). Server `src/server/customer.ts` (token generation,
+SHA-256 hashing, practice-session binding check, suspended handling, shared guard
+`requireActiveCustomer`) and `src/server/auth.ts` (`/api/v1/auth/accounts|login|logout|me`,
+`/api/v1/account`, `/api/v1/account/orders[/:reference]`). Frontend: `AuthProvider` + top-bar
+account indicator + `/login` (fictional demo-account directory), `/account` (profile / guest /
+suspended states), `/account/orders` (history), `/account/orders/:reference` (reuses
+`OrderConfirmationView`). Anti-enumeration login (identical 401, dummy-digest verify), token
+rotation on sign-in, HttpOnly `mpl_customer` cookie (8 h). 239/239 tests green; live probe
+**51/51** against the production build (port 8791). Known gaps: no login rate limit (M9); no
+account registration/recovery/MFA (out of scope); staff role seeded but unused by endpoints (M6);
+no checkout prefill from profile; credentials documented in README only (never in the UI); the
+plan's sketched 403-for-wrong-owner was refined to 404 (existence concealed) — documented in
+README and the plan.
+
+Next recommended milestone: **P3-M6 — inventory depth** (requires explicit instruction; do not
+start without approval).
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M5 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency) and P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M6 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

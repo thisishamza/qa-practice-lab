@@ -56,7 +56,7 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M2 (done) | No new endpoints (read-only); `q` search added to `/api/v1/products` | Read-only |
 | M3 (done) | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` · `DELETE /api/v1/cart` | Session cart |
 | M4 (done) | `GET /api/v1/checkout` · `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:reference` | Orders |
-| M5 | `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` | Synthetic auth |
+| M5 (done) | `GET /api/v1/auth/accounts` · `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` · `GET /api/v1/account` · `GET /api/v1/account/orders` · `GET /api/v1/account/orders/:reference` | Synthetic auth + protected account |
 | M6 | `PATCH /api/v1/admin/inventory/:productId` (staff role) · stock force-check inside checkout | Inventory |
 | M7 | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
 
@@ -188,19 +188,40 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
 - **Testing:** transaction rollback cases in the fake-D1 harness; concurrent-submission and
   idempotency replay/drift cases; SQLite-backed through real migrations.
 
-### P3-M5 — Synthetic customers & auth simulation
+### P3-M5 — Synthetic customers & auth simulation *(implemented; see PROJECT_STATE §12)*
 
-- **Purpose:** authN/authZ test surface: login, roles, ownership.
-- **Scope:** seeded synthetic customers (`customers`), `POST /api/v1/auth/login|logout`,
-  `GET /api/v1/auth/me`, `customer_sessions`, roles `customer|staff`, order ownership
-  enforcement (`session ↔ customer → orders`), staff-only inventory read of cost fields
-  (mini BOLA surface), login form `/shop/account`.
-- **Database:** `customers(id, email UNIQUE, name, password_hash /* scrypt-ish, synthetic */,
-  role, created_at)`, `customer_sessions(token_hash, customer_id, expires_at)`.
-- **Acceptance:** wrong password → 401; customer A cannot read customer B's order (403);
-  staff can; `/auth/me` reflects cookie; rate-limited login (5/min/IP).
-- **Testing:** negative-path tests are first-class. **Risks:** password handling must stay
-  obviously synthetic (documented fakes); no email sending ever.
+- **Purpose:** authN/authZ test surface: login, ownership, session handling.
+- **Scope (as built):** migration `0005_customers.sql` (`customers(id, email UNIQUE COLLATE NOCASE,
+  name, password_hash /* PBKDF2-HMAC-SHA256, 100k iterations, fixed salts — deterministic fixtures */,
+  role /* customer|staff */, status /* active|suspended */, synthetic address columns, created_at)`,
+  `customer_sessions(token_hash UNIQUE, customer_id → customers, practice_session_id →
+  practice_sessions NOT NULL, expires_at)` — the customer session is bound to its practice session
+  and is only honoured while that practice session is live; `orders.customer_id` added as an
+  explicit, nullable, transactional association set at checkout placement (pre-sign-in orders are
+  never silently adopted). Endpoints: `GET /api/v1/auth/accounts` (safe demo-directory),
+  `POST /api/v1/auth/login` (identical 401 `invalid_credentials` for unknown email vs wrong
+  password, dummy-digest verification, 403 `account_suspended`, token rotation destroying any
+  pre-existing customer session for the practice session — fixation impossible),
+  `POST /api/v1/auth/logout` (idempotent), `GET /api/v1/auth/me` (401 unauthorized /
+  403 account_suspended), protected `GET /api/v1/account`, `GET /api/v1/account/orders`,
+  `GET /api/v1/account/orders/:reference` (unknown and not-owned references answer the identical
+  404 — existence concealed, consistent with the session-scoped confirmation). Frontend: `/login`,
+  `/account`, `/account/orders`, `/account/orders/:reference` routes inside `AppShell`, demo
+  account directory (no credentials shown), accessible error summary, top-bar account indicator,
+  Account entry in sidebar/mobile nav.
+- **Deviations from the sketched scope:** the login page is `/login` (the plan sketched
+  `/shop/account`); password hashing is Web-Crypto PBKDF2 via `crypto.subtle` (available in the
+  Workers runtime) rather than a scrypt-ish dependency; the plan's 5/min/IP login rate limit is
+  NOT implemented — consistent with cart/checkout, rate limiting is deferred to M9 (documented);
+  no staff-only endpoint ships yet (the `staff` role is seeded and stored; the staff inventory
+  restock surface arrives with M6). Sign-in is never required for cart/checkout; the guest flow is
+  unchanged.
+- **Acceptance:** wrong password → 401 (identical to unknown email); cross-customer order access →
+  concealed 404 (the plan sketched 403 for customer A reading B's order — this milestone refines
+  that to a documented, consistent policy: 401 = unauthenticated, 403 = authenticated but
+  suspended, 404 = concealed/not owned); `/auth/me` reflects the cookie; full-suite tests cover
+  rotation, expiry, malformed cookies, practice-session binding, ownership and compatibility
+  (212 → 239 tests). ✅ verified 2026-11-15.
 
 ### P3-M6 — Inventory depth
 

@@ -87,6 +87,41 @@ export interface OrderSummary {
   createdAt: string
 }
 
+/** Safe projection of a customer — never any password material. */
+export type CustomerRole = 'customer' | 'staff'
+export type CustomerStatus = 'active' | 'suspended'
+
+export interface CustomerProfile {
+  name: string
+  email: string
+  role: CustomerRole
+  status: CustomerStatus
+  addressLine: string
+  addressCity: string
+  addressPostcode: string
+  memberSince: string
+}
+
+/** A synthetic demo account, safe to expose for the training login UI. */
+export interface DemoAccount {
+  name: string
+  email: string
+  role: CustomerRole
+  status: CustomerStatus
+}
+
+export interface DemoAccountListResponse {
+  data: DemoAccount[]
+}
+
+export interface AuthResponse {
+  customer: CustomerProfile
+}
+
+export interface AccountOrderListResponse {
+  data: OrderSummary[]
+}
+
 /** Full order confirmation payload (immutable snapshot). */
 export interface OrderDetail extends OrderSummary {
   customerName: string

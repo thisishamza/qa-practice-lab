@@ -5,7 +5,7 @@
 import { Link } from 'react-router-dom'
 import type { OrderDetail } from '../../shared/commerce'
 import { formatPriceCents } from '../../lib/shop'
-import { Breadcrumbs } from '../../components/ui/PageChrome'
+import { Breadcrumbs, type Crumb } from '../../components/ui/PageChrome'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui/States'
 import { Callout } from '../../components/ui/Callout'
@@ -17,6 +17,8 @@ export interface OrderConfirmationViewProps {
   errorMessage?: string | null
   order: OrderDetail | null
   onRetry: () => void
+  /** Overrides the default breadcrumb trail (e.g. for the account area). */
+  crumbs?: Crumb[]
 }
 
 export function OrderConfirmationView({
@@ -24,15 +26,18 @@ export function OrderConfirmationView({
   errorMessage,
   order,
   onRetry,
+  crumbs,
 }: OrderConfirmationViewProps) {
   return (
     <div className="stack">
       <Breadcrumbs
-        items={[
-          { label: 'Dashboard', to: '/' },
-          { label: 'Shop', to: '/shop' },
-          { label: 'Order confirmation' },
-        ]}
+        items={
+          crumbs ?? [
+            { label: 'Dashboard', to: '/' },
+            { label: 'Shop', to: '/shop' },
+            { label: 'Order confirmation' },
+          ]
+        }
       />
 
       <PageHeader
@@ -68,7 +73,7 @@ export function OrderConfirmationView({
       {status === 'notfound' ? (
         <EmptyState
           title="We can’t find that order"
-          description="This reference is unknown, mistyped, or belongs to a different practice session. Order references only work inside the session that placed them."
+          description="This reference is unknown, mistyped, or not visible to your identity. An order can only be read by the practice session that placed it, or (for signed-in customers) by the account that owns it."
           icon="search"
           action={
             <Link className="button button-small" to="/shop">
