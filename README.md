@@ -30,7 +30,11 @@ The storefront is the first real practice surface, and seven of its behaviours a
 reproducible defects for controlled bug-hunt practice (see
 [Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. There is
 **no learner account persistence** yet (progress is not saved). No SQL playground, performance
-runner, or security challenge exists yet.
+runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
+hints, structured bug reports with deterministic evaluation, and real progress tracking) is
+underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios) is implemented;
+the rest of Phase 4 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md)
+and is **not** implemented.
 
 ## What you can do now
 
@@ -560,7 +564,8 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
   bug-hunt exercises (see above); there is no scoring and no saved progress; the progress page
-  shows labelled sample data and says so.
+  shows labelled sample data and says so. Phase 4 (P4-M1 WP1 implemented; the rest planned)
+  addresses exactly this — see `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
   PBKDF2 password digests and the session tokens are fixtures; there is no registration, password

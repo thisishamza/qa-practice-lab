@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE, merged into `main` via PR #4, and DEPLOYED TO PRODUCTION (https://qa-practice-lab.pages.dev, Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, schema_version 9) on 2026-11-16 — see §11. P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) is complete; the deployment was performed with user approval and the smoke suite passed against production. Phase 4 has not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE, merged into `main` via PR #4, and DEPLOYED TO PRODUCTION (https://qa-practice-lab.pages.dev, Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, schema_version 9) on 2026-11-16 — see §11. P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) is complete; the deployment was performed with user approval and the smoke suite passed against production. Phase 4 has started: the plan is written and, on 2026-11-16, consolidated from eight milestones to exactly three and had its five planning decisions resolved: `docs/phase-4-learning-intelligence-plan.md` ("Phase 4 — Learning & Bug-Hunt Intelligence", milestones P4-M1 → P4-M2 → P4-M3). **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`) on 2026-11-16 — see §11 and §14. WP2 (migration 0010, attempts/report persistence) and WP3 are NOT started.** The dedicated implementation branch is `feat/phase-4-learning-intelligence` (created from `main` @ `30d3424`; WP1 + planning docs are committed there; nothing pushed, merged or deployed).** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-16.
 
 ## 2. Product principles
@@ -150,7 +150,7 @@ sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; se
 P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth)
 and P3-M7 (bug-hunt engine v1) are implemented and verified on that branch.
-| 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
+| 4. ~~API & identity lab~~ → **Learning & Bug-Hunt Intelligence** | Bug-hunt learning loop: reveal/hints, structured bug-report evaluation, scoring, attempt persistence, progress (plan: `docs/phase-4-learning-intelligence-plan.md`, 2026-11-16). The original API & identity lab is deferred — see the plan's §12 for the suggested renumbering (user confirmation required) | Implementation exit criteria in plan §13 met and audited |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
 | 7. Contract testing | Versioned schemas, consumer/provider examples, contract break/fix exercises | Learners can detect schema incompatibility using examples and tooling |
@@ -158,12 +158,19 @@ and P3-M7 (bug-hunt engine v1) are implemented and verified on that branch.
 | 9. Performance & security tracks | Capped first-party load runner and non-destructive security exercises | Hard safety caps and abuse controls are tested before publishing |
 | 10. Hardening & launch | Accessibility, responsive polish, docs, observability, rate limits, retention, backup/export, deploy | Production smoke tests pass and free-tier monitoring/limits are documented |
 
+Note (2026-11-16): the Phase 4 charter changed from "API & identity lab" to **Learning &
+Bug-Hunt Intelligence** (see `docs/phase-4-learning-intelligence-plan.md`). The API & identity
+lab is deferred, not cancelled; whether the later phases are renumbered (API & identity lab →
+Phase 5, shifting the rest) is a maintainer decision — the plan's §12 lists a suggested
+mapping for confirmation. The table above intentionally retains the old numbering until that
+decision is made.
+
 Phase 1 exit criteria were verified locally on 2026-11-14: the app runs, `/api/health` reports the
 migrated D1 database, and the Pages preview serves the production build and Functions.
 
 Phase 2 exit criteria were verified locally on 2026-11-14: a learner can navigate twelve learning
 tracks, search and filter the scenario catalog, open a structured guide, and read scenario detail
-pages. Every scenario is explicitly marked as not runnable. Phases 3–10 remain unstarted.
+pages. Phase 3 is complete, merged and deployed; Phase 4 has started (2026-11-16, `docs/phase-4-learning-intelligence-plan.md`; three milestones P4-M1 → P4-M2 → P4-M3 after the same-day consolidation) — P4-M1 WP1 is implemented and verified on the branch; WP2/WP3 remain. Phases 5–10 remain unstarted.
 
 ## 10. Repository shape (current after Phase 2)
 
@@ -176,14 +183,15 @@ qa-practice-lab/
 │   ├── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
 │   ├── phase-3-commerce-practice-plan.md  # Phase 3 plan: milestones P3-M1..P3-M9, bug-hunt engine design
 │   ├── bug-hunt-catalogue.md             # internal maintainer registry: Expected vs Actual per defect
-│   └── phase-3-exit-audit.md             # P3-M9 exit audit (milestones, schema, security, cleanup, limits)
+│   ├── phase-3-exit-audit.md             # P3-M9 exit audit (milestones, schema, security, cleanup, limits)
+│   └── phase-4-learning-intelligence-plan.md  # Phase 4 plan: Learning & Bug-Hunt Intelligence (exactly 3 milestones: P4-M1..P4-M3; consolidated 2026-11-16; P4-M1 WP1 implemented 2026-11-16)
 ├── package.json / package-lock.json   # v0.2.0
 ├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
 ├── wrangler.jsonc                     # Pages config + local D1 binding
 ├── eslint.config.js
 ├── tsconfig.json                      # references app/node/functions projects
-├── tsconfig.app.json                  # src, excludes src/server
+├── tsconfig.app.json                  # src + client view tests (incl. tests/pages/curriculum-views.test.tsx), excludes src/server
 ├── tsconfig.node.json                 # Vite/Vitest config files
 ├── tsconfig.functions.json            # functions, src/server, tests
 ├── functions/
@@ -329,6 +337,75 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-16 — Phase 4 P4-M1 WP1 baseline review, plan reconciliation & branch commit
+
+- **Scope:** review/reconciliation/Git task only — no WP2 functionality (no migration 0010, attempts, reports, evaluator) was implemented; nothing pushed, merged or deployed. Dark-theme browser spot check remains outstanding (see below).
+- **Plan reconciliation (`docs/phase-4-learning-intelligence-plan.md`):** the WP1 "zero DB/API change" wording was superseded — WP1 shipped an **additive, optional `HuntSummary.curriculum`** on the existing hunt summary responses (hunts list, hunt start, practice session), sourced from `src/shared/huntCurriculum.ts`; existing envelopes, behaviour, caps and the activation model are compatible; **no database migration was required**; no defect identifiers, defect solutions, finding-check terms, hint data or evaluator internals are exposed (asserted by tests). The plan was updated in: consolidation map (P4-M1 WP1 row), the new "WP1 implemented (deviation … recorded)" note in §P4-M1, object gains, scope step 3, user-visible functionality step 4, backend step 5, frontend step 6, API contracts step 8, testing step 10, acceptance step 13, dependency-order notes (step 11, §6.5), §7.1 endpoint summary (curriculum note) and §10 testing strategy; test-count references updated (344 P3-M9 baseline → 358 after WP1). The three-milestone structure, all original requirements and the roadmap/posture are unchanged; nothing was descoped.
+- **WP1 review findings:** all seven runnable hunts carry complete curriculum metadata (`skillArea`, `difficulty`, `conceptsPracticed`, `expectedOutcomes`, `investigationFocus`, `reportFocus`); difficulty mirrors the wired scenarios (and is asserted); the 21 placeholder scenarios are untouched; curriculum copy verified learner-safe against `src/server/defects.ts`; server and client share the single `src/shared/huntCurriculum.ts` source; API compatibility preserved (additive-optional field; exact-key test updated consciously); scenario-detail sections and the static "Recommended path" match the approved scope; no WP2/WP3/later-phase functionality present (`hunt_attempts` only appears in a test's negative assertion). No genuine WP1 defect found; no unrelated refactoring performed.
+- **Verification (executed now, not assumed):** `npm run check` clean (lint → typecheck → test; **358 tests passed**); `npm run build` passes; client bundle grep: **zero** defect ids in `dist/`; local preview + `--dump-dom` confirmed curriculum sections and absence of defect ids on `/scenarios/manual-cart-totals`, all seven recommended-path entries on `/practice`; screenshots: light theme at 375 / 768 / 1024 / 1440 px — clean, no clipped content. **Outstanding: dark theme spot check** (headless Chrome could not toggle `prefers-color-scheme`/`qa-practice-lab-theme`; no new colours or tokens were introduced — additions reuse existing token-based components). 768 px and 1024 px verified for the scenario detail page this pass.
+- **Commit:** WP1 implementation + tests + `tsconfig.app.json`/`tsconfig.functions.json` adjustments + planning docs (`README.md`, `docs/phase-4-learning-intelligence-plan.md`) + `PROJECT_STATE.md` were staged by explicit path and committed as **`feat: complete phase 4 curriculum foundation`** (the commit landing on `feat/phase-4-learning-intelligence` directly after this PROJECT_STATE.md edit — resolve the exact hash with `git log -1 --oneline`; it is the successor of `30d34241ba39424a4356c58eec8f566aa0ddb3d5`). Nothing else was staged; nothing was amended.
+- **Remaining verification limitations:** dark theme (see above); no push/merge/deploy has occurred — branch remains local-only.
+- **Exact next action:** **P4-M1 WP2** — migration `0010_hunt_attempts.sql` (`schema_version` → 10), `src/server/attempts.ts` + `src/server/reports.ts`, idempotent attempt creation on hunt start, `report:<iphash>` 30/min scoped limit — in a fresh OpenCode session, only after explicit maintainer approval. Do not start WP2 before this baseline commit is reviewed; do not start P4-M2 before P4-M1 is verified and committed.
+
+### 2026-11-16 — Phase 4 P4-M1 WP1 implemented: scenario curriculum enrichment (branch only, uncommitted)
+
+- **Scope:** P4-M1 WP1 only (scenario curriculum enrichment & hunt learning metadata). No attempts persistence, no migration 0010, no bug-report submission/evaluation, no finding-check detection, no hints/reveal, no scoring, no `/progress`, no auth changes. Nothing committed, pushed, merged or deployed; the pre-existing uncommitted planning docs (PROJECT_STATE.md, README.md, docs/phase-4-learning-intelligence-plan.md) were preserved untouched and remain the only non-WP1 modifications.
+- **Git safety:** ran `git status --short` / `branch --show-current` / `log -1 --oneline` — branch `feat/phase-4-learning-intelligence`, HEAD `30d3424`, exactly the three expected uncommitted docs. Nothing reset/stashed/discarded; branch not switched; no commits.
+- **What was built:**
+  - **Single source of truth — new shared module `src/shared/huntCurriculum.ts`** (`HuntCurriculum`): keyed by hunt id for all seven runnable hunts; fields: `skillArea`, `difficulty` (mirrors the wired scenario; asserted by test), `conceptsPracticed[]`, `expectedOutcomes[]`, `investigationFocus[]`, `reportFocus[]`. Learner-safe by construction — describes what to practise and how to investigate; never names the defect, its fix, the affected implementation, a hidden finding-check term, or any pre-unlock answer. All copy manually reviewed against `src/server/defects.ts` for leakage.
+  - **Shared contract `src/shared/practice.ts`:** `HuntSummary` gains optional `curriculum?: HuntCurriculum` — additive-only; existing consumers and the `{ error, message }` envelopes are unchanged; no defect ids anywhere.
+  - **Client data:** `Scenario` gains optional `curriculum?: HuntCurriculum` (types.ts); the seven wired entries in `src/data/scenarios.ts` now carry `curriculum: HUNT_CURRICULUM[...]` (single source — no duplication). New export `recommendedHuntScenarioIds` (order: beginner manual/API → intermediate → advanced access-control).
+  - **API:** `src/server/practice.ts` attaches `HUNT_CURRICULUM[hunt.id]` to the learner-safe hunt summary on **all** hunt-summary surfaces: `GET /api/v1/practice/hunts`, `POST .../start` (all three paths), `GET /api/v1/practice/session`. Hunt registry defect ids still never leave the server; endpoint behavior, envelopes, caps and activation model unchanged. **Deviation from the plan's "WP1: zero API change" wording — deliberate, per the WP1 task instruction ("expose the new learner-safe metadata through the existing hunt summary/API"); the plan predates the task instruction. The plan document is unchanged (still lists "zero API/DB change" for WP1) — reconcile when the plan is next revised, or leave as-is: the API change is additive and compatible.**
+  - **Scenario detail UI:** `ScenarioDetailPage.tsx` renders, only for the wired hunt scenarios: "QA concepts practised" (check-list), "Suggested investigation focus" (prompted list, explicitly method-not-answers copy), "Expected learning outcomes" (check-list), "What a good report covers" (prompted list); plus a "Skill area" row in the Scenario facts panel. Reuses existing Test Bench components (`SectionHeader`, `FactList`, `check-list`/`plain-list` patterns) and existing icons (`check`, `target`); heading levels sequential; placeholder scenarios render nothing new.
+  - **/practice UI:** new static "Recommended path" section (ordered, numbered, links to the scenario pages, `difficultyLabels` kicker) — per the approved P4-M1 plan (WP1: "/practice shows the recommended order (static list, no backend)"); rendered above the hunt panel.
+- **Testing / verification (all run, all pass):**
+  - New/extended tests: `tests/data/content.test.ts` (+ curriculum completeness/shape per hunt, difficulty mirror, **no defect ids/titles/fix strings in curriculum**, `recommendedHuntScenarioIds` wiring and difficulty ordering), `tests/server/hunt-set.test.ts` (hunts list: exact keys now `curriculum,id,scenarioId,summary,title`; curriculum shape per entry; no defect ids or evaluator terms (`finding-check`, `quality_score`, `hint_mask`, `hunt_attempts`) in the payload), `tests/server/hunt.test.ts` (start + session payloads carry curriculum; no evaluator data), new `tests/pages/curriculum-views.test.tsx` (markup: curriculum sections render on `/scenarios/manual-cart-totals`, placeholder scenario renders nothing new, `/practice` recommended path renders all seven in order, links valid, no defect ids).
+  - **358 tests green** (344 baseline + 14 new); `npm run check` clean (lint → typecheck → test); `npm run build` passes.
+  - Browser probe (Chrome headless vs local `npm run preview` build): `--dump-dom` confirms the curriculum sections on the detail page, absence of defect ids, `/practice` recommended path lists all seven hunt scenarios in order; screenshots at 375 px and 1440 px (light theme) render cleanly, no new visual language, no clipped content. **Not verified: dark theme and 768/1024 px this session** (no new colours/tokens were introduced — additions reuse existing tokens and both are re-verified in the next UI milestone browser probe); 375 px shows Chrome-headless classic scrollbars on both axes (also present on unchanged pages — headless artifact, not page overflow).
+- **Notable development issue (fixed):** Vitest transform resolution for `.tsx` test files is keyed by the file being listed in `tsconfig.app.json`'s `include` list (solution-style root `tsconfig.json` — `tsconfck` resolves the referenced project, per-file `jsx` only applied when included). Without that, JSX compiles with the classic runtime and throws `ReferenceError: React is not defined`. Added `tests/pages/curriculum-views.test.tsx` (mirrors the three shop view tests) and excluded the same file from `tsconfig.functions.json`. A stale `node_modules/.vitest-cache` held the earlier classic transform; clearing `node_modules/.vitest-cache` + `node_modules/.vite` is required after fixing jsx resolution. **Do not add `.tsx` view tests outside the app `include` list without clearing `.vitest-cache`.**
+- **Unresolved/known issues:** none blocking. The 375 px classic-scrollbar rendering is a Chrome headless artifact, not a page regression. Dark-theme/768–1024 px spot checks are deferred to the next UI milestone's browser probe.
+- **Documentation:** `PROJECT_STATE.md` updated (this entry; §1 snapshot; §13 resume prompt; §14). `README.md` untouched (its content stays accurate). Plan document untouched (WP1 API-exposure wording is stricter than the plan's "no API change" — noted above for the next plan revision).
+- **Exact next action:** **P4-M1 WP2** — migration `0010_hunt_attempts.sql` (schema_version → 10), `src/server/attempts.ts` + `src/server/reports.ts`, hunt-start attempt creation, `report:<iphash>` 30/min scoped limit — in a fresh OpenCode session, only on explicit maintainer instruction. WP1 is committed as the branch baseline (`feat: complete phase 4 curriculum foundation`; see the baseline review entry above). Do not start WP2 before this baseline commit is reviewed.
+
+### 2026-11-16 — Phase 4 planning decisions resolved; implementation branch prepared (planning/git only)
+
+- **Scope:** planning and Git preparation only. No application source, tests, migrations, dependencies, Cloudflare configuration, or deployment touched. Nothing committed, pushed, merged or deployed; the pre-existing uncommitted docs remain uncommitted on purpose.
+- **Precondition checks (all passed):** branch `main`; `HEAD == 30d34241ba39424a4356c58eec8f566aa0ddb3d5`; three pre-existing uncommitted files present and exactly as expected (`PROJECT_STATE.md` modified, `README.md` modified, `docs/phase-4-learning-intelligence-plan.md` untracked); `git diff --stat` matched; no pre-existing `feat/phase-4-learning-intelligence` branch; nothing reset/stashed/discarded.
+- **Five planning decisions resolved** (documented in the plan's §14, cross-referenced through the plan, see plan §14 for the authoritative wording):
+  1. **Finding-check term groups** — curated, server-side per hunt; reasonable synonyms/equivalent terminology accepted (no brittle exact-string-only matching); input consistently normalized (case/punctuation/whitespace, same pipeline as the rest of the evaluator); expected terms/defect ids/answer patterns never exposed to the client pre-unlock (asserted by test); deterministic and unit-tested with positive/negative/synonym/normalization/unrelated-keyword cases; `finding` is awarded only from the finding fields (title + steps + expected + actual) — unrelated keyword mentions never award `finding` or `discovered`.
+  2. **Severity vocabulary** — exactly **Critical|High|Medium|Low**, impact/scope-based; descriptions shown in the UI; `bug_reports.severity` CHECK constraint and the `severity-valid` rubric check updated accordingly.
+  3. **Priority vocabulary** — separate from severity: **P1 — Urgent · P2 — High · P3 — Normal · P4 — Low**; severity = impact, priority = urgency; never automatically derived from each other; `p1..p4` enum preserved in DB/rubric.
+  4. **Guest progress** — tied to the anonymous `practice_session`; UI states progress is temporary, tied to the session, expires with it (7-day TTL), and never transfers to a signed-in account; ownership, retention and cascade rules preserved; signed-in attribution (`customer_id` stamp at submit) unchanged.
+  5. **Deployment pattern** — manual Cloudflare workflow retained; no new Cloudflare products/infra/cron/queue/paid services; existing D1 + Pages architecture preserved; deployment verification and rollback considerations documented in plan §7.5 and in the release/exit-audit requirements (§13 items 6 and 9); **no deployment during implementation** — release is a separate, explicitly approved step.
+- **Roadmap unchanged:** no renumbering of Phases 5–10 approved; the deferred API & Identity Lab remains deferred; PROJECT_STATE §9 and plan §12 explicitly record that no renumbering has been approved. All non-goals, deferred capabilities, architecture decisions and the three-milestone structure (P4-M1 Learning Foundation, Attempts & Evaluation → P4-M2 Complete Bug-Hunt Learning Experience → P4-M3 Progress, Scoring & Phase 4 Release) are intact; all original functionality remains in scope.
+- **README:** no changes — it contains no milestone counts, severity/priority vocabulary or decision-dependent content; its uncommitted edits are preserved untouched.
+- **Branch:** `feat/phase-4-learning-intelligence` created from `main` @ `30d34241ba39424a4356c58eec8f566aa0ddb3d5` via `git switch -c` after the documentation edits and with all pre-existing uncommitted docs carried over intact. No commits were made on it.
+- **Verification:** `git diff --check` clean; plan lists exactly three milestone sections; all five decisions consistent across §4.2, §6.4 (incl. new "Severity and priority vocabularies" and "Finding-check term groups" blocks), §7.2/§7.3/§7.5, §8 honesty requirements, §13 exit criteria (items 4, 6, 9), §14; `npm run check` not re-run — no code changed.
+- **Next exact action:** begin **P4-M1 WP1** (scenario curriculum enrichment) in a fresh OpenCode session, only after explicit maintainer approval; P4-M1 implementation has **not** been started.
+
+### 2026-11-16 — Phase 4 plan milestone consolidation: eight milestones → exactly three (planning only)
+
+- **Scope:** documentation only. No application source, tests, migrations, dependencies, Cloudflare configuration, or deployment touched. No branch created, no deploy, no push, no commit (docs changes remain in the working tree for the user's review).
+- **Precondition checks (all passed):** branch `main`; `HEAD ==` the expected `30d34241ba39424a4356c58eec8f566aa0ddb3d5` (plus no later main commit required); uncommitted changes present and exactly the Phase 4 planning files (`PROJECT_STATE.md`, `README.md`, `docs/phase-4-learning-intelligence-plan.md`); `git diff --check` clean; no unexpected source-code changes (`git status --porcelain` lists only those three docs). Nothing was reset, stashed or discarded.
+- **Deliverable:** `docs/phase-4-learning-intelligence-plan.md` restructured — Phase 4 now contains **exactly three milestones**. **P4-M1 — Learning Foundation, Attempts & Evaluation** (combines original P4-M1 scenario curriculum enrichment + P4-M2 attempts & bug-report persistence + P4-M3 deterministic report evaluator; migration `0010_hunt_attempts.sql` sketch and §6.4 rubric unchanged). **P4-M2 — Complete Bug-Hunt Learning Experience** (combines original P4-M4 hint ladder & gated reveal backend + P4-M5 structured bug-report form/evaluation UI + P4-M6 hint/reveal UI & attempt status). **P4-M3 — Progress, Scoring & Phase 4 Release** (combines original P4-M7 real `/progress` aggregate endpoint + P4-M8 scoring transparency & recommended completion path + Phase 4 exit audit).
+- **Preservation:** every original milestone's scope, requirements, API/DB/frontend/security/privacy/testing requirements and **all acceptance criteria** were mapped into the three milestones; the consolidation map is recorded in the plan (§6.1). "Minimum viable Phase 4" (old P4-M1…P4-M6) now maps to P4-M1 + P4-M2; full scope (old P4-M1…P4-M8) to P4-M1 + P4-M2 + P4-M3. Security rules kept in force across milestones: server-side reveal gating, no defect ids pre-unlock, `report:<iphash>` 30/min, enum/length/control-char validation, owner-scoped authorization, cascade retention (orders precedent). Endpoint summary (§7.1), exit criteria (§13), testing strategy (§10), risks (§11), dependencies (§11.2) and open questions (§14, now "resolve before P4-M1") updated to the three-milestone structure; dependency order strictly P4-M1 → P4-M2 → P4-M3 with internal WP1→WP3 ordering in each milestone.
+- **Deferred/roadmap items unchanged:** §12 table (API & identity lab → suggested Phase 5, maintainer confirmation required), §9 roadmap table (intentionally unrenumbered), open questions, and all architectural decisions preserved verbatim.
+- **PROJECT_STATE.md updated:** §1 snapshot, §9 phase-4 status line, §10 repo shape (doc line), §13 resume prompt, this entry, §14 (three-milestone structure + exact next action). README needed no change (its Phase 4 reference is milestone-count-free).
+- **Verification:** `npm run check` not re-run — no code changed. `git diff --check` clean; plan lists exactly three milestones; every original requirement has a destination.
+- **Next recommended action:** maintainer reviews `docs/phase-4-learning-intelligence-plan.md` and resolves the five open questions in its §14. **Done later on 2026-11-16** — see the decisions-resolved entry above. Then — only on explicit instruction — start **P4-M1** (WP1 scenario enrichment → WP2 attempts/migration → WP3 evaluator). Do not start P4-M2 before P4-M1 is verified and committed.
+
+### 2026-11-16 — Phase 4 planning: Learning & Bug-Hunt Intelligence (design only, no implementation)
+
+- **Scope:** planning and documentation only. No application source, tests, migrations, dependencies, or Cloudflare configuration touched. No branch created, no deploy, no push, no commit (docs changes remain in the working tree for the user's review).
+- **Precondition checks (all passed):** branch `main`; `HEAD == origin/main == 30d34241ba39424a4356c58eec8f566aa0ddb3d5`; working tree clean at session start; latest deploy recorded (`1f0847f`, Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9).
+- **Inspection:** targeted reads only (AGENTS.md, PROJECT_STATE.md, README.md, Phase 3 plan & exit audit, `src/server/{hunts,defects,practice}.ts`, `src/shared/practice.ts`, scenario data/type modules, `/practice` + scenario-detail + `/progress` surfaces, one wired scenario entry, migration `0007`). The `ui-ux-pro-max` skill was invoked; focused UX queries (form submit feedback, labels/inline validation, progress indicators/focus states) verified relevant guidance for the report form and progress page.
+- **Deliverable created:** `docs/phase-4-learning-intelligence-plan.md` — Phase overview & objectives; current-state assessment; scope/non-goals; learner journeys; capability breakdown A–G (reveal, hints, report evaluation, scoring, progress, difficulty/paths, scenario content); milestones **P4-M1…P4-M8** with objective/visibility/backend/frontend/DB/API/testing/dependencies/out-of-scope/acceptance/risks; API & DB considerations (additive migration `0010_hunt_attempts.sql` sketched: `hunt_attempts` + `bug_reports`, `schema_version` → 10, session-cascade ownership mirroring orders, `hint_mask` idempotent levels); security & privacy (server-side reveal gating, no defect ids pre-unlock, report-text handling, `report:<iphash>` 30/min scoped limit); UX requirements (Test Bench extension only); testing strategy; risks; deferred/future phases; Phase 4 exit criteria; open questions for the maintainer.
+- **Key decisions recorded (plan §1.1, §3, §12):** Phase 4 is re-scoped from the old "API & identity lab" placeholder to **Learning & Bug-Hunt Intelligence**; the API & identity lab is deferred (suggested renumbering → Phase 5; maintainer confirmation required — §9 table intentionally unrenumbered). Completion = submitted report; "discovered" = sticky finding-check pass; quality is a documented 100-point deterministic rubric (no AI, no speed, hints disclosed never subtracted, best score kept, free resubmission); guest progress remains session-scoped-ephemeral by design (synthetic auth has no cross-session identity); reveal unlocks only after submission or an explicit confirmed give-up; attempts/reports die by cascade with the practice session (orders precedent).
+- **Minimum viable Phase 4:** P4-M1…P4-M6 (content → attempts/storage → evaluator → hints/reveal → report UI → hint/reveal UI). Full scope: P4-M1…P4-M8 (adds real `/progress` and the rubric explainer + exit audit). Deferred: AI feedback (never a runtime dependency), real accounts/cross-device progress, cohorts/leaderboards, expanded defect library, enforced paths — see plan §12.
+- **PROJECT_STATE.md updated:** §1 snapshot (Phase 4 plan referenced), §9 roadmap (Phase 4 row re-scoped with note; downstream numbering flagged as maintainer decision), §10 repo shape (doc added), §13 resume prompt (Phase 4 plan status), this entry, and new §14 (Phase 4 planning status & decisions). README gained a one-line Phase 4 reference only.
+- **Verification:** `npm run check` not re-run — no code changed. `git status --porcelain` lists only documentation files.
+- **Next recommended action:** maintainer reviews `docs/phase-4-learning-intelligence-plan.md` and resolves the five open questions in its §14 (finding-check term groups, severity/priority vocabulary, guest-visibility copy, roadmap renumbering, deployment pattern). Then — only on explicit instruction — start **P4-M1** (scenario curriculum enrichment; smallest, no DB, unblocks nothing but everything UI).
 
 ### 2026-11-16 — Deployment finalization: review, commit `1796f20`, push to `main`
 
@@ -1713,4 +1790,87 @@ decisions; Phase 4 requires explicit instruction.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete, merged into `main` via PR #4, and deployed to production on 2026-11-16 at https://qa-practice-lab.pages.dev** (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; merged commit `1f0847f`). The P3-M1 … P3-M9 milestones are done and verified: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`). Phase 4 has **not** started — do not begin it without explicit instruction. The deployment (D1 create + remote migrations + Pages project + deploy) is recorded in §11; the recommended maintenance sweep cadence is documented there. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete, merged into `main` via PR #4, and deployed to production on 2026-11-16 at https://qa-practice-lab.pages.dev** (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; merged commit `1f0847f`). The P3-M1 … P3-M9 milestones are done and verified: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`). Phase 4 **has** started: **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`, see §11)**. P4-M1 WP2 (migration `0010_hunt_attempts.sql`, `src/server/attempts.ts` + `src/server/reports.ts`, `practice.ts` attempt creation, `report:<iphash>` 30/min scoped limit) and WP3 (deterministic evaluator) are **not** started. The implementation branch `feat/phase-4-learning-intelligence` is **local-only — nothing has been pushed, merged or deployed**. Read `docs/phase-4-learning-intelligence-plan.md` before acting, and do not start WP2 without explicit instruction. The deployment (D1 create + remote migrations + Pages project + deploy) is recorded in §11; the recommended maintenance sweep cadence is documented there. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+
+## 14. Phase 4 — Learning & Bug-Hunt Intelligence (P4-M1 WP1 complete and committed; WP2/WP3 not started)
+
+Status as of 2026-11-16: **the Phase 4 plan exists — `docs/phase-4-learning-intelligence-plan.md` —
+and P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as
+the branch baseline (`feat: complete phase 4 curriculum foundation`, 2026-11-16 — resolve the
+exact hash with `git log -1 --oneline`; it succeeds `30d34241ba39424a4356c58eec8f566aa0ddb3d5`) —
+358 tests green, `npm run check` clean, production build passes, browser probe of the two
+curriculum surfaces done. WP2 (migration `0010_hunt_attempts.sql`, attempts/report persistence)
+and WP3 (deterministic evaluator) are NOT started. Nothing has been pushed, merged or deployed.**
+Implementation of the remaining work packages requires explicit instruction.
+
+**2026-11-16 — milestone consolidation (planning only):** Phase 4 was consolidated from eight
+milestones (P4-M1…P4-M8) to **exactly three** (P4-M1 → P4-M2 → P4-M3). This was a restructuring,
+not a scope reduction — every original feature, requirement, security rule, acceptance criterion
+and intended outcome was mapped into one of the three and nothing was removed. The consolidation
+map lives in the plan (§6.1).
+
+### Plan contents (what was decided)
+
+- **Re-scope:** Phase 4 is now Learning & Bug-Hunt Intelligence. The former Phase 4 placeholder
+  ("API & identity lab") is deferred, not cancelled; the suggested renumbering (API & identity lab
+  → Phase 5) needs maintainer confirmation — the §9 roadmap table intentionally keeps old
+  numbering until then.
+- **Milestones (exactly three):** **P4-M1 — Learning Foundation, Attempts & Evaluation**
+  (combines original P4-M1 scenario curriculum enrichment · original P4-M2 attempts & bug-report
+  persistence — additive migration `0010_hunt_attempts.sql`: `hunt_attempts` + `bug_reports`,
+  `schema_version` → 10 · original P4-M3 deterministic report evaluator — 100-point transparent
+  rubric, no AI) · **P4-M2 — Complete Bug-Hunt Learning Experience** (combines original P4-M4
+  progressive hints — 3-level ladder, `hint_mask` idempotent — + gated reveal, locked until
+  submitted or an explicit confirmed give-up · original P4-M5 structured bug-report form /
+  evaluation feedback UI · original P4-M6 hint/reveal UI + attempt status) · **P4-M3 — Progress,
+  Scoring & Phase 4 Release** (combines original P4-M7 real `/progress` aggregate endpoint ·
+  original P4-M8 scoring transparency + recommended completion path + Phase 4 exit audit —
+  `docs/phase-4-exit-audit.md`).
+- **Ordering:** strictly P4-M1 → P4-M2 → P4-M3; each milestone is independently reviewable and
+  testable and organizes its work into internal work packages (WP1→WP3, not additional
+  milestones). Old minimum viable Phase 4 (P4-M1…P4-M6) maps to P4-M1 + P4-M2; full scope
+  (P4-M1…P4-M8) maps to P4-M1 + P4-M2 + P4-M3.
+- **Key decisions:** completion = submitted report; "discovered" = sticky finding-check pass;
+  best score kept; free resubmission; hints disclosed, never subtracted; no speed/streaks/
+  cross-learner comparison; guest progress stays session-scoped-ephemeral (synthetic auth has no
+  cross-session identity); attempts/reports cascade with the practice session (orders precedent);
+  reveal content lives in a compiled server registry and is served only after unlock; no defect
+  ids in any client payload; report submissions carry a scoped `report:<iphash>` 30/min limit.
+- **Deferred (plan §12):** AI-assisted feedback (never a runtime dependency), real accounts /
+  cross-device progress, cohorts/leaderboards, expanded defect library, enforced learning paths,
+  report-triage simulation.
+- **Planning decisions — all resolved on 2026-11-16 (plan §14):** (1) finding-check term groups
+  are curated, server-side, normalized and synonym-tolerant; never exposed before reveal
+  authorization; unrelated keywords cannot award `finding`/`discovered`; (2) severity is exactly
+  **Critical|High|Medium|Low** (impact-based); (3) priority is separate: **P1 — Urgent · P2 — High
+  · P3 — Normal · P4 — Low**; severity ≠ priority, never cross-derived; (4) guest progress is
+  temporary, tied to the anonymous practice session, expires with it, never transfers to a
+  signed-in account; (5) deployment keeps the manual Cloudflare workflow — no new products/cron/
+  queue/paid services; verification + rollback documented in plan §7.5 and §13 release criteria;
+  Phase 4 is not deployed during implementation. **Roadmap renumbering explicitly not approved** —
+  Phases 5–10 keep their numbering; the API & Identity Lab stays deferred.
+- **Implementation branch:** `feat/phase-4-learning-intelligence` (created 2026-11-16 from
+  `main` @ `30d34241ba39424a4356c58eec8f566aa0ddb3d5` with the uncommitted planning docs carried
+  over; WP1 + planning docs committed on it as the branch baseline on 2026-11-16). Nothing has
+  been pushed, merged or deployed.
+
+**2026-11-16 — P4-M1 WP1 implemented on the branch (see §11):** new shared module
+`src/shared/huntCurriculum.ts` (learner-safe per-hunt curriculum: `skillArea`, `difficulty`,
+`conceptsPracticed`, `expectedOutcomes`, `investigationFocus`, `reportFocus`); `HuntSummary` gains
+optional `curriculum` (additive; served by `GET /api/v1/practice/hunts`, `POST .../start`,
+`GET /api/v1/practice/session`); the seven wired scenarios carry the curriculum via
+`src/data/scenarios.ts` / `Scenario.curriculum`; scenario detail renders new sections;
+`/practice` gains the static "Recommended path"; `recommendedHuntScenarioIds` exported; tests
+extended (+14; 358 green). **Deviation from the plan's "WP1: zero API change" wording — deliberate,
+per the WP1 task instruction; additive and compatible.** Difficulty mirrored, no defect ids or
+evaluator internals in any payload or curriculum string (asserted by test).
+
+### Exact next action
+
+On explicit maintainer approval, begin **P4-M1 WP2** in a fresh OpenCode session: migration
+`0010_hunt_attempts.sql`
+(`schema_version` → 10: `hunt_attempts` + `bug_reports`), `src/server/attempts.ts` +
+`src/server/reports.ts`, attempt creation on hunt start (idempotent, additive),
+`report:<iphash>` 30/min scoped limit in `rateLimit.ts`; then WP3
+(`src/server/reportQuality.ts` evaluator wired into the submit path). Do not start WP2 before
+this WP1 baseline commit is reviewed; do not start P4-M2 before P4-M1 is verified and committed.

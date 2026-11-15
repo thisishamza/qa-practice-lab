@@ -169,12 +169,50 @@ describe('GET /api/v1/practice/hunts', () => {
     const body = (await response.json()) as { data: Array<Record<string, unknown>> }
     expect(body.data.length).toBe(7)
     for (const entry of body.data) {
-      expect(Object.keys(entry).sort()).toEqual(['id', 'scenarioId', 'summary', 'title'])
+      expect(Object.keys(entry).sort()).toEqual(['curriculum', 'id', 'scenarioId', 'summary', 'title'])
       expect(typeof entry.scenarioId).toBe('string')
     }
     const raw = JSON.stringify(body)
     for (const defect of DEFECTS) {
       expect(raw).not.toContain(defect.id)
+    }
+  })
+
+  it('returns the learner-safe curriculum with every hunt entry', async () => {
+    const migrated = createMigratedD1()
+    const response = await app.request('/api/v1/practice/hunts', {}, { DB: migrated.db })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      data: Array<Record<string, unknown> & {
+        curriculum: {
+          skillArea: string
+          difficulty: string
+          conceptsPracticed: string[]
+          expectedOutcomes: string[]
+          investigationFocus: string[]
+          reportFocus: string[]
+        }
+      }>
+    }
+    expect(body.data.length).toBe(7)
+    for (const entry of body.data) {
+      expect(entry.curriculum).toBeDefined()
+      expect(typeof entry.curriculum.skillArea).toBe('string')
+      expect(entry.curriculum.skillArea.length).toBeGreaterThan(10)
+      expect(['beginner', 'intermediate', 'advanced']).toContain(entry.curriculum.difficulty)
+      expect(entry.curriculum.conceptsPracticed.length).toBeGreaterThanOrEqual(3)
+      expect(entry.curriculum.expectedOutcomes.length).toBeGreaterThanOrEqual(3)
+      expect(entry.curriculum.investigationFocus.length).toBeGreaterThanOrEqual(4)
+      expect(entry.curriculum.reportFocus.length).toBeGreaterThanOrEqual(4)
+    }
+    // The curriculum is the only new field — no evaluator internals leak.
+    const raw = JSON.stringify(body)
+    for (const defect of DEFECTS) {
+      expect(raw).not.toContain(defect.id)
+      expect(raw).not.toContain(defect.title)
+    }
+    for (const term of ['finding-check', 'quality_score', 'hint_mask', 'hunt_attempts']) {
+      expect(raw).not.toContain(term)
     }
   })
 })

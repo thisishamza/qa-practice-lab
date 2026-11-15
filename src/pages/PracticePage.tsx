@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { IconName } from '../data/types'
+import { scenarios, recommendedHuntScenarioIds } from '../data/scenarios'
+import { difficultyLabels } from '../lib/labels'
 import { HealthStatus } from '../features/system/HealthStatus'
 import { HuntPanel } from '../features/practice/HuntPanel'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
@@ -7,6 +9,11 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { SectionHeader } from '../components/ui/PageChrome'
 import { Tag } from '../components/ui/Tag'
 import { Icon } from '../components/ui/Icon'
+
+const recommendedPath = recommendedHuntScenarioIds.flatMap((id) => {
+  const scenario = scenarios.find((entry) => entry.id === id)
+  return scenario ? [scenario] : []
+})
 
 const startSteps: {
   kicker: string
@@ -101,6 +108,33 @@ export function PracticePage() {
                   <span className="start-step-kicker">{step.kicker}</span>
                   <span className="start-step-title">{step.title}</span>
                   <span className="start-step-detail">{step.detail}</span>
+                </span>
+                <Icon name="arrow-right" size={16} />
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="content-section" aria-labelledby="recommended-path-title">
+        <SectionHeader
+          id="recommended-path-title"
+          title="Recommended path"
+          description="A suggested order through the runnable hunt scenarios — manual basics first, access control last."
+        />
+        <ol className="start-path-list">
+          {recommendedPath.map((scenario, index) => (
+            <li key={scenario.id}>
+              <Link className="start-step" to={`/scenarios/${scenario.id}`}>
+                <span className="start-step-number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="start-step-copy">
+                  <span className="start-step-kicker">
+                    {difficultyLabels[scenario.difficulty]}
+                  </span>
+                  <span className="start-step-title">{scenario.title}</span>
+                  <span className="start-step-detail">{scenario.summary}</span>
                 </span>
                 <Icon name="arrow-right" size={16} />
               </Link>

@@ -37,6 +37,9 @@
 //   development) it is skipped.
 // - Responses never contain defect ids or hints; a bug_hunt session whose
 //   hunt_id is no longer in the registry reports plain clean mode.
+// - Hunt summaries carry the learner-safe curriculum metadata (Phase 4,
+//   WP1; src/shared/huntCurriculum.ts) — concepts, outcomes and
+//   investigation focus. It describes what to practise, never the answer.
 
 import { Hono } from 'hono'
 import { getCookie, setCookie } from 'hono/cookie'
@@ -47,6 +50,7 @@ import type {
 } from '../shared/practice'
 import type { AppEnv } from './app'
 import { HUNTS, findHunt } from './hunts'
+import { HUNT_CURRICULUM } from '../shared/huntCurriculum'
 import { clientIp, sha256Hex } from './rateLimit'
 import {
   SESSION_COOKIE,
@@ -81,7 +85,13 @@ function huntSummary(huntId: string | null): HuntSummary | null {
   }
   const hunt = findHunt(huntId)
   return hunt
-    ? { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId }
+    ? {
+        id: hunt.id,
+        title: hunt.title,
+        summary: hunt.summary,
+        scenarioId: hunt.scenarioId,
+        curriculum: HUNT_CURRICULUM[hunt.id],
+      }
     : null
 }
 
@@ -160,6 +170,7 @@ practiceRoutes.get('/practice/hunts', async (c) => {
     title: hunt.title,
     summary: hunt.summary,
     scenarioId: hunt.scenarioId,
+    curriculum: HUNT_CURRICULUM[hunt.id],
   }))
   return c.json({ data } satisfies HuntListResponse)
 })
@@ -213,7 +224,13 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
       .run()
     return c.json({
       mode: 'bug_hunt',
-      hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
+      hunt: {
+        id: hunt.id,
+        title: hunt.title,
+        summary: hunt.summary,
+        scenarioId: hunt.scenarioId,
+        curriculum: HUNT_CURRICULUM[hunt.id],
+      },
     } satisfies PracticeSessionResponse)
   }
 
@@ -246,7 +263,13 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
       .run()
     return c.json({
       mode: 'bug_hunt',
-      hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
+      hunt: {
+        id: hunt.id,
+        title: hunt.title,
+        summary: hunt.summary,
+        scenarioId: hunt.scenarioId,
+        curriculum: HUNT_CURRICULUM[hunt.id],
+      },
     } satisfies PracticeSessionResponse)
   }
 
@@ -254,7 +277,13 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
   setCookie(c, SESSION_COOKIE, fresh.token, cookieOptions(isSecureRequest(c.req.url)))
   return c.json({
     mode: 'bug_hunt',
-    hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
+    hunt: {
+      id: hunt.id,
+      title: hunt.title,
+      summary: hunt.summary,
+      scenarioId: hunt.scenarioId,
+      curriculum: HUNT_CURRICULUM[hunt.id],
+    },
   } satisfies PracticeSessionResponse)
 })
 

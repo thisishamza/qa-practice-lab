@@ -142,6 +142,31 @@ describe('GET /api/v1/practice/session', () => {
   })
 })
 
+describe('learner-safe curriculum in practice responses', () => {
+  it('includes the curriculum on start and session payloads, with no evaluator data', async () => {
+    const migrated = createMigratedD1()
+    const started = await startHunt(migrated, 'hunt-pricing-001')
+    expect(started.status).toBe(200)
+    const startBody = (await started.json()) as {
+      hunt: { curriculum?: { difficulty: string; conceptsPracticed: string[] } }
+    }
+    expect(startBody.hunt.curriculum).toBeDefined()
+    expect(startBody.hunt.curriculum?.difficulty).toBe('beginner')
+    expect(startBody.hunt.curriculum?.conceptsPracticed.length).toBeGreaterThanOrEqual(3)
+
+    const token = extractSessionCookie(started.headers.get('set-cookie'))!
+    const session = (await (await getSession(migrated, token)).json()) as {
+      hunt: { curriculum?: { difficulty: string } } | null
+    }
+    expect(session.hunt?.curriculum?.difficulty).toBe('beginner')
+
+    const raw = JSON.stringify([startBody, session])
+    for (const id of ['PRICING-001', 'CATALOGUE-001', 'hint_mask', 'quality_score']) {
+      expect(raw).not.toContain(id)
+    }
+  })
+})
+
 describe('POST /api/v1/practice/hunts/:huntId/start', () => {
   it('mints a bug-hunt session for an anonymous browser', async () => {
     const migrated = createMigratedD1()

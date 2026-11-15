@@ -9,6 +9,9 @@ import {
   recommendedScenarioIds,
 } from '../../src/data/demo'
 import { HUNTS, findHunt } from '../../src/server/hunts'
+import { DEFECTS } from '../../src/server/defects'
+import { HUNT_CURRICULUM } from '../../src/shared/huntCurriculum'
+import { recommendedHuntScenarioIds } from '../../src/data/scenarios'
 import type { TrackId } from '../../src/data/types'
 
 const trackIds = new Set<TrackId>(learningTracks.map((track) => track.id))
@@ -56,6 +59,77 @@ describe('learning tracks', () => {
       const listed = scenarios.filter((scenario) => scenario.trackId === track.id).length
       expect(listed).toBeGreaterThan(0)
       expect(listed).toBeLessThanOrEqual(track.plannedExerciseCount)
+    }
+  })
+})
+
+describe('bug-hunt curriculum metadata (Phase 4, WP1)', () => {
+  const wired = scenarios.filter((scenario) => scenario.huntId)
+
+  it('enriches exactly the seven wired hunt scenarios and nothing else', () => {
+    expect(wired.length).toBe(HUNTS.length)
+    for (const scenario of scenarios) {
+      if (scenario.huntId) {
+        expect(scenario.curriculum, `${scenario.id} is missing curriculum`).toBeDefined()
+      } else {
+        expect(scenario.curriculum, `${scenario.id} must not carry curriculum`).toBeUndefined()
+      }
+    }
+  })
+
+  it('ships a complete, well-formed curriculum entry per hunt', () => {
+    for (const hunt of HUNTS) {
+      const curriculum = HUNT_CURRICULUM[hunt.id]
+      expect(curriculum, `${hunt.id} is missing curriculum`).toBeDefined()
+      expect(curriculum.skillArea.length).toBeGreaterThan(10)
+      expect(['beginner', 'intermediate', 'advanced']).toContain(curriculum.difficulty)
+      expect(curriculum.conceptsPracticed.length).toBeGreaterThanOrEqual(3)
+      expect(curriculum.expectedOutcomes.length).toBeGreaterThanOrEqual(3)
+      expect(curriculum.investigationFocus.length).toBeGreaterThanOrEqual(4)
+      expect(curriculum.reportFocus.length).toBeGreaterThanOrEqual(4)
+      for (const list of [
+        curriculum.conceptsPracticed,
+        curriculum.expectedOutcomes,
+        curriculum.investigationFocus,
+        curriculum.reportFocus,
+      ]) {
+        for (const entry of list) {
+          expect(entry.length).toBeGreaterThan(15)
+        }
+        expect(new Set(list).size).toBe(list.length)
+      }
+    }
+  })
+
+  it('mirrors each wired scenario difficulty', () => {
+    for (const scenario of wired) {
+      expect(scenario.curriculum?.difficulty).toBe(scenario.difficulty)
+    }
+  })
+
+  it('leaks no defect ids or defect titles through curriculum copy', () => {
+    const corpus = JSON.stringify(HUNT_CURRICULUM)
+    for (const defect of DEFECTS) {
+      expect(corpus).not.toContain(defect.id)
+      expect(corpus).not.toContain(defect.title)
+      expect(corpus.toLowerCase()).not.toContain(defect.fix.toLowerCase())
+    }
+  })
+
+  it('orders the recommended path by ascending difficulty over wired scenarios only', () => {
+    const rank: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 }
+    const wiredIds = new Set(wired.map((scenario) => scenario.id))
+    expect(recommendedHuntScenarioIds.length).toBe(wired.length)
+    expect(new Set(recommendedHuntScenarioIds).size).toBe(recommendedHuntScenarioIds.length)
+    for (const id of recommendedHuntScenarioIds) {
+      expect(wiredIds.has(id), `${id} is not a wired hunt scenario`).toBe(true)
+    }
+    const ranks = recommendedHuntScenarioIds.map((id) => {
+      const scenario = scenarios.find((entry) => entry.id === id)
+      return scenario ? rank[scenario.difficulty] : -1
+    })
+    for (let index = 1; index < ranks.length; index += 1) {
+      expect(ranks[index]).toBeGreaterThanOrEqual(ranks[index - 1] as number)
     }
   })
 })
