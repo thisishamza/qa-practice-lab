@@ -9,8 +9,13 @@
 - **Milestone covered:** P3-M9 — Hardening, reset & Phase 3 exit
 - **Audit date:** 2026-11-15
 - **Verdict:** **Phase 3 exit criteria are satisfied.** Deployment (Cloudflare resources) and
-  merging to `main` were **not** performed and remain explicit user decisions. Phase 4 has
+  merging to `main` were **not** performed and remained explicit user decisions at audit time. Phase 4 has
   not started.
+- **Addendum (2026-11-16):** both decisions were made and executed after the audit — the branch was merged
+  to `main` (PR #4) and Phase 3 was deployed to production at https://qa-practice-lab.pages.dev
+  (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; deployed commit
+  `1f0847f`). The production smoke suite passed; see `PROJECT_STATE.md` §11 and README "Deployment status".
+  Statements below that say "deployment is not done" describe the state at audit time, not today.
 
 ## 1. Completed milestones and commits
 

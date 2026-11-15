@@ -9,8 +9,8 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth, staff restock, order cancellation), P3-M7 (bug-hunt engine v1, mode banner + `/practice` hunt controls), P3-M8 (bug-hunt defect set & scenario wiring — seven hunts/defects, hunt→scenario wiring, `GET /api/v1/practice/hunts`, local bug-report export, 20/IP/day hunt-start cap, exact atomic since M9) and P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) are implemented and verified. The exit audit is `docs/phase-3-exit-audit.md`; deployment (Cloudflare) and merging to `main` remain user decisions — nothing is pushed or deployed. Phase 4 has not started.** M9 (optional polish) is not started and only on request.
-- **Last updated:** 2026-11-15.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE, merged into `main` via PR #4, and DEPLOYED TO PRODUCTION (https://qa-practice-lab.pages.dev, Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, schema_version 9) on 2026-11-16 — see §11. P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) is complete; the deployment was performed with user approval and the smoke suite passed against production. Phase 4 has not started.** M9 (optional polish) is not started and only on request.
+- **Last updated:** 2026-11-16.
 
 ## 2. Product principles
 
@@ -145,7 +145,7 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 2.6. UI/UX redesign implementation | Execute the approved milestones M1–M8 in order (M9 optional) | Every approved milestone is implemented, verified, and recorded; Phase 3 resumes only on explicit instruction |
 | 3. Commerce practice app | Synthetic catalog/cart/checkout, clean mode, bug-hunt mode, reset | UI scenarios can be completed and known defects are reproducible |
 
-Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
+Phase 3 is complete, merged to `main` (PR #4) and deployed to production on 2026-11-16. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status and `docs/phase-3-exit-audit.md` for the audit.
 P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth)
@@ -329,6 +329,37 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-16 — Phase 3 production deployment to Cloudflare Pages
+
+- **Precondition checks (all passed):** branch `main`; `HEAD == origin/main == 1f0847f38cec5723633057a4f94b35bd84ac04a4` (merge of PR #4); working tree clean at session start; Phase 3 merge commit present; all nine migrations (`0001`–`0009`) present. No branches switched, reset, merged, or pushed.
+- **Pre-deployment audit:** `wrangler.jsonc` (Pages config, `pages_build_output_dir: "./dist"`, D1 binding name `DB`, previously a placeholder `database_id` by design); Pages Functions catch-all `functions/api/[[route]].ts` → Hono; `package.json` build/deploy scripts; migrations verified **additive only** (no DROP/DELETE/TRUNCATE/renames; only `app_meta` `schema_version` bumps). No secrets in the repo.
+- **Local gates:** `npm run check` — **passed** (ESLint clean; TypeScript clean in all three projects; **344/344 tests green**). `npm run build` — **passed** (JS 478.61 kB / gzip 139.18 kB; CSS 76.55 kB / gzip 14.36 kB).
+- **Cloudflare setup (explicit user approval obtained before creating resources):** Wrangler 4.162.0 authenticated via OAuth (account `7769f509e147760becc1711810803069`, owner email ends `gmail.com`). `d1 list` was empty → created **`qa-practice-lab-db`** (region APAC; database_id `928b4ed6-6284-46a2-b374-f1c569c1affe`) and set the real id in `wrangler.jsonc` (binding stays `DB`; the id is not a secret). The remote database was verified empty before migrating (only `_cf_KV` and `d1_migrations` internals). Remote migrations `0001`–`0009` applied; `schema_version` = **9** (verified by remote query and `/api/health`); seed integrity confirmed (42 products / 8 categories / 5 customers). Created Pages project **`qa-practice-lab`** (production branch `main`) — no other project was touched. Deployed `dist/` with `npx wrangler pages deploy dist`; the `d1_databases` binding from `wrangler.jsonc` is applied to the Pages Functions at deploy time (verified: `/api/health` → `schemaVersion: "9"`), so no dashboard binding step was needed or performed.
+- **Production URL:** https://qa-practice-lab.pages.dev (this deployment's alias: https://99ef81ca.qa-practice-lab.pages.dev). **Deployed commit SHA:** `1f0847f38cec5723633057a4f94b35bd84ac04a4` (`main`). The deploy was built from a working tree carrying one uncommitted change (`wrangler.jsonc` real `database_id`); no application code differed from the commit. That change is deliberately left uncommitted for review — nothing was pushed or committed in this session.
+- **Smoke tests against production (curl-level, synthetic data only) — ALL 15 PASS:**
+  1. `/api/health` → 200, `schemaVersion: "9"` — PASS
+  2. Shop + product detail pages load (HTML 200 for `/`, `/shop`, `/shop/products/:slug`; product API detail 200; unknown slug → `404 not_found`) — PASS
+  3. Categories + filtering (`category=water` → total 5; `q=Kestrel` → 1; description-term search `roll-top` → 1 in clean mode) — PASS
+  4. Cart create / update / remove — PASS
+  5. Checkout creates an order — PASS (`ORD-50AE62536D3C40B6`, 2× Kestrel Dry Bag, $59.80, `approved`, HTTP 201)
+  6. Idempotent checkout replay — PASS (same reference returned; `Idempotent-Replay: true` header)
+  7. Customer login and logout — PASS (Amara in/out; `auth/me` 200 → 401)
+  8. Cross-customer order access denied — PASS (Ben reading Amara's order → concealed `404 not_found`; guest on account endpoint → `401`; cross-session cancel → `404`)
+  9. Staff inventory authorization — PASS (guest `401`, customer `403 staff_required`, staff `200`)
+  10. Restock + order cancellation — PASS (product 40 restocked +1, audit row `id 2`, quantity `47`; zero quantity → `400`; guest order `ORD-50AE62536D3C40B6` cancelled → stock restored; Amara's order `ORD-C9A69B0CCED1CD64` cancelled → stock restored)
+  11. Bug-hunt session start / reset — PASS (fresh browser jar: `clean` → start `hunt-catalogue-001` → `bug_hunt` → reset → `clean`; `/api/v1/practice/hunts` list is learner-safe)
+  12. Clean Mode unaffected by defects — PASS (description-term search and category filter behave cleanly after reset; identical to pre-hunt baselines)
+  13. Rate limits → 429 — PASS (5 × `401 invalid_credentials` → 6th attempt `429 login_rate_limited`; correct sign-in after the one-minute window → `200`, budget cleared)
+  14. Oversized request → 413 — PASS (40,057-byte JSON body → `413 payload_too_large`)
+  15. Staff-only maintenance sweep — PASS (guest `401`, customer `403`, staff `200` with `deleted` all-zero on a fresh deployment)
+- **Not tested / not run in this session:** browser-level (headless Chrome) smoke against production — checks were HTTP/API-level; the idempotency **conflict** path (same key + different payload → `409`) and the `checkout`/`mutate` 429 scopes were not exercised against production (the `login` scope was; deliberately no load or repeated checkout testing); the exact-stock `422` boundary was not exercised; the `Retry-After` header body was not asserted (429 body confirmed); the Pages project D1 binding was proven by `/api/health`, not inspected in the dashboard; the first `/api/health` call immediately after project creation briefly returned `error code: 522` (edge propagation) and has been stable on every subsequent check.
+- **Production test data (all synthetic):** guest order `ORD-50AE62536D3C40B6` — cancelled, stock restored; Amara Okafor's order `ORD-C9A69B0CCED1CD64` — cancelled, stock restored; one staff restock of **+1 unit** on `sundrift-pocket-compass` (product 40; recorded in `inventory_adjustments` as `id 2`, actor = staff account Rowan Ellison); maintenance sweep reported zero deletions. No other data was created or modified.
+- **Known production limitations:** no cron/scheduler on Pages — the sweep is **operator-invoked** (procedure below); rate limits are per-IP fixed windows (exit-audit §8 trade-offs: shared egress IPs share budgets; window seams); hunt starts capped at 20/IP/UTC day; 21 catalogue scenarios remain non-runnable placeholders; no telemetry beyond `/api/health` and `console.error`; free-tier D1 daily read/write ceilings apply (PROJECT_STATE §7) — current usage is trivially within them.
+- **Maintenance sweep procedure (operator, no in-product scheduler):** sign in with a staff account (synthetic fixture `rowan.ellison@example.com / demo-rowan-9001`, or a browser session) and `POST /api/v1/admin/maintenance/sweep` with an empty JSON body; the response reports bounded `deleted` counts per table and is idempotent. Recommended cadence: **at least weekly** (daily during active cohorts/classes). If a Workers project is introduced later, it should call the same `sweepExpiredData()` unchanged.
+- **Future releases:** `npm run check && npm run build && npx wrangler pages deploy dist` (deploys from the `main` branch working tree; the `DB` binding comes from `wrangler.jsonc`). Local development is unchanged (`npm run db:migrate:local`, `npm run dev`).
+- **Git state at end of session:** branch `main`; uncommitted changes — `wrangler.jsonc` (real `database_id`), `README.md`, `PROJECT_STATE.md`, `AGENTS.md`, `docs/phase-3-exit-audit.md` (deployment addendum). Nothing committed, pushed or PR'd in that session.
+- **Next exact action:** user reviews and commits the deployment documentation + `wrangler.jsonc` change (only with explicit instruction), then decides the sweep cadence and any monitoring. Phase 4 has not started and must not begin without explicit instruction.
 
 ### 2026-11-15 — Phase 3 PR self-review: findings and fixes
 
@@ -1423,12 +1454,13 @@ phase starts.
 - **Blockers:** None. Working name and exact UI design remain open and can be chosen during scaffold/design work.
 - **Next exact action:** Phase 1 — create the repository scaffold and implement a minimal React shell plus Hono `/api/health` endpoint with a local D1 migration.
 
-## 12. Phase 3 — commerce practice application (implementation-complete; exit audit)
+## 12. Phase 3 — commerce practice application (implementation-complete, merged and deployed to production)
 
-Phase 3 is implementation-complete on branch `feat/phase-3-commerce-practice` (base: `main` @
-`394691c`). The full plan — milestone breakdown with scope/dependencies/acceptance/testing/risks,
+Phase 3 is implementation-complete and was merged to `main` (PR #4); the working branch was
+`feat/phase-3-commerce-practice`. The full plan — milestone breakdown with scope/dependencies/acceptance/testing/risks,
 the bug-hunt engine architecture, the API surface, scenario sketch and free-tier impact — lives in
 **`docs/phase-3-commerce-practice-plan.md`**. The exit audit is **`docs/phase-3-exit-audit.md`**.
+Phase 3 was merged to `main` (PR #4) and **deployed to production on 2026-11-16** (https://qa-practice-lab.pages.dev); see §11 for the deployment record.
 Status summary:
 
 ### Architecture decisions (Phase 3)
@@ -1670,4 +1702,4 @@ decisions; Phase 4 requires explicit instruction.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`) are done and verified**; `schema_version` 9; nothing is pushed, merged or deployed. Phase 4 has **not** started — do not begin it without explicit instruction. Deployment (Cloudflare D1 create + remote migrations + Pages deploy) and merging to `main` are user decisions. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete, merged into `main` via PR #4, and deployed to production on 2026-11-16 at https://qa-practice-lab.pages.dev** (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; merged commit `1f0847f`). The P3-M1 … P3-M9 milestones are done and verified: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`). Phase 4 has **not** started — do not begin it without explicit instruction. The deployment (D1 create + remote migrations + Pages project + deploy) is recorded in §11; the recommended maintenance sweep cadence is documented there. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

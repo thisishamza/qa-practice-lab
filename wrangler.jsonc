@@ -7,9 +7,8 @@
     {
       "binding": "DB",
       "database_name": "qa-practice-lab-db",
-      // Local-only placeholder. Replace it with `wrangler d1 create` output
-      // before the first remote deployment. No remote resources are created in Phase 1.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // Production D1 database (created 2026-11-16). IDs are not secrets.
+      "database_id": "928b4ed6-6284-46a2-b374-f1c569c1affe",
       "migrations_dir": "db/migrations"
     }
   ]

@@ -1,9 +1,11 @@
 # QA Practice Lab
 
+> **Production:** https://qa-practice-lab.pages.dev (deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9).
+
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
-(M1–M8) is complete and merged, and Phase 3 (commerce practice application) is implemented
-and verified on the `feat/phase-3-commerce-practice` branch**.
+(M1–M8) is complete and merged, and Phase 3 (commerce practice application) is implemented,
+verified, merged to `main` (PR #4) and deployed to production**.
 
 Phase 1 proves the full local stack: a React + TypeScript shell, a Hono API running on Cloudflare
 Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
@@ -14,8 +16,8 @@ The redesign makes the interface a precise, consistent "test bench": self-hosted
 JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
-the single commerce practice domain. **P3-M1 through P3-M9 are implemented on the
-`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema with deterministic synthetic
+the single commerce practice domain. **P3-M1 through P3-M9 are implemented and merged to `main`;
+the app is deployed at https://qa-practice-lab.pages.dev:** a D1 catalogue schema with deterministic synthetic
 seed data (`schema_version` 9), a `/api/v1` catalogue API with search, a working `/shop`
 storefront, a session-based cart with server-calculated totals, a practice checkout that places
 a simulated order in one atomic database transaction with idempotency protection, synthetic
@@ -194,8 +196,9 @@ wrangler.jsonc             Pages config + D1 binding + compatibility date
 - The D1 binding is named `DB` and is available as `c.env.DB` in Hono handlers.
 - Local D1 data lives under `.wrangler/state/v3/d1/` and is git-ignored. Delete `.wrangler/` and
   re-run the migration to reset it.
-- `wrangler.jsonc` uses `pages_build_output_dir: "./dist"` and a **placeholder** `database_id`.
-  This is intentional: the project has not created or touched remote Cloudflare resources.
+- `wrangler.jsonc` uses `pages_build_output_dir: "./dist"` and the production `database_id`
+  for `qa-practice-lab-db` (created 2026-11-16; ids are not secrets). Local development is
+  unaffected: `wrangler pages dev` still uses the local D1 under `.wrangler/state/`.
 
 ### Frontend and content
 
@@ -517,20 +520,41 @@ npx wrangler d1 migrations create qa-practice-lab-db <migration_name>
 npm run db:migrate:local
 ```
 
-Migrations run against the local SQLite-backed D1 database only. Do not pass `--remote` in this
-phase, and do not expose the platform D1 binding as a user-facing SQL console.
+Migrations run against the local SQLite-backed D1 database by default (`npm run db:migrate:local`).
+The production database is migrated explicitly with `--remote` as part of the deployment
+procedure documented in **Deployment status** above — never via ad-hoc commands, and never
+`db:reset:local` (that script is local-only).
+Do not expose the platform D1 binding as a user-facing SQL console.
 
 ## Deployment status
 
-Deployment is deliberately **not configured**. Before a remote deployment:
+**Production is deployed** at https://qa-practice-lab.pages.dev (deployed 2026-11-16):
+Cloudflare Pages project `qa-practice-lab` (production branch `main`) and D1 database
+`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 9. `/api/health` reports
+the deployed schema version.
 
-1. Create the real D1 database with `npx wrangler d1 create qa-practice-lab-db`.
-2. Replace the placeholder `database_id` in `wrangler.jsonc`.
-3. Apply migrations remotely (`wrangler d1 migrations apply ... --remote`).
-4. Configure the Pages project and deploy with `npx wrangler pages deploy dist`.
+How it was set up (and how to reproduce or re-deploy):
+
+1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
+   `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
+2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009.
+   Verified before applying: the remote database contained no application tables/data.
+3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
+   `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
+   step was required (verified via `/api/health` → `schemaVersion: "9"`).
+4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "9"`; place a practice
+   order and cancel it; reset via `/practice`; run one staff sweep
+   (`POST /api/v1/admin/maintenance/sweep`) and confirm `deleted` counts are 0 on an idle
+   deployment. The full smoke checklist passed on 2026-11-16 — see `PROJECT_STATE.md` §11.
+5. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
+   the operator's choosing (at least weekly; daily during active classes). With a staff
+   session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
+   with an empty JSON body; the response reports bounded `deleted` counts and is idempotent.
+   A future Workers cron should call the same `sweepExpiredData()` function.
 
 Keep usage within the free-tier ceilings recorded in `PROJECT_STATE.md` (Workers/Pages request and
-build limits, D1 daily reads/writes and per-invocation query limits).
+build limits, D1 daily reads/writes and per-invocation query limits). Do not add a
+`_redirects` catch-all (the SPA fallback is native; see *SPA routing* above).
 
 ## Known constraints
 
