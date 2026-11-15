@@ -23,29 +23,64 @@ interface D1PreparedStatementLike {
   run(): Promise<{ meta: { changes: number | bigint } }>
 }
 
+interface BoundStatement {
+  sql: string
+  params: unknown[]
+  all<T = unknown>(): Promise<{ results: T[] }>
+  first<T = unknown>(): Promise<T | null>
+  run(): Promise<{ meta: { changes: number | bigint } }>
+}
+
 function adapt(sqlite: DatabaseSync) {
   const statement = (sql: string): D1PreparedStatementLike => {
-    const runWith = (params: unknown[]) => sqlite.prepare(sql).run(...(params as never[]))
     const allWith = <T,>(params: unknown[]) =>
       sqlite.prepare(sql).all(...(params as never[])) as unknown as T[]
     const getWith = <T,>(params: unknown[]) =>
       (sqlite.prepare(sql).get(...(params as never[])) as unknown as T | undefined) ?? null
+    const runWith = (params: unknown[]) => sqlite.prepare(sql).run(...(params as never[]))
+
+    const bound = (params: unknown[]): BoundStatement => ({
+      sql,
+      params,
+      all: async <T = unknown>() => ({ results: allWith<T>(params) }),
+      first: async <T = unknown>() => getWith<T>(params),
+      run: async () => ({ meta: { changes: runWith(params).changes } }),
+    })
 
     return {
       bind(...params: unknown[]) {
-        return {
-          all: async <T = unknown>() => ({ results: allWith<T>(params) }),
-          first: async <T = unknown>() => getWith<T>(params),
-          run: async () => ({ meta: { changes: runWith(params).changes } }),
-        }
+        return bound(params)
       },
-      all: async <T = unknown>() => ({ results: allWith<T>([]) }),
-      first: async <T = unknown>() => getWith<T>([]),
-      run: async () => ({ meta: { changes: runWith([]).changes } }),
+      ...bound([]),
     }
   }
 
-  return { prepare: statement }
+  return {
+    prepare: statement,
+    /**
+     * Mirrors D1's batch semantics: every statement runs inside one SQLite
+     * transaction and the whole call fails (rolling back) if any statement
+     * fails. D1 guarantees the same all-or-nothing behaviour.
+     */
+    batch: async (statements: BoundStatement[]) => {
+      sqlite.exec('BEGIN')
+      try {
+        const results = statements.map((stmt) => {
+          if (/^\s*select/i.test(stmt.sql)) {
+            const rows = sqlite.prepare(stmt.sql).all(...(stmt.params as never[])) as unknown[]
+            return { results: rows, success: true, meta: { changes: 0 } }
+          }
+          const changes = sqlite.prepare(stmt.sql).run(...(stmt.params as never[])).changes
+          return { results: [], success: true, meta: { changes } }
+        })
+        sqlite.exec('COMMIT')
+        return results
+      } catch (error) {
+        sqlite.exec('ROLLBACK')
+        throw error
+      }
+    },
+  }
 }
 
 export interface MigratedD1 {
@@ -55,6 +90,8 @@ export interface MigratedD1 {
 
 export function createMigratedD1(): MigratedD1 {
   const sqlite = new DatabaseSync(':memory:')
+  // Match D1, which enforces foreign key constraints (and ON DELETE CASCADE).
+  sqlite.exec('PRAGMA foreign_keys = ON')
   const files = readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
     .sort()

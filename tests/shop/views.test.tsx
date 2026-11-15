@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { Product } from '../../src/shared/commerce'
 import { ProductCard } from '../../src/features/shop/ProductCard'
 import { ProductDetail } from '../../src/features/shop/ProductDetail'
+import { CartProvider } from '../../src/features/cart/CartContext'
 import { ProductLoading, ProductNotFound, ProductError } from '../../src/features/shop/ProductStates'
 import { Pagination } from '../../src/features/shop/Pagination'
 import { ShopPage } from '../../src/pages/ShopPage'
@@ -32,7 +33,11 @@ const outOfStock: Product = {
 }
 
 function render(element: React.ReactElement) {
-  return renderToStaticMarkup(<MemoryRouter initialEntries={['/shop']}>{element}</MemoryRouter>)
+  return renderToStaticMarkup(
+    <MemoryRouter initialEntries={['/shop']}>
+      <CartProvider>{element}</CartProvider>
+    </MemoryRouter>,
+  )
 }
 
 describe('ProductCard', () => {
@@ -66,7 +71,7 @@ describe('ProductDetail', () => {
   it('is honest about the practice storefront and missing checkout', () => {
     const html = render(<ProductDetail product={product} />)
     expect(html).toContain('fictional catalogue')
-    expect(html).toContain('cart and checkout are not implemented yet')
+    expect(html).toContain('checkout is not implemented yet')
   })
 })
 

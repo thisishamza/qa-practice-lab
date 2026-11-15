@@ -212,6 +212,15 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M9 11V6a3 3 0 0 1 6 0v5" />
     </>
   ),
+  cart: (
+    <>
+      <circle cx="9" cy="20" r="1.2" />
+      <circle cx="17" cy="20" r="1.2" />
+      <path d="M3 4h2.4l2.2 12.4a1.7 1.7 0 0 0 1.7 1.4h8.2a1.7 1.7 0 0 0 1.7-1.3L20.6 8H6.2" />
+    </>
+  ),
+  minus: <path d="M6 12h12" />,
+  plus: <path d="M6 12h12M12 6v12" />,
 }
 
 interface IconProps {

@@ -46,3 +46,45 @@ export const PRODUCT_SORTS: ReadonlySet<string> = new Set([
   'price_asc',
   'price_desc',
 ])
+
+/** Hard cap on a single cart line's quantity (also a CHECK constraint). */
+export const MAX_LINE_QUANTITY = 99
+
+/**
+ * A cart line as recomputed server-side from the current catalogue. The
+ * client never dictates prices or totals; every figure here is derived from
+ * `products.price_cents` and `inventory` at read time.
+ *
+ * `available` is false when the product was deactivated or does not have
+ * enough stock to cover the line. Such lines stay in the cart (honestly
+ * flagged) and are expected to block checkout once M4 lands.
+ */
+export interface CartLine {
+  id: number
+  productId: number
+  slug: string
+  name: string
+  unitPriceCents: number
+  currency: typeof COMMERCE_CURRENCY
+  quantity: number
+  lineTotalCents: number
+  stockStatus: StockStatus
+  productActive: boolean
+  availableStock: number
+  exceedsStock: boolean
+  available: boolean
+}
+
+/**
+ * Cart payload. `subtotalCents` and `totalCents` are equal in P3-M3 (no
+ * shipping, discounts or tax exist yet); `totalCents` is kept so M4 can add
+ * shipping without breaking the contract. Money is always integer cents.
+ */
+export interface CartResponse {
+  items: CartLine[]
+  itemCount: number
+  subtotalCents: number
+  totalCents: number
+  currency: typeof COMMERCE_CURRENCY
+  hasUnavailableItems: boolean
+}

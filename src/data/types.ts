@@ -73,6 +73,9 @@ export type IconName =
   | 'panel-left'
   | 'reset'
   | 'shop'
+  | 'cart'
+  | 'minus'
+  | 'plus'
 
 export interface GettingStarted {
   summary: string

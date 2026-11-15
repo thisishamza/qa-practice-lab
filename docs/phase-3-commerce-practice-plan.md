@@ -54,7 +54,7 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 |---|---|---|
 | M1 (done) | `GET /api/v1/products` (page, perPage≤48, category, sort, `q` since M2) · `GET /api/v1/products/:slug` · `GET /api/v1/categories` | Read-only |
 | M2 (done) | No new endpoints (read-only); `q` search added to `/api/v1/products` | Read-only |
-| M3 | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` | Session cart |
+| M3 (done) | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` · `DELETE /api/v1/cart` | Session cart |
 | M4 | `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:id` | Orders |
 | M5 | `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` | Synthetic auth |
 | M6 | `PATCH /api/v1/admin/inventory/:productId` (staff role) · stock force-check inside checkout | Inventory |
@@ -147,18 +147,21 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
   `tests/shop/views.test.tsx`) + `tests/server/catalogue.test.ts` search coverage + Playwright/Chrome
   probe. **Risks:** duplicate filter logic — extracted shared helpers instead.
 
-### P3-M3 — Cart
+### P3-M3 — Cart *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** mutable, testable state for cart scenarios (add/update/remove, totals).
-- **Scope:** `carts`, `cart_items` tables (session-keyed); `POST …/cart/items`, `PATCH/DELETE
-  …/cart/items/:id`, `GET /api/v1/cart`; `/shop/cart` page; header cart count; anonymous
-  `mpl_session` cookie (clean-mode sessions only; hunt sessions arrive in M7).
-- **Database:** `carts(id, session_id, created_at, updated_at)`, `cart_items(cart_id,
-  product_id, quantity, CHECK quantity>0)`; unique `(cart_id, product_id)`.
-- **Acceptance:** totals derived server-side from `price_cents`; quantity ≤ stock; clear cart;
-  idempotent add-to-cart semantics; session isolation (two browser contexts never see each
-  other's carts). **Risks:** cookie handling on Pages vs Vite proxy — verify both paths;
-  `SameSite=Strict` + dev-proxy interplay.
+- **Scope:** `practice_sessions`, `carts`, `cart_items` tables (session-keyed);
+  `POST …/cart/items`, `PATCH/DELETE …/cart/items/:id`, `GET /api/v1/cart`,
+  `DELETE /api/v1/cart`; `/cart` page; top-bar cart entry point; anonymous `mpl_session`
+  cookie (clean-mode sessions only; hunt sessions arrive in M7). Planned `/shop/cart`
+  page became `/cart` per the implementation brief.
+- **Database:** `carts(id, session_id UNIQUE, created_at, updated_at)`, `cart_items(cart_id,
+  product_id, quantity, CHECK 0 < quantity <= 99)`; unique `(cart_id, product_id)`;
+  `practice_sessions(id, token_hash UNIQUE, created_at, expires_at)` with the token stored
+  only as a SHA-256 hash. M7 will extend `practice_sessions` with mode/hunt_id.
+- **Acceptance:** totals derived server-side from `price_cents`; quantity ≤ stock; clear
+  cart; idempotent add-to-cart semantics (one line per product, quantities accumulate);
+  session isolation (two browser contexts never see each other's carts). ✅ verified 2026-11-15.
 
 ### P3-M4 — Checkout & orders
 

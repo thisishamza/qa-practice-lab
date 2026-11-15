@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
+import { useCart } from '../../features/cart/useCart'
 
 interface TopBarProps {
   mobileOpen: boolean
@@ -19,6 +20,10 @@ export function TopBar({
 }: TopBarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { cart } = useCart()
+  const cartCount = cart?.itemCount ?? 0
+  const cartLabel =
+    cartCount === 0 ? 'Cart, 0 items' : `Cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`
   const inputRef = useRef<HTMLInputElement>(null)
   const locationQuery =
     location.pathname === '/scenarios'
@@ -163,12 +168,16 @@ export function TopBar({
         </form>
 
         <div className="topbar-actions">
-          <Link
-            className="icon-button topbar-search-link"
-            to="/scenarios"
-            aria-label="Search the scenario catalog"
-          >
+          <Link className="icon-button topbar-search-link" to="/scenarios" aria-label="Search the scenario catalog">
             <Icon name="search" size={18} />
+          </Link>
+          <Link className="icon-button topbar-cart" to="/cart" aria-label={cartLabel}>
+            <Icon name="cart" size={20} />
+            {cartCount > 0 ? (
+              <span className="cart-badge" aria-hidden="true">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            ) : null}
           </Link>
           <ThemeToggle />
         </div>
