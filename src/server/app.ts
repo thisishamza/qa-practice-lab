@@ -6,6 +6,8 @@ import { checkoutRoutes } from './checkout'
 import { authRoutes } from './auth'
 import { inventoryRoutes } from './inventory'
 import { practiceRoutes } from './practice'
+import { attemptRoutes } from './attempts'
+import { reportRoutes } from './reports'
 import { maintenanceRoutes } from './maintenance'
 import { clientIp, consumeRateLimit, sha256Hex, MUTATE_LIMIT } from './rateLimit'
 
@@ -126,6 +128,8 @@ app.route('/v1', checkoutRoutes)
 app.route('/v1', authRoutes)
 app.route('/v1', inventoryRoutes)
 app.route('/v1', practiceRoutes)
+app.route('/v1', attemptRoutes)
+app.route('/v1', reportRoutes)
 app.route('/v1', maintenanceRoutes)
 
 app.notFound((c) =>

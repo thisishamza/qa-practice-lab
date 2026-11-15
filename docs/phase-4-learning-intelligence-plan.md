@@ -379,6 +379,145 @@ the original **P4-M1**, **P4-M2** and **P4-M3**.
 > unit/contract-tested for that. The original "WP1: zero API change" wording below
 > is superseded by this note. All other Phase 4 requirements are unchanged.
 
+> **2026-11-16 — WP2 implemented (this note records the as-built behaviour; it
+> supersedes the sketch wording below where they differ):**
+>
+> **Migration location.** The migration landed as **`db/migrations/0010_hunt_attempts.sql`**
+> (this repository's convention, per AGENTS.md / README / `tests/helpers/fake-d1.ts`),
+> not the literal `migrations/` path used elsewhere in the original task brief. Content
+> is unchanged in intent: additive only, `schema_version` 9 → 10, previous migrations
+> untouched, verified on both a fresh database and a planted 0001–0009 → 0010 upgrade.
+>
+> **One-live-attempt enforcement.** The sketch below carried no uniqueness constraint.
+> As built, migration 0010 adds a **partial unique index** —
+> `idx_hunt_attempts_one_live` `ON hunt_attempts(practice_session_id, hunt_id)
+> WHERE status = 'in_progress'` — so at most one live `in_progress` attempt exists per
+> (practice session, hunt), enforced at the database layer. Attempt creation is
+> therefore **idempotent under retries and concurrency**: an
+> `INSERT … ON CONFLICT(practice_session_id, hunt_id) WHERE status = 'in_progress'
+> DO NOTHING` followed by a re-read; two concurrent starts can never mint two live
+> attempts and a legitimate retry is a no-op. The full index set shipped is
+> `idx_hunt_attempts_session_hunt(practice_session_id, hunt_id, id)`,
+> **`idx_hunt_attempts_one_live`** (unique, partial),
+> `idx_hunt_attempts_customer(customer_id) WHERE customer_id IS NOT NULL`
+> (signed-in history read) and `idx_bug_reports_attempt(attempt_id, id)`.
+> Every free-text column carries a defense-in-depth length CHECK mirroring the
+> application caps; `severity`/`priority`/`reproducibility`/`status` are enum-CHECKed;
+> `hint_mask` is CHECKed 0–7; `best_quality_score` CHECKed 0–100 (nullable until WP3);
+> `discovered` CHECKed 0/1. Foreign keys: `hunt_attempts.practice_session_id` →
+> `practice_sessions(id)` **ON DELETE CASCADE** (attempts die with the session — the
+> orders precedent), `hunt_attempts.customer_id` → `customers(id)` **ON DELETE SET
+> NULL** (the attempt snapshot survives customer deletion), `bug_reports.attempt_id`
+> → `hunt_attempts(id)` **ON DELETE CASCADE**. Deleting the practice session (7-day
+> TTL / the maintenance sweep) cascades through both tables; the sweep itself needed
+> no changes. The migration also bumps `app_meta.schema_version` to `10`.
+>
+> **Attempt lifecycle (`src/server/attempts.ts`).** Hunt start (all three entry
+> paths in `practice.ts` — idempotent re-start, switch from clean/another hunt, and
+> fresh-mint) now ensures exactly one live `in_progress` attempt for
+> (session, hunt). Starting another hunt preserves prior attempts per hunt; an
+> attempt already `submitted`/`revealed` is never reused — the next hunt start mints
+> a fresh `in_progress` attempt and the completed one is preserved as history.
+> Report submission attaches to the live `in_progress` attempt when one exists
+> (the normal path), otherwise to the latest attempt for (session, hunt)
+> (resubmission extends that attempt's history), otherwise creates one implicitly
+> (an API client submitting without starting a hunt). Status transitions:
+> `in_progress → submitted` on report; **`revealed` stays `revealed`** after a later
+> report (giving up is never a completion); `submitted` stays `submitted`.
+> `submitted_at` keeps only the first submission time. `customer_id` is stamped at
+> **submit time** when the browser is signed in to an ACTIVE account (never at hunt
+> start, never retroactively for guest rows, never adopted for suspended accounts).
+> `best_quality_score` stays `NULL` in WP2; `discovered` is untouched in WP2; both
+> are WP3's to stamp. Attempts are owner-scoped by the `mpl_session` cookie — the
+> client never sends an attempt id; there is no cross-session or cross-customer read
+> path; staff gains nothing.
+>
+> **Report persistence and validation (`src/server/reports.ts`).**
+> `POST /api/v1/practice/hunts/:huntId/report` validates the hunt id against the
+> registry (`400` malformed / `404 hunt_not_found`), consumes the `report:<iphash>`
+> limit (see below) **before** the body is parsed, requires a live practice session
+> (`401 session_required` otherwise), then validates the body in layers — type
+> checks → control-character rejection → length caps → enum checks — with per-field
+> `400` messages in the existing checkout style. Field rules: `title` and
+> `environment` 1–200 single-line (trim; `\s+` collapses to one space);
+> `preconditions` optional ≤ 1000 multi-line; `steps` 1–4000 multi-line; `expected`
+> and `actual` 1–2000 multi-line; multi-line fields normalize CRLF/CR → LF, keep
+> interior line structure and permit `\n`/`\t`; **every other C0/C1/DEL control
+> character is rejected** (single-line fields additionally reject `\n`/`\t`).
+> `severity` ∈ `critical|high|medium|low`, `priority` ∈ `p1|p2|p3|p4` (independent
+> axes, never derived from each other), `reproducibility` ∈ `always|sometimes|once`
+> (default `always`); enums match case-insensitively and are stored lowercase.
+> Unknown body keys are ignored. The report insert and the attempt's submission
+> stamp commit as **one all-or-nothing D1 batch** (report row + `in_progress →
+> submitted` transition, `submitted_at`, `customer_id`) — a failure leaves neither.
+> The response is `201 { attempt, report }`, learner-safe by construction: no
+> attempt/report ids, no defect ids, no evaluator internals. Two read endpoints
+> shipped alongside: `GET /api/v1/practice/hunts/:huntId/attempt` — 404-free;
+> returns `{ status: 'none', … }` when the caller has no attempt (`404`/`400` only
+> for forged/malformed hunt ids); and `GET /api/v1/practice/attempts` — bounded
+> history (≤ 50, newest first) for the session, plus customer-bound attempts from
+> the caller's other live sessions when signed in. Shared contracts live in
+> `src/shared/learning.ts` (`AttemptView`, `AttemptHistoryEntry`, `BugReportView`,
+> `ReportSubmissionResponse`; evaluation types present but absent/empty in WP2).
+>
+> **Rate limiting.** Submissions are capped by the dedicated scope
+> **`report:<iphash>` — 30 requests per IP per minute** — added to the existing
+> fixed-window limiter (`src/server/rateLimit.ts`, `REPORT_LIMIT = 30`), mirroring
+> the checkout budget. It is consumed before body parsing (malformed churn is
+> bounded too), answers `429 rate_limited` with `Retry-After` on overflow, stores
+> only a SHA-256 hash of the IP (raw-IP buckets never match — asserted by test),
+> is skipped entirely when no IP is visible (the existing local-development
+> convention), and does not touch unrelated scopes (`checkout`, `login`, `mutate`).
+> No second rate-limiting mechanism was introduced.
+>
+> **Temporary WP2 placeholders (explicitly).** Until WP3 lands, every stored
+> report carries **`quality_score = 0`** and **`feedback = '[]'`**; the POST response
+> echoes `report.qualityScore: 0` and `report.feedback: []`;
+> **`hunt_attempts.best_quality_score` remains `NULL`**; **`discovered` is not
+> awarded** (stays 0); and the response carries no `evaluation` key. These are
+> deliberate WP2 placeholders and **WP3 replaces them with the deterministic
+> rule-based evaluation inside the same request path / same D1 batch** (the WP2
+> `quality_score=0`/empty-feedback placeholder is removed by WP3, not before).
+>
+> **Deviations and limitations (actual vs original plan, recorded):**
+> 1. Migration file lives at `db/migrations/0010_hunt_attempts.sql` (repo
+>    convention), not the task brief's literal `migrations/` path.
+> 2. One-live-attempt uniqueness is an explicit partial unique index
+>    (`idx_hunt_attempts_one_live`) — the plan's sketch had no uniqueness
+>    constraint at all; the WP2 instruction was to follow the plan's uniqueness
+>    and lifecycle rules, and index enforcement makes the one-live rule real at
+>    the database layer.
+> 3. Cookie-less report submissions return **`401 session_required`** — the plan
+>    did not specify an ownership-failure response; this is the honest answer in
+>    the existing error-envelope convention.
+> 4. There is **no `409` conflict response** anywhere in the contract — the
+>    approved report contract defines no conflict condition. Resubmission is
+>    allowed by design (bounded by the 30/min limit) and attaches to the live or
+>    latest attempt.
+> 5. A **revealed attempt remains revealed** after later report submission
+>    (conservative reading of "give-up is never submitted"); `submitted_at` is
+>    still stamped and the report still persists.
+> 6. True concurrent rate-limit testing was not possible with the synchronous
+>    SQLite test harness; the boundary is covered serially (29/30/31 against a
+>    seeded bucket) and scope isolation/raw-IP non-match are asserted. The
+>    limiter's atomic upsert (`INSERT … ON CONFLICT … RETURNING`) is the actual
+>    concurrency guard, unchanged from P3-M9.
+> 7. Local development rate limiting follows the existing convention: when no IP
+>    is visible, the report limiter is skipped (it is an abuse control, not an
+>    authentication boundary); the 120/min global mutation backstop still applies.
+> 8. Reports associate with their practice session transitively via
+>    `bug_reports.attempt_id` → `hunt_attempts.practice_session_id` (as the
+>    approved schema carries no direct session column on `bug_reports`); this is
+>    how ownership and cascade are enforced.
+> 9. Report submission without any prior hunt start implicitly opens an attempt
+>    (the plan implies submit-time attempt creation; an explicit guest-robustness
+>    choice, tested).
+> 10. No UI ships in WP2 (evaluation results and attempt state are API-only,
+>     rendered in P4-M2); no browser verification was performed for WP2.
+>
+> All other Phase 4 requirements are unchanged. The three-milestone structure is
+> unchanged; WP3 remains the immediate next work package after WP2 is committed.
+
 1. **ID/title:** P4-M1 — Learning Foundation, Attempts & Evaluation.
 2. **Objective:** the platform can describe what a learner is practicing, persist
    their attempts and reports, determine finding status, and evaluate report quality
@@ -432,7 +571,10 @@ the original **P4-M1**, **P4-M2** and **P4-M3**.
      renders the static "Recommended path"; placeholder scenarios render nothing new.
    - WP2/WP3: shared contract types only (`src/shared/learning.ts`).
 7. **Database work:** WP1 — none. WP2 — one additive migration: `0010_hunt_attempts.sql`
-   (`schema_version` → 10):
+   (`schema_version` → 10; **as built at `db/migrations/0010_hunt_attempts.sql`, with
+   added defense-in-depth length CHECKs, the `idx_hunt_attempts_one_live` partial unique
+   index and indexes `idx_hunt_attempts_customer` — see the WP2 implementation note
+   above; this sketch is superseded where they differ**):
    ```sql
    CREATE TABLE hunt_attempts (
      id INTEGER PRIMARY KEY,
@@ -979,9 +1121,9 @@ vocabulary). Old M8 depended on all — P4-M3 WP3 depends on all.
 
 | Endpoint | Milestone | Type | Notes |
 |---|---|---|---|
-| `POST /api/v1/practice/hunts/:huntId/report` | P4-M1 (WP2 storage → WP3 evaluation) | Write, `report:<iphash>` 30/min + 120/min backstop | Returns evaluation since WP3. |
-| `GET /api/v1/practice/hunts/:huntId/attempt` | P4-M1 (WP2) | Read | Learner-safe attempt state. |
-| `GET /api/v1/practice/attempts` | P4-M1 (WP2) | Read | ≤50 rows, newest first. |
+| `POST /api/v1/practice/hunts/:huntId/report` | P4-M1 (WP2 storage → WP3 evaluation) | Write, `report:<iphash>` 30/min + 120/min backstop | As built (WP2): `201 { attempt, report }` with placeholder `qualityScore: 0`/empty feedback; `401 session_required` without a live session; no `409` (no conflict condition in the contract). Returns evaluation since WP3. |
+| `GET /api/v1/practice/hunts/:huntId/attempt` | P4-M1 (WP2) | Read | As built: 404-free learner-safe attempt state (`{ status: 'none', … }` shape when none exists); `400`/`404` only for malformed/unknown hunt ids. |
+| `GET /api/v1/practice/attempts` | P4-M1 (WP2) | Read | As built: ≤50 rows, newest first; session-scoped plus customer-bound when signed in. |
 | `GET /api/v1/practice/progress` | P4-M3 (WP1) | Read | Aggregate; session + bound customer rows. |
 | `POST /api/v1/practice/hunts/:huntId/hints` | P4-M2 (WP1) | Write (mask) + backstop | Idempotent per level; 409 on skipping levels. |
 | `GET /api/v1/practice/hunts/:huntId/reveal` | P4-M2 (WP1) | Read (gated) | 403 `reveal_locked` until submitted/revealed. |
@@ -996,14 +1138,24 @@ by any consumer, and carries no defect ids, finding-check terms or evaluator int
 
 ### 7.2 Database
 
-One additive migration: `0010_hunt_attempts.sql` (two tables, two indexes, `schema_version`
-→ 10). No rewrites, no backfills; `hunt_id` is intentionally not a FK (compiled registry,
-same rule as `practice_sessions.hunt_id`); FK cascades: `hunt_attempts` → `practice_sessions`
-CASCADE (guest data dies loudly and honestly), `customer_id` SET NULL; `bug_reports` →
-`hunt_attempts` CASCADE. Maintenance sweep needs **no changes** (nothing is shared or
-unbounded beyond session lifetime); the `inventory_adjustments`/`order_cancellations`
-precedent applies — attempt/report rows are deleted by cascade, not by sweep, and the
-sweep doc/test should assert this explicitly in P4-M3's exit audit.
+One additive migration: **`db/migrations/0010_hunt_attempts.sql`** (repo convention;
+two tables, **four indexes** — including the partial unique index
+`idx_hunt_attempts_one_live` enforcing one live attempt per (session, hunt) — and
+`schema_version` → 10). Migration contents as built: `hunt_attempts` (nullable
+`best_quality_score` CHECK 0–100, `hint_mask` CHECK 0–7, `discovered` CHECK 0/1,
+status enum CHECK, `hunt_id` length CHECK 1–64) and `bug_reports` (length CHECKs on
+every free-text column, severity/priority/reproducibility enum CHECKs,
+`quality_score` CHECK 0–100), both carrying defense-in-depth CHECKs mirroring the
+application caps. No rewrites, no backfills; `hunt_id` is intentionally not a FK
+(compiled registry, same rule as `practice_sessions.hunt_id`); FK cascades:
+`hunt_attempts` → `practice_sessions` CASCADE (guest data dies loudly and honestly),
+`customer_id` SET NULL; `bug_reports` → `hunt_attempts` CASCADE. Maintenance sweep
+needs **no changes** (nothing is shared or unbounded beyond session lifetime); the
+`inventory_adjustments`/`order_cancellations` precedent applies — attempt/report rows
+are deleted by cascade, not by sweep, and the sweep doc/test should assert this
+explicitly in P4-M3's exit audit. (The cascade is already covered by the WP2 suite,
+`tests/server/attempts.test.ts`, "cascades attempts and reports with their practice
+session".)
 
 ### 7.3 Ownership & persistence model
 

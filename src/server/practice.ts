@@ -21,7 +21,10 @@
 //   is idempotent and does not count against the daily start cap; starting
 //   another hunt re-stamps to that hunt and counts. If the browser has no
 //   live session, a fresh bug-hunt session is minted (counts against the
-//   cap).
+//   cap). Every path that enters a hunt also ensures exactly one live
+//   (in_progress) attempt row for (session, hunt) exists — see
+//   src/server/attempts.ts (Phase 4, P4-M1 WP2). Attempts carry no defect
+//   information and cascade-delete with the session.
 // - Reset is a NON-DESTRUCTIVE re-stamp of the live session to clean mode
 //   (hunt_id=NULL). The plan's "expire + fresh session" sketch was NOT used:
 //   expiring the practice session would cascade-delete the learner's orders
@@ -49,7 +52,8 @@ import type {
   PracticeSessionResponse,
 } from '../shared/practice'
 import type { AppEnv } from './app'
-import { HUNTS, findHunt } from './hunts'
+import { HUNTS, HUNT_ID_PATTERN, findHunt } from './hunts'
+import { ensureLiveAttempt } from './attempts'
 import { HUNT_CURRICULUM } from '../shared/huntCurriculum'
 import { clientIp, sha256Hex } from './rateLimit'
 import {
@@ -61,7 +65,6 @@ import {
   isTokenFormat,
 } from './session'
 
-const HUNT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,63}$/
 /** Soft per-IP per UTC day cap on entering a hunt. See the header comment. */
 const HUNT_START_DAILY_CAP = 20
 
@@ -222,6 +225,9 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
     )
       .bind(hunt.id, live.id)
       .run()
+    // Ensure the live in_progress attempt exists (Phase 4, P4-M1 WP2).
+    // Idempotent — a retry after a mid-flight crash creates it here.
+    await ensureLiveAttempt(c.env.DB, live.id, hunt.id)
     return c.json({
       mode: 'bug_hunt',
       hunt: {
@@ -261,6 +267,9 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
     )
       .bind(hunt.id, live.id)
       .run()
+    // Entering a different hunt: reuse the live in_progress attempt for it,
+    // or open a fresh one (Phase 4, P4-M1 WP2).
+    await ensureLiveAttempt(c.env.DB, live.id, hunt.id)
     return c.json({
       mode: 'bug_hunt',
       hunt: {
@@ -275,6 +284,8 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
 
   const fresh = await createSessionWithCart(c.env.DB, { mode: 'bug_hunt', huntId: hunt.id })
   setCookie(c, SESSION_COOKIE, fresh.token, cookieOptions(isSecureRequest(c.req.url)))
+  // Phase 4, P4-M1 WP2: open the in_progress attempt for this hunt.
+  await ensureLiveAttempt(c.env.DB, fresh.sessionId, hunt.id)
   return c.json({
     mode: 'bug_hunt',
     hunt: {

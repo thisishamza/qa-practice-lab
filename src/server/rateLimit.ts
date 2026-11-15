@@ -14,9 +14,12 @@
 //   abuse control, not an authentication boundary.
 // - Callers decide what "consume" means: the generic mutation limiter counts
 //   every mutating request; the login limiter counts only failures and is
-//   reset on success; the checkout limiter counts placements.
+//   reset on success; the checkout limiter counts placements; the report
+//   limiter counts submissions (see reports.ts).
 //
-// Buckets are keyed `<scope>:<ipHash>`.
+// Buckets are keyed `<scope>:<ipHash>` — 'login' (failures), 'checkout'
+// (placements), 'report' (bug-report submissions) and 'mutate' (every
+// mutating /api/v1 endpoint).
 
 import type { Context } from 'hono'
 import type { AppEnv } from './app'
@@ -30,6 +33,10 @@ import type { AppEnv } from './app'
 export const MUTATE_LIMIT = 120
 export const LOGIN_FAILURE_LIMIT = 5 // failed sign-ins per IP per minute
 export const CHECKOUT_LIMIT = 30 // order placements per IP per minute
+// Bug-report submissions per IP per minute (Phase 4, P4-M1 WP2). Report
+// submission stores free text, so churn is capped like checkout placements;
+// the hint/reveal paths stay under the global mutation backstop.
+export const REPORT_LIMIT = 30
 const WINDOW_SECONDS = 60
 
 /** Best-effort client IP: cf-connecting-ip, else the first x-forwarded-for hop. */

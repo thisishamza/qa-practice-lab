@@ -32,9 +32,12 @@ reproducible defects for controlled bug-hunt practice (see
 **no learner account persistence** yet (progress is not saved). No SQL playground, performance
 runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
 hints, structured bug reports with deterministic evaluation, and real progress tracking) is
-underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios) is implemented;
-the rest of Phase 4 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md)
-and is **not** implemented.
+underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios) is implemented, and
+P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — plus server-side hunt-attempt
+and structured bug-report persistence with a scoped 30/minute report rate limit) is implemented,
+reviewed and committed on the implementation branch; production is unchanged and still runs the pre-Phase-4
+schema. The rest of Phase 4 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+report evaluation (WP3) and everything after it is **not** implemented.
 
 ## What you can do now
 
@@ -183,12 +186,15 @@ src/server/staff.ts        Staff authorization guard (requireStaff; server-side 
 src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
 src/server/practice.ts     Practice-mode routes (/api/v1/practice/*) + the 20/IP/UTC-day hunt-start cap
+src/server/attempts.ts     Phase 4 attempt lifecycle + GET /practice/attempts (bounded history)
+src/server/reports.ts      Phase 4 structured bug-report validation + POST .../report
 src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
 src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
+src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0009)
+db/migrations/             D1 SQL migrations (0001..0010; production D1 is on 0001..0009)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -414,6 +420,40 @@ Bug-hunt mode (P3-M8):
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
 
+Phase 4 practice learning (P4-M1 WP2; API-only — nothing is rendered in the UI yet, and report
+evaluation lands in WP3):
+
+- `POST /api/v1/practice/hunts/:huntId/report` — submit a structured bug report. Body:
+  `{ title, environment, preconditions?, steps, expected, actual, severity, priority,
+  reproducibility? }` — `severity` ∈ `critical|high|medium|low`, `priority` ∈ `p1|p2|p3|p4`
+  (independent axes; never derived from each other), `reproducibility` ∈
+  `always|sometimes|once` (default `always`). All enums are matched case-insensitively and stored
+  lowercase. Validation: required fields, per-field length caps (title/environment 200,
+  preconditions 1000, steps 4000, expected/actual 2000), control-character rejection (newlines and
+  tabs are permitted inside the multi-line `steps`/`expected`/`actual`/`preconditions` only),
+  per-field `400` messages. The hunt id must match the registry (`404 hunt_not_found`;
+  `400` when malformed). Reports require a live practice session (`401 session_required`
+  otherwise) — hunt start mints one and opens the attempt; submission stamps
+  `customer_id` when signed in, otherwise the report stays guest-scoped. The attempt the report
+  attaches to is resolved server-side (the live `in_progress` attempt, else the latest attempt,
+  else a fresh one) and ids are never accepted from the client. Submissions are **rate limited to
+  30 per IP per minute** (`report:<iphash>`, only a SHA-256 hash of the IP is stored) with
+  `429 rate_limited` + `Retry-After` on overflow. `201` answers
+  `{ attempt, report }` — learner-safe: no attempt/report ids, no defect ids. Until WP3 lands,
+  `report.qualityScore` is a placeholder `0` and `report.feedback` an empty checklist; WP3
+  replaces this with the deterministic rule-based evaluation in the same request path.
+- `GET /api/v1/practice/hunts/:huntId/attempt` — the caller's current attempt for one registered
+  hunt: `{ status, hintsUsed, bestQualityScore, discovered, submittedAt }` where `status` is
+  `none|in_progress|submitted|revealed` (`none` when the caller has no attempt — the endpoint is
+  404-free), `hintsUsed` is 0–3. Forged hunt ids answer `404 hunt_not_found`.
+- `GET /api/v1/practice/attempts` — bounded history (newest first, ≤50) across hunts for this
+  session, plus customer-bound attempts when signed in. No internal ids. Empty `{ data: [] }`
+  without a session.
+- Hunt starts now also ensure exactly one live (`in_progress`) attempt per (session, hunt) —
+  idempotent under retries and concurrency (a partial unique index enforces it in D1). Attempts
+  cascade-delete with their practice session (orders precedent): guest progress is exactly as
+  durable as the session's 7-day TTL. The `/progress` page still shows labelled sample data.
+
 **The seven hunts (one defect each), wired to scenarios:**
 
 | Scenario | Hunt | Area |
@@ -543,6 +583,9 @@ How it was set up (and how to reproduce or re-deploy):
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
 2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009.
    Verified before applying: the remote database contained no application tables/data.
+   (Migration `0010_hunt_attempts.sql`, added in Phase 4 WP2, ships in the repository but has
+   NOT been applied to production; production remains `schema_version` 9 until the next approved
+   deployment.)
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
    step was required (verified via `/api/health` → `schemaVersion: "9"`).
@@ -563,9 +606,11 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 ## Known constraints
 
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
-  bug-hunt exercises (see above); there is no scoring and no saved progress; the progress page
-  shows labelled sample data and says so. Phase 4 (P4-M1 WP1 implemented; the rest planned)
-  addresses exactly this — see `docs/phase-4-learning-intelligence-plan.md`.
+  bug-hunt exercises (see above); hunt attempts and submitted bug reports now persist
+  server-side (session-scoped, API-only — there is no evaluation and nothing is rendered in the
+  UI yet); the progress page still shows labelled sample data and says so. Phase 4 (P4-M1 WP1
+  and WP2 implemented and committed on the branch; WP3 and the rest planned) addresses exactly this — see
+  `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
   PBKDF2 password digests and the session tokens are fixtures; there is no registration, password
@@ -583,8 +628,9 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   outlives the catalogue).
 - Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
-  anything), and there is no reveal/scoring flow yet — intended behaviour during an active hunt
-  is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
+   anything), and there is no reveal/scoring flow yet (attempt/report persistence exists but
+  reports are stored unevaluated placeholders until WP3) — intended behaviour during an active
+  hunt is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
   starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
   endpoints carry the rate limits described above; the limiter is a fixed-window approximation
   (counts are exact within a minute, bursts at the window boundary can briefly exceed the

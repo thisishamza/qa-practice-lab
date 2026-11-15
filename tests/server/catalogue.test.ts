@@ -10,11 +10,11 @@ function request(path: string) {
 describe('commerce migration and seed data', () => {
   const { sqlite } = createMigratedD1()
 
-  it('records schema version 7', () => {
+  it('records schema version 10', () => {
     const row = sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('9')
+    expect(row.value).toBe('10')
   })
 
   it('seeds eight categories, forty-two products and forty-two inventory rows', () => {
