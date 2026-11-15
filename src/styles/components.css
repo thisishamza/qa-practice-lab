@@ -622,11 +622,7 @@
 }
 
 .track-grid {
-  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
-}
-
-.track-grid-wide {
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
 .scenario-grid {
@@ -726,7 +722,6 @@
   line-height: 1.45;
 }
 
-.track-description,
 .scenario-summary,
 .guide-summary {
   color: var(--ink-muted);
@@ -734,36 +729,20 @@
   line-height: 1.55;
 }
 
-.track-meta {
+.track-meta-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem 1.1rem;
+  gap: 0.35rem;
+  align-items: baseline;
+  margin-top: auto;
   padding-top: 0.7rem;
   border-top: 1px solid var(--border);
-}
-
-.track-meta dt {
-  color: var(--ink-subtle);
+  color: var(--ink-muted);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.track-meta dd {
-  color: var(--ink);
-  font-size: var(--text-meta);
-  font-weight: var(--weight-medium);
   font-variant-numeric: tabular-nums;
-}
-
-.track-card-compact .track-description {
-  display: none;
-}
-
-.track-card-compact {
-  gap: 0.5rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 
@@ -1664,13 +1643,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero-panel {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .hero-aside {
-    max-width: 100%;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1701,7 +1673,6 @@
   }
 
   .track-grid,
-  .track-grid-wide,
   .scenario-grid,
   .guide-grid,
   .format-grid,

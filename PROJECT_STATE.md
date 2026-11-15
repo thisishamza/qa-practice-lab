@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations), M2 (shell, navigation, search, route management) and M3 (primitives and cards) are complete and verified. M4 (dashboard and tracks) has not started.** Phase 3 (commerce practice app) remains paused.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1–M4 are complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks). M5 (catalog and filters) has not started.** Phase 3 (commerce practice app) remains paused.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -220,6 +220,8 @@ Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `c
 `package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
 IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
 
+Redesign M4 changed `src/pages/DashboardPage.tsx` (zones rebuilt), `src/pages/TracksPage.tsx`, `src/features/tracks/TrackCard.tsx`, `src/pages/NotFoundPage.tsx` (`button-row`), and `src/styles/{pages,components}.css` (hero/quick-practice/track-grid-wide removed; new start-path, track-row, scenario-row styles). No content data, routes, or backend changed.
+
 Redesign M3 changed the shared primitives in `src/components/ui/` (new Button, IconButton, Tag, LevelMeter, Meta, FactList, StatTile; Badge/DomainBadges/StatCard removed), the three feature cards, the fact-list call sites in four pages, callout/progress/stat styles and card/button tokens in `components.css`, added `workspace.css` (scaffold only), and wired the two Reset-filters buttons to the new `Button`. It redesigned no page layouts; page-level restructures remain M4–M7.
 
 Redesign M2 changed the shell files (`AppShell`, `TopBar`, `Sidebar`, `MobileNav`,
@@ -234,6 +236,29 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M4: dashboard and tracks
+
+- **Checkpoint before this milestone:** all M3 work was verified and belonged to the milestone, so it was committed as **`c89ced0`** (`feat: redesign M3 primitives and cards`, 35 files, +901/−803). Nothing pushed. M1 `b84b210` and M2 `d77a446` untouched.
+- **Scope (as instructed):** dashboard, tracks listing, track cards/track discovery, and the dashboard's progress/activity sections. **Track detail pages were not redesigned** (navigation into them verified; they only received the M3 primitive adoption) — the approved audit assigns the track-detail rework to M4 but the explicit instruction enumerated dashboard/tracks/discovery only, so it was left out; flag if the audit's track-detail pass is wanted. Scenario catalog (M5), guides (M6), progress/practice pages (M7) untouched; no backend, no dependencies.
+- **Skill:** loaded at session start (M3 turn) and reused; focused `--domain ux` queries only (heading hierarchy, font scale). No new design system — direction already approved.
+- **Dashboard, removed:** gradient `.hero-panel` and availability aside, four stat tiles (including "Completed (demo)"), the "Testing categories" grid of dead-end links, the demo progress panel, the recent-activity panel, and the quick-practice panel. No remaining metrics imply persistence or progress.
+- **Dashboard, added:**
+  - `PageHeader` with `QA learning environment` eyebrow, h1 "Practise testing across the whole stack.", learner-outcome lede, and two CTAs (`Find a scenario` primary → `/scenarios`, `Browse tracks` secondary → `/tracks`).
+  - **Your start path** — three ordered steps with mono numerals and real content IDs: read the manual-testing guide → inspect the cart-totals scenario → review the API testing track. One inline honesty line below ("exercises are not runnable yet …").
+  - **Curriculum** — six compact track rows (single-tone icon, name, tagline, mono meta `Level · n exercises planned · n listed`, chevron) linking to the track detail pages, plus "All 12 tracks".
+  - **Scenario catalogue** — mono counts line (`24 scenarios · 12 tracks · 6 guides`), three recommended scenario rows (curated `recommendedScenarioIds`), each with `StatusTag` and difficulty/time meta, plus "Open the catalogue". No fake metrics anywhere on the page.
+- **Tracks listing:** header "Search the catalogue" action removed (top bar covers it); boxed "curriculum preview" callout replaced with one inline line (71 planned exercises; two representative placeholders; not runnable yet). `.track-grid` minimum 300 px → 3 columns at 1440, 2 at ≤1024/768, 1 at <600. `TrackCard` is compact by default: single-tone icon, `LevelMeter`, name link (the only link on the card), tagline, and a mono meta line (`n exercises planned · n listed`). The `compact` prop and card descriptions were removed; decorative per-track hues were already gone in M3.
+- **CSS:** `.hero-panel`, `.hero-copy`, `.hero-accent`, `.hero-points`, `.hero-aside*`, `.hero-actions`, `.quick-practice*` and `.track-grid-wide` deleted; new `.start-path-list`/`.start-step*`, `.track-row*`, `.catalogue-counts`, `.scenario-row*`, `.tracks-note`, `.dashboard-note` with matching `.track-row-meta` / `.catalogue-counts` inline-flex separators; ≤640 px rules hide row meta and stack scenario rows; responsive hero references removed. NotFoundPage's `.hero-actions` (class deleted) migrated to `.button-row`.
+- **Commands and results:**
+  - `npm run check` — **passed**: ESLint clean; all three TypeScript projects clean; 3 files / 30 tests passing.
+  - `npm run build` — passed. Final: JS **375.94 kB** (114.64 kB gzip), CSS **50.82 kB** (11.10 kB gzip). Versus M3: **−3.76 kB JS**, +0.63 kB CSS raw.
+  - Browser verification (Playwright/Chrome against `wrangler pages dev dist`): **121/121 checks pass** (all 11 routes × 375/768/1024/1440 — overflow, one `h1`, both themes, drawer, search deep link, duplicate link names = 0). Dashboard and tracks reviewed at 375/768/1024/1440 in light and dark (screenshots `m4-*.png` in `/tmp/opencode`, not in the repo). No console or page errors. 1024 px shows an ellipsized tagline on rows without overflow; 375 px wraps page-header CTAs under the lede (intended).
+- **Measured heights:** dashboard **1,708 px** at 1440 (Phase 2 was 3,120 px; audit target ~1,600 — missed by ~108 px, noted honestly) and **2,264 px** at 375 (was 6,739 px). Tracks **1,365 px** at 1440 (was 1,939 px) and **3,168 px** at 375 (12 stacked cards).
+- **Fixes during verification:** mono meta separators in `.track-row-meta` / `.catalogue-counts` lacked spacing (rendered as `INTERMEDIATE·8 …`); fixed with inline-flex + 0.45rem gaps. Stale `wrangler pages dev` instances on 8788/8789 from earlier sessions were killed so verification ran against the fresh build.
+- **Known limitations:** the three "start path" step 02 destination "In design"-labelled scenario opens the detail page (by design — status is shown there); demo progress still lives on `/progress` only (M7); track detail pages keep pre-M4 layout; no horizontal-overflow exception found; one start-path row arrow is top-aligned on ≤640 px by design.
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M5 — catalog, filters and scenario detail** from `docs/phase-2.5-ui-ux-audit.md` §11 (run `npm run check` first). Do not start M6 or Phase 3 in the same change.
 
 ### 2026-11-15 — Redesign M3: primitives and cards
 
@@ -479,4 +504,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management) and M3 (primitives and cards) are complete and verified, and M4 has not started.** Continue with **M4 — dashboard and tracks** only after explicit instruction, then proceed through M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management), M3 (primitives and cards) and M4 (dashboard and tracks) are complete and verified, and M5 has not started.** Continue with **M5 — catalog, filters and scenario detail** only after explicit instruction, then proceed through M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

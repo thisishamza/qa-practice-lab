@@ -35,7 +35,7 @@ export function NotFoundPage() {
           The link may be incomplete, or the page may not have been built yet. The
           learning tracks, scenario catalog, and guides are all available.
         </p>
-        <div className="hero-actions">
+        <div className="button-row">
           <Link className="button" to="/">
             Back to the dashboard
           </Link>
