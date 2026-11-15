@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, Outlet } from 'react-router-dom'
+import { useRouteManagement } from '../../lib/useRouteManagement'
 import { MobileNav } from './MobileNav'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -17,6 +18,10 @@ function readCollapsedPreference(): boolean {
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(readCollapsedPreference)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const returnFocusRef = useRef<HTMLElement | null>(null)
+
+  useRouteManagement()
 
   useEffect(() => {
     try {
@@ -31,34 +36,61 @@ export function AppShell() {
       return
     }
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [mobileOpen])
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)')
+
+    function handleBreakpointChange(event: MediaQueryListEvent) {
+      if (event.matches) {
         setMobileOpen(false)
       }
     }
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', handleKeyDown)
+    desktop.addEventListener('change', handleBreakpointChange)
 
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', handleKeyDown)
+    return () => desktop.removeEventListener('change', handleBreakpointChange)
+  }, [])
+
+  const openMobileNav = useCallback(() => {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : menuButtonRef.current
+
+    setMobileOpen(true)
+  }, [])
+
+  const closeMobileNav = useCallback((restoreFocus = true) => {
+    setMobileOpen(false)
+
+    if (restoreFocus) {
+      const target = returnFocusRef.current ?? menuButtonRef.current
+
+      window.requestAnimationFrame(() => target?.focus())
     }
-  }, [mobileOpen])
+  }, [])
 
   return (
     <div className={`app-shell${collapsed ? ' is-collapsed' : ''}`}>
-      <a className="skip-link" href="#main-content">
+      <a className="skip-link" href="#main-content" inert={mobileOpen || undefined}>
         Skip to main content
       </a>
 
       <TopBar
         mobileOpen={mobileOpen}
-        onOpenMobileNav={() => setMobileOpen(true)}
+        onOpenMobileNav={openMobileNav}
+        menuButtonRef={menuButtonRef}
+        inert={mobileOpen}
       />
 
-      <div className="app-body">
+      <div className="app-body" inert={mobileOpen || undefined}>
         <Sidebar
           collapsed={collapsed}
           onToggleCollapsed={() => setCollapsed((current) => !current)}
@@ -70,16 +102,13 @@ export function AppShell() {
           </div>
 
           <footer className="site-footer">
-            <p>
-              QA Practice Lab · built in verifiable phases. No AI service is required at
-              runtime.
-            </p>
-            <p className="footer-meta">Phase 2 · v0.2.0</p>
+            <p>QA Practice Lab · Preview build</p>
+            <Link to="/about">About this build</Link>
           </footer>
         </main>
       </div>
 
-      <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <MobileNav open={mobileOpen} onClose={closeMobileNav} />
     </div>
   )
 }

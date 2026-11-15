@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations — tokens, self-hosted fonts, base type, focus) is complete and verified. M2 has not started.** Phase 3 (commerce practice app) remains paused.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations) and M2 (shell, navigation, search, route management) are complete and verified. M3 has not started.** Phase 3 (commerce practice app) remains paused.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -190,8 +190,8 @@ qa-practice-lab/
 │   │   ├── guides/                    # GuideCard
 │   │   ├── system/                    # HealthStatus
 │   │   └── tracks/                    # TrackCard
-│   ├── lib/                           # catalog filtering, labels, navigation, theme hooks
-│   ├── pages/                         # 10 route-level pages (dashboard … not found)
+│   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
+│   ├── pages/                         # 11 route-level pages (dashboard … about, not found)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
 │   ├── shared/health.ts               # shared response type
 │   ├── styles/                        # tokens, base, layout, components, pages, global
@@ -208,7 +208,8 @@ qa-practice-lab/
 
 Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
 `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, and a
-catch-all 404.
+catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"), and nothing
+else.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -218,12 +219,44 @@ Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `c
 `package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
 IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
 
+Redesign M2 changed the shell files (`AppShell`, `TopBar`, `Sidebar`, `MobileNav`,
+`navigation.ts`, `layout.css`, `tokens.css` widths), added `src/lib/useRouteManagement.ts` and
+`src/pages/AboutPage.tsx`, added minimal `?q=` handling to `ScenariosPage`, and wrapped the
+breadcrumb current item instead of truncating it. It added no practice content, changed no
+scenario statuses, and did not redesign page bodies.
+
 Planned but intentionally not created yet: a commerce practice application, practice APIs,
 persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 `examples/playwright`, `examples/postman`, and `docs/guides` exports. Add them only when their
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M2: shell, navigation, search, route management
+
+- **Completed:** The second approved redesign milestone. Content, scenario statuses, and page bodies were not redesigned. All 24 scenarios remain non-runnable placeholders and demo progress remains labelled sample data. Git checkpoint `b84b210` holds the verified M1 state; M1 and M2 are committed on branch `feat/phase-2.5-redesign`, local `main` remains at `origin/main`, and nothing is pushed.
+- **Shell and navigation:** sidebar is 240 px (64 px collapsed), built on surface with 44 px rows, Learn (Overview, Tracks, Catalog, Guides) and Workspace (Practice, Progress) sections, and an ink 2 px active rule. The promo card, the environment pill, the fake search link, and the version/build footer were removed. The sidebar utility footer carries "About this build" and collapse; collapsed headings disappear and links gain `aria-label`/`title` instead of rendering "—". Nav labels were shortened to `Overview`/`Catalog` and Practice now precedes Progress.
+- **Top bar:** 60 px solid surface. Desktop search is a real `<form role="search">` with a labelled input, `/` shortcut (`aria-keyshortcuts`), clear control, and Enter submit to `/scenarios?q=…`. A search icon link and the menu trigger replace the field below 1024 px. Theme toggle remains in the top bar at all widths (the sidebar utility adds About and collapse only; no duplicate toggle).
+- **Catalog deep link:** `ScenariosPage` reads `?q=` on mount and re-syncs when it changes, updating only the query field. Full URL-driven filters, chips, sort, and the mobile filter drawer remain M5. Clearing search with the field control or Escape removes `q` (using `replace`) and resets results.
+- **Drawer accessibility:** the drawer is a labelled `role="dialog"` with `aria-modal`, a non-focusable backdrop, initial focus on close, Tab/Shift+Tab trapping, Escape handling, body scroll lock, and focus return for close/backdrop/Escape. Navigating from a drawer link closes without restoring focus so route focus management takes over. The top bar, app body, and skip link are `inert` while open. Resizing to ≥1024 px closes the drawer.
+- **Route management:** new `useRouteManagement` hook sets `history.scrollRestoration = 'manual'`, records scroll per history entry from a passive scroll listener, jumps to top instantly on PUSH/REPLACE, restores on POP, and focuses the page `h1` (adding `tabindex="-1"`, `preventScroll`) after pathname changes only. Reading the listener value instead of `window.scrollY` avoids saving a clamp caused by a shorter destination page; `behavior: 'instant'` avoids the global smooth-scroll animation. Route error boundaries remain M7.
+- **Footer, breadcrumbs, About:** footer is one learner-facing line plus the About link. Breadcrumb current items wrap rather than truncating at 46 ch. `/about` is a minimal learner-facing build-status page (what works, what is planned, no-AI note) so the new utility link has a real destination.
+- **Bug found and fixed during verification:** the first scroll-restoration implementation saved the destination page's clamped offset (195 px instead of 900 px). Fixed before final verification; Back now restores 900 px exactly in the probe.
+- **Files changed:** `src/components/layout/AppShell.tsx`, `TopBar.tsx`, `Sidebar.tsx`, `MobileNav.tsx`; `src/lib/navigation.ts`; `src/lib/useRouteManagement.ts` (new); `src/pages/AboutPage.tsx` (new); `src/pages/ScenariosPage.tsx` (minimal `?q=` only); `src/app/App.tsx`; `src/styles/layout.css`; `src/styles/components.css` (breadcrumb wrap); `src/styles/tokens.css` (top bar 60, sidebar 240/64, content max 1120). Documentation: `PROJECT_STATE.md`, `AGENTS.md`.
+- **Commands and verification:**
+  - `npm run check` — **passed**: ESLint clean, all three TypeScript projects clean, 3 test files / 30 tests passing.
+  - `npm run build` — passed: JS 380.28 kB (114.94 kB gzip), CSS 49.37 kB (11.35 kB gzip). Versus M1: **+6.55 kB JS, +0.81 kB CSS raw**. No new runtime dependency.
+  - Playwright/Chrome against the dev server at 1440/1024/768/375: **48/48 primary checks passed** with no console or page errors. Covered deep-link submit from `/guides`, direct `/scenarios?q=`, filter sync, clear, Escape clear/blur, `/` focus, clear/reset to 24 cards, route `h1` focus, Back scroll restore (900 px), About/footer, both themes, the 1024 sidebar/drawer boundary, 375/768 navigation, drawer focus trap/inert/scroll lock/focus return/backdrop, nav-link close without focus return, and horizontal overflow.
+  - Supplemental sweep: **55/55 route × width overflow checks passed** across all 11 routes at 320/375/768/1024/1440. A 12-stop keyboard walk showed a visible 2 px focus ring on every stop except the search input, whose visible focus indicator is the 3 px ring on its container (intentional); the drawer close target measures 44 px (44.000015 px subpixel). 63/65 supplemental assertions passed with those two harness-expectation differences only. Screenshots for light/dark 1440/375 and tablet/mobile drawer live in `/tmp/opencode`, not in the repo.
+  - Breakpoint/resize, `inert`, body overflow restore, and desktop-drawer auto-close were checked in the browser. Reduced motion continues to remove the drawer animation through the existing global rule.
+- **Outstanding / deliberately deferred:**
+  - Catalog filters other than `q` are still component state; Back/Forward and deep links do not yet preserve track/difficulty/mode/status/sort. M5 owns full URL state, applied chips, and the mobile filter drawer.
+  - Route error boundary and route-level error UI remain M7. Focus on the page `h1` is the current mechanism; no live-region route announcement beyond the document title.
+  - Closing the drawer by resizing across 1024 px does not return focus to the now-hidden menu trigger; focus falls back to the document. This is an edge case accepted for M2.
+  - No browser tests are committed; M8 owns Playwright + axe coverage and may promote the `/tmp` probes.
+  - M1's deferred items (component-level type sizes, badges/card styling, licences, fallback metrics) remain for M3–M8.
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M3 — primitives and cards** from `docs/phase-2.5-ui-ux-audit.md`, run `npm run check` first, and do not start M4 in the same change.
 
 ### 2026-11-15 — Redesign M1: design foundations (tokens, fonts, base type, focus)
 
@@ -413,4 +446,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color) is complete and verified, and M2 has not started.** Continue with **M2 — shell, navigation, search, route management** only after explicit instruction, then proceed through M3 primitives → M4 dashboard/tracks → M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color) and M2 (shell, navigation, search, drawer, route management) are complete and verified, and M3 has not started.** Continue with **M3 — primitives and cards** only after explicit instruction, then proceed through M4 dashboard/tracks → M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

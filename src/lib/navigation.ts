@@ -10,20 +10,20 @@ export interface NavItem {
 
 export const primaryNav: NavItem[] = [
   {
-    label: 'Dashboard',
+    label: 'Overview',
     to: '/',
     icon: 'home',
-    description: 'Overview, tracks, and recent activity',
+    description: 'What to do next in the lab',
     end: true,
   },
   {
-    label: 'Learning tracks',
+    label: 'Tracks',
     to: '/tracks',
     icon: 'tracks',
     description: 'Twelve testing disciplines',
   },
   {
-    label: 'Scenario catalog',
+    label: 'Catalog',
     to: '/scenarios',
     icon: 'scenarios',
     description: 'Search and filter every exercise',
@@ -35,16 +35,16 @@ export const primaryNav: NavItem[] = [
     description: 'Concepts, examples, and walkthroughs',
   },
   {
+    label: 'Practice',
+    to: '/practice',
+    icon: 'practice',
+    description: 'Runtime status and upcoming targets',
+  },
+  {
     label: 'Progress',
     to: '/progress',
     icon: 'progress',
     description: 'Demo progress and learning goals',
-  },
-  {
-    label: 'Practice environment',
-    to: '/practice',
-    icon: 'practice',
-    description: 'Runtime status and upcoming targets',
   },
 ]
 

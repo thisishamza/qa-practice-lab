@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
+import { AboutPage } from '../pages/AboutPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { GuidesPage } from '../pages/GuidesPage'
 import { GuideDetailPage } from '../pages/GuideDetailPage'
@@ -27,6 +28,7 @@ export function App() {
             <Route path="guides/:guideId" element={<GuideDetailPage />} />
             <Route path="progress" element={<ProgressPage />} />
             <Route path="practice" element={<PracticePage />} />
+            <Route path="about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

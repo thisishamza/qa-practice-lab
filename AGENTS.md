@@ -3,7 +3,7 @@
 ## Current repo state
 
 - **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented.** Phase 3 and later are not started.
-- **The approved Phase 2.5 redesign is in progress: M1 is complete and verified.** The audit/milestone plan lives in `docs/phase-2.5-ui-ux-audit.md`; read it before UI work. M1 delivered the three-layer token system, self-hosted IBM Plex Sans + JetBrains Mono, 16 px base type with nine roles, token focus rings, workspace scoping, and theme-color sync. **M2 (shell/navigation/search) has not started.**
+- **The approved Phase 2.5 redesign is in progress: M1 and M2 are complete and verified.** The audit/milestone plan lives in `docs/phase-2.5-ui-ux-audit.md`; read it before UI work. M1 delivered the three-layer token system, self-hosted IBM Plex Sans + JetBrains Mono, 16 px base type with nine roles, token focus rings, workspace scoping, and theme-color sync. **M2 delivered the shell/navigation/search/route-management pass: 240/64 px sidebar with Learn/Workspace groups, solid 60 px top bar with real `?q=` catalog search, responsive drawer with focus trap + `inert` + return focus, scroll restoration and `h1` route focus, breadcrumb wrapping, an `/about` utility page, and a one-line footer. M3 (primitives and cards) has not started.**
 - Stack: React 19 + TypeScript + Vite 7, React Router, Hono on Cloudflare Pages Functions, Cloudflare D1, Wrangler.
 - The interface is real; the exercises are not. All 24 catalog scenarios are non-runnable placeholders, and progress/activity data on the dashboard and progress page is labelled demo data.
 - No commerce app, auth, bug-hunt mode, SQL playground, performance runner, or security lab exists yet. Do not infer them from the roadmap.
@@ -32,9 +32,9 @@
 
 ## Frontend structure
 
-- Routes live in `src/app/App.tsx`: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`, `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, plus a 404 fallback. All render inside `AppShell`.
+- Routes live in `src/app/App.tsx`: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`, `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, `/about`, plus a 404 fallback. All render inside `AppShell`.
 - Typed learning content lives in `src/data` (`types.ts`, `tracks.ts`, `scenarios.ts`, `guides.ts`, `categories.ts`, `demo.ts`). Update content there, not inside page components.
-- Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
+- Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, `useRouteManagement.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
 - Styling is hand-written CSS in `src/styles/{tokens,base,layout,components,pages}.css`, imported by `global.css`. There is no Tailwind. Prefer design tokens, and be careful with cascade order: a later, equal-specificity rule wins across files.
 - `tokens.css` is layered: primitives → semantic → temporary compatibility aliases. Light is the default; `[data-theme="dark"]` uses the workspace palette; `[data-surface="workspace"]` applies it to a subtree. Custom properties resolve where declared, so compatibility aliases are redeclared inside the workspace scope — keep that duplication if you add aliases.
 - Fonts are self-hosted through `@fontsource-variable/*` devDependencies, imported in `src/main.tsx` before `global.css`. The family names end in `" Variable"`; keep them identical in `tokens.css` or the font silently falls back. Fonts use `font-display: swap`; there are no preload links because Vite emits hashed URLs.
@@ -75,6 +75,6 @@ For designing, building, reviewing, or fixing interfaces — starting with Phase
 
 ## Workflow
 
-- Work on one phase/vertical slice at a time. **M1 of the approved redesign is complete and verified; the next task is M2 (shell, navigation, search, route management) only after explicit instruction**, per `docs/phase-2.5-ui-ux-audit.md`. Phase 3 (commerce practice app) is paused until the approved redesign milestones are complete.
+- Work on one phase/vertical slice at a time. **M1 and M2 of the approved redesign are complete and verified; the next task is M3 (primitives and cards) only after explicit instruction**, per `docs/phase-2.5-ui-ux-audit.md`. Phase 3 (commerce practice app) is paused until the approved redesign milestones are complete.
 - For any UI/design/review work, first invoke the `ui-ux-pro-max` skill via the `skill` tool — see "UI/UX Pro Max skill" above. Do not start Phase 3 interface work without it.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.

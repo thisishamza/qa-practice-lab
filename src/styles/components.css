@@ -284,12 +284,10 @@
 }
 
 .breadcrumbs [aria-current="page"] {
-  max-width: 46ch;
-  overflow: hidden;
+  max-width: 100%;
   color: var(--ink);
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .meta-row {

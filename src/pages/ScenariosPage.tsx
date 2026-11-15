@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   defaultScenarioFilters,
   filterScenarios,
@@ -16,7 +17,21 @@ import { ScenarioCard } from '../features/catalog/ScenarioCard'
 export function ScenariosPage() {
   useDocumentTitle('Scenario catalog')
 
-  const [filters, setFilters] = useState<ScenarioFilters>(defaultScenarioFilters)
+  const [searchParams] = useSearchParams()
+  const urlQuery = searchParams.get('q') ?? ''
+  const [filters, setFilters] = useState<ScenarioFilters>(() => ({
+    ...defaultScenarioFilters,
+    query: urlQuery,
+  }))
+  const [syncedQuery, setSyncedQuery] = useState(urlQuery)
+
+  if (urlQuery !== syncedQuery) {
+    setSyncedQuery(urlQuery)
+    setFilters((current) =>
+      current.query === urlQuery ? current : { ...current, query: urlQuery },
+    )
+  }
+
   const filtered = filterScenarios(scenarios, filters)
 
   return (

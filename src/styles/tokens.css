@@ -217,12 +217,12 @@
   --control-h-sm: 2.25rem;
   --card-pad: var(--space-5);
   --panel-gap: var(--space-4);
-  --topbar-h: 64px;
+  --topbar-h: 60px;
   --topbar-height: var(--topbar-h);
-  --sidebar-w: 264px;
+  --sidebar-w: 240px;
   --sidebar-width: var(--sidebar-w);
-  --sidebar-width-collapsed: 76px;
-  --content-max: 1180px;
+  --sidebar-width-collapsed: 64px;
+  --content-max: 1120px;
 }
 
 /* -------------------------------------------------------------------------
