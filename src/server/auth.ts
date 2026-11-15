@@ -70,6 +70,14 @@ import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
 } from './session'
+import {
+  clientIp,
+  consumeRateLimit,
+  peekRateLimit,
+  resetRateLimit,
+  sha256Hex,
+  LOGIN_FAILURE_LIMIT,
+} from './rateLimit'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_LIST_LIMIT = 50
@@ -121,6 +129,28 @@ function parseLoginBody(raw: unknown): LoginBody | null {
 }
 
 authRoutes.post('/auth/login', async (c) => {
+  // Brute-force protection first: five failed sign-ins per IP per UTC minute
+  // are allowed; beyond that the PBKDF2 step is skipped entirely and the
+  // request is rejected with 429. A successful sign-in clears the budget.
+  // Local development without a visible IP is not capped. The raw IP is
+  // never stored — only a SHA-256 hash in rate_limit_buckets.
+  const ip = clientIp(c)
+  const ipHash = ip ? await sha256Hex(ip) : null
+  if (ipHash) {
+    const peek = await peekRateLimit(c.env.DB, 'login', ipHash)
+    if (peek.count >= LOGIN_FAILURE_LIMIT) {
+      c.header('Retry-After', String(peek.retryAfterSeconds))
+      return c.json(
+        {
+          error: 'login_rate_limited',
+          message:
+            'Too many failed sign-ins from this network. Wait a minute and try again with the same training account.',
+        },
+        429,
+      )
+    }
+  }
+
   const raw = await c.req.json().catch(() => null)
   const body = parseLoginBody(raw)
   if (!body) {
@@ -129,26 +159,6 @@ authRoutes.post('/auth/login', async (c) => {
       400,
       'invalid_request',
       'Provide a valid email address and the synthetic account password.',
-    )
-  }
-
-  // Resolve (or lazily mint) the practice session this customer session will
-  // be bound to. Login therefore always leaves the browser with a live pair
-  // of cookies.
-  const { practiceSessionId, newSessionCookie } = await resolveOrCreatePracticeSession(c)
-  const secure = isSecureRequest(c.req.url)
-  if (newSessionCookie) {
-    setCookie(
-      c,
-      SESSION_COOKIE,
-      newSessionCookie,
-      {
-        httpOnly: true,
-        path: '/',
-        sameSite: 'Strict' as const,
-        maxAge: SESSION_TTL_SECONDS,
-        secure,
-      },
     )
   }
 
@@ -163,6 +173,10 @@ authRoutes.post('/auth/login', async (c) => {
     customer?.password_hash ?? DUMMY_PASSWORD_HASH,
   )
   if (!customer || !passwordOk) {
+    // Only failures consume the budget; a successful sign-in resets it below.
+    if (ipHash) {
+      await consumeRateLimit(c.env.DB, 'login', ipHash, LOGIN_FAILURE_LIMIT)
+    }
     return errorJson(
       c,
       401,
@@ -176,6 +190,30 @@ authRoutes.post('/auth/login', async (c) => {
       403,
       'account_suspended',
       'This synthetic training account is suspended. Try one of the other demo accounts.',
+    )
+  }
+  if (ipHash) {
+    await resetRateLimit(c.env.DB, 'login', ipHash)
+  }
+
+  // Resolve (or lazily mint) the practice session this customer session will
+  // be bound to. Done only on success, so a failed sign-in never mints a
+  // throwaway session — login always leaves the browser with a live pair of
+  // cookies on success.
+  const { practiceSessionId, newSessionCookie } = await resolveOrCreatePracticeSession(c)
+  const secure = isSecureRequest(c.req.url)
+  if (newSessionCookie) {
+    setCookie(
+      c,
+      SESSION_COOKIE,
+      newSessionCookie,
+      {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'Strict' as const,
+        maxAge: SESSION_TTL_SECONDS,
+        secure,
+      },
     )
   }
 

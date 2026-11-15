@@ -59,7 +59,8 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M5 (done) | `GET /api/v1/auth/accounts` · `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` · `GET /api/v1/account` · `GET /api/v1/account/orders` · `GET /api/v1/account/orders/:reference` | Synthetic auth + protected account |
 | M6 (implemented) | `GET /api/v1/admin/inventory` · `PATCH /api/v1/admin/inventory/:productId` (staff role) · `POST /api/v1/orders/:reference/cancel` (stock re-check inside checkout) | Inventory |
 | M7 (implemented) | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
-| M8 (implemented) | `GET /api/v1/practice/hunts` (learner-safe list, `{ id, title, summary, scenarioId }`) — hunt starts softly capped at 20/IP/UTC day (429 `hunt_start_cap_reached` + `Retry-After`); `hunt_start_caps` stores only a SHA-256 of the IP | Hunt catalogue + caps |
+| M8 (implemented) | `GET /api/v1/practice/hunts` (learner-safe list, `{ id, title, summary, scenarioId }`) — hunt starts capped at 20/IP/UTC day (429 `hunt_start_cap_reached` + `Retry-After`); `hunt_start_caps` stores only a SHA-256 of the IP | Hunt catalogue + caps |
+| M9 (implemented) | `POST /api/v1/admin/maintenance/sweep` (staff-only); `POST /api/v1/checkout` and `POST /api/v1/auth/login` carry their own per-IP budgets (30 placements/min; 5 failures/min); all mutating `/api/v1` endpoints carry a 120/min global backstop; new `rate_limit_buckets` table (migration 0009, SHA-256 IP hash, fixed UTC-minute windows) | Maintenance + rate limits |
 
 All mutating endpoints require an anonymous practice session cookie; M5 adds synthetic
 bearer-style auth on top. Nothing here is exposed without the session cookie.
@@ -97,8 +98,9 @@ open-ended defect toggling, defects in clean mode.
   (`mode='clean'`, `hunt_id=NULL`) — the learner always lands in a known-good state with
   cart/orders intact (as built in M7; see the M7 deviation note below about why the
   expire+fresh-session sketch was not used).
-- **Abuse controls:** hunt starts capped per IP per day; session rows swept on expiry (M9);
-  no admin/teacher activation UI in Phase 3; rate limits on cart/checkout/hunt endpoints.
+- **Abuse controls:** hunt starts capped per IP per day (exact, atomic); session rows swept
+  on expiry and by the maintenance sweep; no admin/teacher activation UI in Phase 3;
+  rate limits on mutating/checkout/login endpoints.
 - **Docs:** every defect documents Expected vs Actual, reproduction steps, and the fix in
   `docs/bug-hunt-catalogue.md`. Learner-facing reveal stays minimal until the scenario/reveal
   flow lands (Phase 4+); Phase 3 hunts are clearly labelled practice.
@@ -348,15 +350,60 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
   passes one `rejectExactStock` flag into both `blockingProblems` callers so they cannot
   disagree).
 
-### P3-M9 — Hardening, reset & Phase 3 exit
+### P3-M9 — Hardening, reset & Phase 3 exit *(implemented; see PROJECT_STATE §11/§12 and docs/phase-3-exit-audit.md)*
 
-- **Purpose:** ship-quality pass and merge preparation.
-- **Scope:** session expiry sweep (delete expired sessions/carts/orders), rate limits on
-  mutating endpoints, reset/reseed script (`npm run db:reset:local`), README/docs/roadmap
-  final, a11y + responsive audit of the new zone, PRODUCTION smoke checklist, PROJECT_STATE
-  Phase 3 exit log, merge proposal to `main`.
-- **Acceptance:** fresh-clone quick start works; all gates green; exit criteria met for the
-  Phase 3 roadmap row ("UI scenarios can be completed and known defects are reproducible").
+- **Scope (as built):**
+  1. **Bounded cleanup sweeps** (`src/server/maintenance.ts`): expired `customer_sessions`,
+     expired `practice_sessions` (cascades carts/cart_items/orders/order_items/
+     checkout_idempotency/bound customer_sessions), day-old `hunt_start_caps`, and
+     `rate_limit_buckets` older than two hours — each table ≤100 rows per call via subquery-
+     bounded DELETE; idempotent; audit trail (`inventory_adjustments`, `order_cancellations`)
+     never deleted. Exposed as **`POST /api/v1/admin/maintenance/sweep`** (staff-only,
+     `requireStaff`) and as **`npm run db:cleanup:local`** (local SQL equivalent, `--local`
+     only). Pages Functions cannot register a cron (that needs a Workers project, deliberately
+     not added); after deployment an operator invokes the staff sweep on any cadence. Lazy
+     inline deletion on contact (existing) remains the first line of defence.
+  2. **Rate limits** (`src/server/rateLimit.ts`, migration `0009_rate_limit_buckets.sql`,
+     fixed windows aligned to the unix minute): `mutate:<iphash>` — 120 mutating
+     requests/minute (global backstop, applies before any mutating `/api/v1` handler);
+     `login:<iphash>` — 5 failed sign-ins/minute (PBKDF2 skipped once exhausted; reset on
+     success; 429 `login_rate_limited` + `Retry-After`); `checkout:<iphash>` — 30 order
+     placements/minute, every attempt counts (429 `rate_limited`); hunt-start cap rewritten
+     to **exact atomic guarded increments** (no overshoot, no reset-on-write needed for the
+     common case). Only SHA-256 IP hashes are stored; buckets swept after two hours. Limits
+     skipped entirely when no client IP is visible (local development). A deliberate
+     deviation from "5/min login" as sketched in M5: resetting the login budget on success
+     (not counting successful signs-ins) so a legitimate learner is never locked out by
+     their own typos spread across accounts.
+  3. **Request body cap:** 32 KB `Content-Length` limit on `/api` (413 `payload_too_large`),
+     checked before any parsing.
+  4. **Local demo reset** (`npm run db:reset:local` → `db/maintenance/reset-local.sql`,
+     `--local` only): deletes ALL local learner state and restores the seed inventory
+     quantities; separate from — and even more destructive than — the non-destructive
+     Clean Mode reset. Documented as never-remote.
+  5. **Exit audit** (`docs/phase-3-exit-audit.md`): milestones/commits, schema, capabilities,
+     security controls and their limitations, inventory/order accounting guarantees,
+     bug-hunt engine, retention/cleanup policy, rate-limit limitations, test/build/browser
+     results, known issues, Cloudflare deployment requirements, exit criteria verdict.
+  6. **Frontend audit:** no new defects found (fetch/error states, idempotency-key rotation,
+     expiry handling and both-theme layouts were re-checked; see §11 log). No UI was
+     redesigned or extended.
+- **Build deviations from the sketched scope:**
+  1. The plan sketched a generic "rate limits on mutating endpoints"; the as-built split is
+     a generous global backstop (120/min) plus tight scoped budgets (login 5 failures/min,
+     checkout 30/min, hunt 20/day). A flat 60/min global cap was rejected as too tight for
+     fast legitimate clicking; scoped budgets do the real work.
+  2. A scheduled cron trigger was **not** added: Pages Functions cannot register one, and a
+     Workers cron would be a new service the phase forbids. The sweep is explicit
+     (staff-only endpoint) plus lazy inline deletion. Documented in README and the audit.
+  3. "PRODUCTION smoke checklist" and "merge proposal to `main`" are reduced to documentation
+     in the exit audit: deployment and merge are the user's explicit decisions, not this
+     milestone's; no remote resource was created.
+  4. The "a11y + responsive audit of the new zone" remains as documented both-theme ×
+     4-width verification performed interactively; no automated a11y tooling was added.
+- **Acceptance:** fresh-clone quick start works; all gates green (342 tests, lint, typecheck,
+  build); both migration paths (fresh; 0001–0008 → 0009) tested; browser probe 25/25; exit
+  criteria met — see `docs/phase-3-exit-audit.md`.
 
 ## 6. Scenario mapping (initial sketch)
 
@@ -379,7 +426,7 @@ unchanged except for the additive `hunt_start_caps` table (migration 0008).
   negligible against 5 GB.
 - Reads/writes per learner action: ≤ 5 D1 statements per request; list endpoints paginated;
   no N+1 (joins aliased in M1).
-- No cron/queues/Workers in Phase 3; M7 hunt starts create a practice-session row only when the browser has no live one (otherwise the row is re-stamped).
+- No cron/queues/Workers in Phase 3; hunt starts create a practice-session row only when the browser has no live one (otherwise the row is re-stamped). Rate-limit writes are one upsert per mutating request; maintenance sweeps are explicit/bounded, not per-request.
 - Pages builds unaffected (static bundle + Functions). No remote resources are created or
   migrated in this phase — everything is local until deployment is explicitly approved.
 

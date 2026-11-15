@@ -14,7 +14,7 @@ describe('commerce migration and seed data', () => {
     const row = sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('8')
+    expect(row.value).toBe('9')
   })
 
   it('seeds eight categories, forty-two products and forty-two inventory rows', () => {

@@ -69,6 +69,7 @@ import {
 import type { AppEnv } from './app'
 import { isDefectActive } from './defects'
 import { resolveCustomerContext } from './customer'
+import { clientIp, consumeRateLimit, sha256Hex, CHECKOUT_LIMIT } from './rateLimit'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -88,7 +89,7 @@ const MAX_LIST_LIMIT = 50
 
 function errorJson(
   c: Context<AppEnv>,
-  status: 400 | 404 | 409 | 422 | 500,
+  status: 400 | 404 | 409 | 422 | 429 | 500,
   error: string,
   message: string,
   extra?: Record<string, unknown>,
@@ -553,6 +554,25 @@ checkoutRoutes.get('/checkout', async (c) => {
 })
 
 checkoutRoutes.post('/checkout', async (c) => {
+  // Mutation abuse control: cap order placements per IP per UTC minute.
+  // Counts every attempt (including invalid payloads) so malformed-traffic
+  // churn is bounded too; the global mutation cap still applies on top.
+  // Local development without a visible IP is not capped.
+  const ip = clientIp(c)
+  const ipHash = ip ? await sha256Hex(ip) : null
+  if (ipHash) {
+    const decision = await consumeRateLimit(c.env.DB, 'checkout', ipHash, CHECKOUT_LIMIT)
+    if (!decision.allowed) {
+      c.header('Retry-After', String(decision.retryAfterSeconds))
+      return errorJson(
+        c,
+        429,
+        'rate_limited',
+        'Too many orders were attempted from this network. Wait a minute and try again.',
+      )
+    }
+  }
+
   // Defect activation is resolved per request from the caller's session.
   const exactStockRejected = await isDefectActive(c, 'INVENTORY-001')
   const skipNameCheck = await isDefectActive(c, 'CHECKOUT-001')

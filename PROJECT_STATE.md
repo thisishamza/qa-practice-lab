@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth, staff restock, order cancellation), P3-M7 (bug-hunt engine v1, mode banner + `/practice` hunt controls) and P3-M8 (bug-hunt defect set & scenario wiring — seven hunts/defects, hunt→scenario wiring, `GET /api/v1/practice/hunts`, local bug-report export, soft per-IP daily hunt-start cap) are implemented and verified; P3-M9 is planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth, staff restock, order cancellation), P3-M7 (bug-hunt engine v1, mode banner + `/practice` hunt controls), P3-M8 (bug-hunt defect set & scenario wiring — seven hunts/defects, hunt→scenario wiring, `GET /api/v1/practice/hunts`, local bug-report export, 20/IP/day hunt-start cap, exact atomic since M9) and P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) are implemented and verified. The exit audit is `docs/phase-3-exit-audit.md`; deployment (Cloudflare) and merging to `main` remain user decisions — nothing is pushed or deployed. Phase 4 has not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -146,7 +146,7 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 3. Commerce practice app | Synthetic catalog/cart/checkout, clean mode, bug-hunt mode, reset | UI scenarios can be completed and known defects are reproducible |
 
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
-sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
+sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status and `docs/phase-3-exit-audit.md` for the audit.
 P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth)
 and P3-M7 (bug-hunt engine v1) are implemented and verified on that branch.
@@ -174,7 +174,9 @@ qa-practice-lab/
 ├── README.md
 ├── docs/
 │   ├── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
-│   └── phase-3-commerce-practice-plan.md  # Phase 3 plan: milestones P3-M1..P3-M9, bug-hunt engine design
+│   ├── phase-3-commerce-practice-plan.md  # Phase 3 plan: milestones P3-M1..P3-M9, bug-hunt engine design
+│   ├── bug-hunt-catalogue.md             # internal maintainer registry: Expected vs Actual per defect
+│   └── phase-3-exit-audit.md             # P3-M9 exit audit (milestones, schema, security, cleanup, limits)
 ├── package.json / package-lock.json   # v0.2.0
 ├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
@@ -213,7 +215,10 @@ qa-practice-lab/
 │   ├── pages/                         # route-level pages (dashboard … about, shop, shop product,
 │   │                                  # cart, checkout, orders confirmation, login, account,
 │   │                                  # account orders, account order detail, admin inventory (staff), 404)
-│   ├── server/app.ts                  # testable Hono app, basePath /api
+│   ├── server/app.ts                  # testable Hono app, basePath /api; body-size guard (413),
+│   │                                  # global mutation rate limit, no-store/nosniff headers
+│   ├── server/rateLimit.ts            # P3-M9 fixed-window limiter (login/checkout/mutate scopes)
+│   ├── server/maintenance.ts          # P3-M9 bounded cleanup sweep + staff-only sweep endpoint
 │   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search; hunts CATALOGUE-001/002)
 │   ├── server/cart.ts                 # Phase 3 session cart routes (/api/v1/cart)
 │   ├── server/checkout.ts             # Phase 3 checkout & order routes (/api/v1/checkout, /api/v1/orders)
@@ -225,7 +230,7 @@ qa-practice-lab/
 │   ├── server/staff.ts                # P3-M6 requireStaff guard (401/403 staff_required; role from DB only)
 │   ├── server/customer.ts             # P3-M5 customer sessions (mpl_customer cookie, hashed tokens,
 │   │                                  # practice-session binding, suspended handling)
-│   ├── server/practice.ts             # P3-M7 practice-mode routes + P3-M8 hunts list, 20/IP/day soft cap
+│   ├── server/practice.ts             # P3-M7 practice-mode routes + P3-M8 hunts list, exact 20/IP/UTC-day cap
 │   ├── server/hunts.ts                # P3-M7→M8 hunt registry (code, not data; scenarioId wiring)
 │   ├── server/defects.ts              # P3-M7→M8 defect registry + isDefectActive() (server-resolved)
 │   ├── shared/health.ts               # shared response type
@@ -234,10 +239,11 @@ qa-practice-lab/
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
-│   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
-│                                      # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql,
-│                                      # 0006_inventory_depth.sql, 0007_bug_hunt.sql,
-│                                      # 0008_hunt_start_caps.sql
+│   ├── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
+│   │                                  # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql,
+│   │                                  # 0006_inventory_depth.sql, 0007_bug_hunt.sql,
+│   │                                  # 0008_hunt_start_caps.sql, 0009_rate_limit_buckets.sql
+│   └── maintenance/                   # P3-M9 local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 ├── public/
 │   └── favicon.svg
 └── tests/
@@ -258,6 +264,9 @@ qa-practice-lab/
     │                                  # reset, idempotency, guest+account compatibility, forged ids
     ├── server/hunt-set.test.ts        # P3-M8 defect set: both branches per defect, whole-set reset,
     │                                  # two-learner isolation, per-IP daily cap, hunt catalogue
+    ├── server/hardening.test.ts       # P3-M9: migration 0009 (fresh + upgrade paths), body-size
+    │                                  # guard, rate limits (mutate/login/checkout), sweep authz
+    │                                  # + bounded idempotent deletion, hunt cap atomicity
     ├── practice/api.test.ts           # P3-M7 browser client (stubbed fetch)
     ├── lib/checkout.test.ts           # checkout form validation
     └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
@@ -320,6 +329,93 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M9: hardening, reset & Phase 3 exit audit
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `7996c98` (P3-M8), tree
+  clean; `main` untouched; nothing pushed. Changes land in the milestone commit at the end of
+  this turn (`feat: harden phase 3 and complete exit audit`; hash in the final report).
+- **Audit findings (fixed):** (1) no rate limits anywhere except the soft hunt-start cap, and
+  that cap could overshoot under concurrency and leak stale-day rows past the bounded delete;
+  (2) login had zero brute-force protection — the plan deferred the 5/min/IP limit to M9 and
+  it was never built; (3) failed logins minted a throwaway practice session before
+  verification; (4) expired sessions/customer-sessions/cap/bucket rows were deleted only
+  lazily, never boundedly; (5) no request body-size guard on mutations; (6) no local demo
+  reset script (`db:reset:local` required by the plan); (7) expired `customer_sessions` from
+  vanished practice sessions were only deleted on contact; (8) frontend fetch/error handling
+  re-audited — no new defects found (loading/error/empty/expiry states, idempotency-key
+  rotation, suspended-account handling all correct); no UI behaviour changed.
+- **Migration `db/migrations/0009_rate_limit_buckets.sql` (additive, applied locally,
+  `schema_version` → 9):** `rate_limit_buckets(key, window_start, count)` (PK `(key,
+  window_start)`, `count >= 0`, index on `window_start`). `key` = `<scope>:<SHA-256 IP>`.
+  One row per scope/IP/UTC-minute window; swept after two hours.
+- **`src/server/rateLimit.ts` (new):** fixed-window limiter with one atomic
+  `INSERT … ON CONFLICT DO UPDATE … RETURNING` per consume (one D1 statement, no per-request
+  prune); `clientIp`/`sha256Hex` shared; `peekRateLimit`/`resetRateLimit` for the login
+  budget. Scopes: `mutate` (global backstop, **120/min** per IP — deliberate: 60 was too
+  tight for the legitimate ~71 mutating calls a hunt-cap test session issues in a minute;
+  scoped budgets do the real work), `login` (**5 failed sign-ins/minute**, PBKDF2 skipped
+  once exhausted, budget cleared on success, 429 `login_rate_limited` + `Retry-After`),
+  `checkout` (**30 placements/minute**, every attempt counts, 429 `rate_limited`). No visible
+  IP (local dev) → limiter skipped entirely. Mounted as middleware in `app.ts` for all
+  mutating `/api/v1` requests.
+- **Hunt-start cap made exact:** `consumeHuntStart` rewritten — guarded
+  `UPDATE … WHERE starts < 20` (fast path, one statement) → single atomic upsert that inserts
+  or resets a stale-day row → final guarded bump. Cannot overshoot; a pre-existing stale-day
+  row is correctly reset instead of capping the IP forever; day-old rows pruned ≤100/call.
+- **Login flow restructured (`auth.ts`):** 429 check first (before any PBKDF2), practice
+  session minted only on success (failed brute force no longer creates throwaway sessions),
+  `403 account_suspended` unchanged, success clears the failure budget.
+- **`src/server/maintenance.ts` (new):** `sweepExpiredData(db, { now?, limit? })` — bounded
+  (≤100/table) subquery-DELETE of expired `customer_sessions`, expired `practice_sessions`
+  (cascades carts/items/orders/items/idempotency/bound customer sessions), day-old
+  `hunt_start_caps`, two-hour-old `rate_limit_buckets`. Idempotent; never touches
+  `inventory_adjustments`/`order_cancellations` (audit/exactly-once markers), active sessions,
+  catalogue or customer fixtures. Exposed as **`POST /api/v1/admin/maintenance/sweep`**
+  (staff-only via `requireStaff`; Pages Functions have no cron — operator-invoked) and as
+  **`npm run db:cleanup:local`** (local SQL equivalent, `--local`). **`npm run db:reset:local`**
+  (`db/maintenance/reset-local.sql`) restores the seed inventory and deletes ALL local
+  learner state; local-only, explicitly destructive, never run by application code.
+- **Request body cap:** `app.ts` rejects `Content-Length > 32 KB` with `413
+  payload_too_large` before any parsing (lying small bodies are the platform's problem).
+- **`tests/server/hardening.test.ts` (+13):** migration 0009 fresh **and** 0001–0008 → 0009
+  upgrade paths (data survives), body-size 413, mutate-cap 429 integration (pre-filled
+  bucket), checkout-cap 429, login 5×401 → 429 with correct password, per-IP independence,
+  budget reset on success, hunt-cap stale-day reset (starts=1), sweep authz (401/403/200),
+  sweep deletes expired rows + cascaded order/items/cancellation markers, preserves active
+  `bug_hunt` session + `inventory_adjustments`, idempotent second sweep. Fresh-harness
+  `createMigratedD1({ through })` + `applyRemainingMigrations` added to `fake-d1.ts`.
+  schema_version assertions bumped 8→9. **342/342 tests green** (was 329).
+- **Verification:** `npm run check` — passed; `npm run build` — passed (JS 477.54 kB / gzip
+  139.01 kB, CSS 76.55 kB / gzip 14.36 kB, no new runtime deps); `db:migrate:local` applied
+  0009 (local `/api/health` → `schemaVersion: "9"`); `db:cleanup:local` + `db:reset:local`
+  executed (inventory restored, learner state 0, audit rows intact). Browser probe
+  (headless Chrome vs production build, port 8791): **25/25 pass** — guest flow
+  (home → shop → search Kestrel Dry Bag → add → cart → checkout → reference → cancel →
+  cancelled), hunt start/reset banner flips, staff sign-in → inventory → staff sweep
+  (401 guest / 200 staff, bounded-count report), login brute-force (5×401 → 429 +
+  `Retry-After`), 413 on a real 40 KB body, **zero unexpected console errors**. Probe IP is
+  randomized per run (per-minute buckets make repeated runs order-dependent otherwise).
+  Port 8791 confirmed closed. No visual/UI changes — `ui-ux-pro-max` checklist applied to
+  touched surfaces only (semantics preserved; no layout work).
+- **Docs:** `docs/phase-3-exit-audit.md` (new — milestones & commits, schema 0001–0009,
+  security controls + limitations, inventory/order accounting guarantees, bug-hunt engine,
+  retention/cleanup policy, rate-limit limitations, test/build/browser results, known
+  issues, Cloudflare deployment steps, exit criteria verdict), README (commands, architecture
+  tree, retention & rate limits section, schema v9, constraints), plan doc (M9 as-built, §3
+  table, §4/§7), `docs/bug-hunt-catalogue.md` (exact cap; sweep behaviour), AGENTS.md, this
+  file.
+- **Known limitations / open items (full list in `docs/phase-3-exit-audit.md` §10):** no
+  deployment and no remote resources (user decision); no cron on Pages — sweep is
+  operator-invoked; login cap can overshoot slightly under a tight concurrent burst (fixation
+  of exactly one statement short — documented); limiters skipped without a visible IP;
+  rate-limit buckets and caps are per-IP (shared egress IPs share a budget); `orders.status`
+  stores only `placed` (cancellation derived); 21 placeholder scenarios remain non-runnable;
+  local D1 accumulates probe state until `db:reset:local`.
+- **Git:** single milestone commit `feat: harden phase 3 and complete exit audit`.
+  `main` untouched, nothing pushed, Phase 4 not started.
+- **Next exact action:** STOP. Phase 3 is implementation-complete and verified. Await user
+  instruction — merge/deployment decisions or Phase 4 (do not begin without approval).
 
 ### 2026-11-15 — Phase 3 P3-M8: bug-hunt defect set & scenario wiring
 
@@ -1282,12 +1378,13 @@ phase starts.
 - **Blockers:** None. Working name and exact UI design remain open and can be chosen during scaffold/design work.
 - **Next exact action:** Phase 1 — create the repository scaffold and implement a minimal React shell plus Hono `/api/health` endpoint with a local D1 migration.
 
-## 12. Phase 3 — commerce practice application (in progress)
+## 12. Phase 3 — commerce practice application (implementation-complete; exit audit)
 
-Phase 3 is approved and in progress on branch `feat/phase-3-commerce-practice` (base: `main` @
+Phase 3 is implementation-complete on branch `feat/phase-3-commerce-practice` (base: `main` @
 `394691c`). The full plan — milestone breakdown with scope/dependencies/acceptance/testing/risks,
 the bug-hunt engine architecture, the API surface, scenario sketch and free-tier impact — lives in
-**`docs/phase-3-commerce-practice-plan.md`**. Status summary:
+**`docs/phase-3-commerce-practice-plan.md`**. The exit audit is **`docs/phase-3-exit-audit.md`**.
+Status summary:
 
 ### Architecture decisions (Phase 3)
 
@@ -1318,12 +1415,14 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 - Every defect is a single (minimal) code site branching on an `isDefectActive()` check with
   unit tests for both branches; deterministic — no randomness, no wall-clock ordering.
 - Reset re-stamps the live session to clean mode non-destructively (cart/orders/customer
-  binding kept; hunt state removed); sessions are not swept until M9; no admin/teacher activation
-  UI in Phase 3. Internal catalogue documents Expected vs Actual, repro and fix in
+  binding kept; hunt state removed); sessions are swept lazily on contact and by the
+  maintenance sweep (M9); no admin/teacher activation UI in Phase 3. Internal catalogue
+  documents Expected vs Actual, repro and fix in
   `docs/bug-hunt-catalogue.md`. P3-M8 expanded the registry to **seven hunts, one defect each**
   (see the milestone table below) and wires each hunt to a runnable scenario.
-- Hunt starts are softly capped per IP per UTC day (20 starts) since P3-M8; only a SHA-256 of the
-  IP is stored (`hunt_start_caps`, one row per address, previous-day rows deleted on write);
+- Hunt starts are capped at 20 per IP per UTC day since P3-M8, enforced exactly since P3-M9
+  (atomic guarded increments — no overshoot); only a SHA-256 of the IP is stored
+  (`hunt_start_caps`, one row per address, day-old rows pruned on write and by the sweep);
   `429 hunt_start_cap_reached` + `Retry-After`; resets and idempotent same-hunt re-starts are not
   capped; local development without a visible client IP is not capped.
 
@@ -1339,7 +1438,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 | P3-M6 | Inventory depth (stock re-check in order transaction, restock, cancellation) | **Done & verified 2026-11-15** (this branch) |
 | P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | **Done & verified 2026-11-15** (this branch) |
 | P3-M8 | Bug-hunt defect set & scenario wiring (7 defects, launch panels, `?hunt=available`) | **Done & verified 2026-11-15** (this branch) |
-| P3-M9 | Hardening, reset, Phase 3 exit audit | Planned |
+| P3-M9 | Hardening, reset, Phase 3 exit audit | **Done & verified 2026-11-15** (this branch) |
 
 P3-M1 detail: migration `db/migrations/0002_commerce_domain.sql` (tables `categories`, `products`,
 `inventory`; `app_meta.schema_version` → `2`; 8 categories, 42 products of which 40 active,
@@ -1397,13 +1496,13 @@ page shows the slug as “Catalogue code”; storefront search is LIKE-based (fi
 SSR string-markup tests assert rendering, browser probes cover interaction and are not committed;
 `npm run check` passes but the Node 26 / `node:sqlite` harness is the only database test path.
 
-Known limitations (recorded at P3-M4): customer auth/bug-hunt unimplemented at that time
+Known limitations (recorded at P3-M4; superseded where marked): customer auth/bug-hunt unimplemented at that time
 (P3-M5 has since shipped; bug-hunt is P3-M7+); checkout has no
-shipping/discounts/tax (total == subtotal); expired sessions/carts are not swept yet
-(M9); stock checks are per-request reads + guarded writes, not a reservation system (M6 owns the
-transactional depth); per-request rate limits are deferred to M9; quantity cap is 99/line;
+shipping/discounts/tax (total == subtotal); ~~expired sessions/carts are not swept yet~~
+(closed in P3-M9 by the maintenance sweep + lazy deletion); stock checks are per-request reads + guarded writes, not a reservation system (M6 owns the
+transactional depth); ~~per-request rate limits are deferred to M9~~ (closed in P3-M9); quantity cap is 99/line;
 interaction-level cart testing beyond the SSR markup tests + Playwright probe is not automated
-(no DOM-test runner installed yet); `practice_sessions` lacks `mode`/`hunt_id` until M7.
+(no DOM-test runner installed yet); `practice_sessions` lacks `mode`/`hunt_id` until M7 (shipped).
 
 P3-M4 detail: atomic checkout & orders on top of M1–M3 — migration `0004_orders.sql`
 (`orders`, `order_items` nullable `product_id` with `ON DELETE SET NULL` for snapshot survival;
@@ -1518,11 +1617,12 @@ discovery (7 wired cards, badge, `?hunt=available`, `Ready` filter), scenario la
 banner flips, themes × 375/768/1024/1440 (zero overflow, one h1), reduced-motion, Tab reachability,
 bug-report markdown download, zero unexpected console errors. Local D1 migrated to 0008.
 
-Next recommended milestone: **P3-M8 — bug-hunt defect set & scenario wiring** (requires explicit
-instruction; do not start without approval).
+Next recommended milestone: **none — Phase 3 is implementation-complete and exit-audited**
+(`docs/phase-3-exit-audit.md`). Deployment (Cloudflare) and merging to `main` are user
+decisions; Phase 4 requires explicit instruction.
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy), **P3-M7 (bug-hunt engine v1 — `practice_sessions.mode`/`hunt_id`, code-not-data hunt/defect registries, server-resolved `isDefectActive()`, `GET /api/v1/practice/session` + start/reset, mode banner + hunt controls on `/practice`, reset non-destructive — one proof defect `CATALOGUE-001`) and P3-M8 (bug-hunt defect set & scenario wiring — seven hunts/defects `CATALOGUE-001/002`, `CART-001`, `INVENTORY-001`, `PRICING-001`, `CHECKOUT-001`, `AUTHZ-001`; `GET /api/v1/practice/hunts`; hunt→scenario wiring with launch panels; `?hunt=available` catalogue facet and badge; local markdown bug-report export; soft per-IP 20/day hunt-start cap, SHA-256 hashed IP only; `schema_version` 8) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M9 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`) are done and verified**; `schema_version` 9; nothing is pushed, merged or deployed. Phase 4 has **not** started — do not begin it without explicit instruction. Deployment (Cloudflare D1 create + remote migrations + Pages deploy) and merging to `main` are user decisions. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

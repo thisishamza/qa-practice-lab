@@ -34,13 +34,11 @@ summaries plus the linked scenario id.
   and the synthetic customer binding are preserved. (Deviation from the
   plan's "expire + fresh session" sketch — see the plan doc §P3-M7 for the
   reason.)
-- **Hunt starts are softly capped per IP per UTC day** (20 starts; only a
-  SHA-256 hash of the IP is stored, one row per address in
-  `hunt_start_caps`, reset on the day boundary). Idempotent same-hunt
+- **Hunt starts are capped per IP per UTC day** (20 starts; only a
+  SHA-256 hash of the IP is stored, one row per address in `hunt_start_caps`, reset on the day
+  boundary, exact atomic guarded increments — never overshoots). Idempotent same-hunt
   re-starts and resets never count. This is an abuse control, not a
-  security boundary; when no client IP is visible (local development) it
-  is skipped. Overshooting the cap under concurrency by a request or two
-  is accepted by design.
+  security boundary; when no client IP is visible (local development) it is skipped.
 - **Learner-facing metadata is limited to** `id`, `title`, `summary`,
   `scenarioId`. The `/api/v1/practice/hunts` and `/api/v1/practice/session`
   responses carry nothing else; `tests/server/hunt-set.test.ts` asserts no
@@ -281,9 +279,9 @@ every wired scenario is `runnable`, `ready`, `mode: 'bug-hunt'`, carries
   id to clean behaviour.
 - Defect and hunt ids are validated by format on input (`hunt_id` path
   param: `^[a-z0-9][a-z0-9-]{2,63}$`) and are never reflected back verbatim.
-- `hunt_start_caps` is intentionally not swept by a job: on each write, rows
-  whose `day` is not today are deleted first, and each IP keeps at most one
-  row. If the table ever matters for billing or audit, revisit with M9.
+- `hunt_start_caps` is swept by the maintenance sweep (day-old rows, bounded) and by each
+  write (day != today, ≤100 rows per call); each IP keeps at most one row per UTC day.
+  `rate_limit_buckets` rows older than two hours are swept the same way.
 - The catalogue seed data (`0002_commerce_domain.sql`) is stable. Local dev
   databases accumulate probe orders and stock decrements (throwaway local
   state); integration tests always run against freshly migrated in-memory

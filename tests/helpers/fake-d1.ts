@@ -95,20 +95,58 @@ export interface MigratedD1 {
   sqlite: DatabaseSync
 }
 
-export function createMigratedD1(): MigratedD1 {
-  const sqlite = new DatabaseSync(':memory:')
-  // Match D1, which enforces foreign key constraints (and ON DELETE CASCADE).
-  sqlite.exec('PRAGMA foreign_keys = ON')
+interface MigratedD1Options {
+  /**
+   * Apply only migrations with a numeric prefix <= this value. Used by the
+   * migration tests to simulate upgrading a database that is already on an
+   * older schema version (e.g. the Phase 3 P3-M8 schema, 0001..0008) before
+   * applying the latest migration. Defaults to applying everything.
+   */
+  through?: number
+}
+
+/** Applies a subset of the real migrations, in order, to a fresh in-memory D1. */
+function applyMigrations(sqlite: DatabaseSync, through?: number) {
   const files = readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
     .sort()
-
   for (const file of files) {
+    if (through !== undefined) {
+      const prefix = Number.parseInt(file.slice(0, 4), 10)
+      if (Number.isFinite(prefix) && prefix > through) {
+        continue
+      }
+    }
     sqlite.exec(readFileSync(path.join(migrationsDir, file), 'utf8'))
   }
+}
+
+export function createMigratedD1(options: MigratedD1Options = {}): MigratedD1 {
+  const sqlite = new DatabaseSync(':memory:')
+  // Match D1, which enforces foreign key constraints (and ON DELETE CASCADE).
+  sqlite.exec('PRAGMA foreign_keys = ON')
+  applyMigrations(sqlite, options.through)
 
   return {
     db: adapt(sqlite) as unknown as D1Database,
     sqlite,
+  }
+}
+
+/** Applies every migration strictly above `through` (already-applied subset expected). */
+export function applyRemainingMigrations(
+  migrated: MigratedD1,
+  through: number,
+): void {
+  // Re-apply only the files above the given prefix; the database already
+  // holds everything up to and including `through`.
+  const files = readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort()
+  for (const file of files) {
+    const prefix = Number.parseInt(file.slice(0, 4), 10)
+    if (Number.isFinite(prefix) && prefix > through) {
+      migrated.sqlite.exec(readFileSync(path.join(migrationsDir, file), 'utf8'))
+    }
   }
 }

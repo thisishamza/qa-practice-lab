@@ -153,7 +153,7 @@ describe('order schema and migration', () => {
     const row = sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('8')
+    expect(row.value).toBe('9')
 
     const tables = sqlite
       .prepare(

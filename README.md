@@ -2,7 +2,8 @@
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
-(M1–M8) is complete and merged, and Phase 3 (commerce practice application) is in progress**.
+(M1–M8) is complete and merged, and Phase 3 (commerce practice application) is implemented
+and verified on the `feat/phase-3-commerce-practice` branch**.
 
 Phase 1 proves the full local stack: a React + TypeScript shell, a Hono API running on Cloudflare
 Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
@@ -13,13 +14,15 @@ The redesign makes the interface a precise, consistent "test bench": self-hosted
 JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
-the single commerce practice domain. **P3-M1 through P3-M8 are implemented on the
+the single commerce practice domain. **P3-M1 through P3-M9 are implemented on the
 `feat/phase-3-commerce-practice` branch:** a D1 catalogue schema with deterministic synthetic
-seed data (`schema_version` 8), a `/api/v1` catalogue API with search, a working `/shop`
+seed data (`schema_version` 9), a `/api/v1` catalogue API with search, a working `/shop`
 storefront, a session-based cart with server-calculated totals, a practice checkout that places
 a simulated order in one atomic database transaction with idempotency protection, synthetic
-customer sign-in, staff-only inventory management with exactly-once cancellation, and a
-seven-hunt bug-hunt program wired into the scenario catalogue.
+customer sign-in, staff-only inventory management with exactly-once cancellation, a
+seven-hunt bug-hunt program wired into the scenario catalogue, and the hardening & exit
+milestone (rate limits, bounded cleanup sweeps, a local demo-data reset, and the Phase 3
+exit audit in `docs/phase-3-exit-audit.md`).
 
 The storefront is the first real practice surface, and seven of its behaviours are now
 reproducible defects for controlled bug-hunt practice (see
@@ -142,6 +145,8 @@ green only after the local D1 migration has been applied.
 | `npm run check` | Runs lint, typecheck, and tests in that order |
 | `npm run db:migrate:local` | Applies unapplied D1 migrations to the local database |
 | `npm run db:migrations:list` | Lists unapplied local D1 migrations |
+| `npm run db:cleanup:local` | Deletes expired local session/rate-limit rows (bounded, idempotent) |
+| `npm run db:reset:local` | **Destructive (local only):** wipes all local learner state and restores the seed inventory |
 
 Run a single test file directly with:
 
@@ -161,7 +166,8 @@ src/features/              Track, catalog, guide, health and shop components
 src/lib/                   Catalog filtering, labels, navigation, theme hooks
 src/pages/                 Route-level pages
 src/styles/                Design tokens and layered CSS
-src/server/app.ts          Hono app exported for tests (also under src/)
+src/server/app.ts          Hono app exported for tests (also under src/); body-size guard,
+                           global mutation rate limit, Cache-Control/nosniff headers
 src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
 src/server/cart.ts         Session cart routes (/api/v1/cart) with server-side totals
 src/server/checkout.ts     Checkout & orders routes (/api/v1/checkout, /api/v1/orders)
@@ -170,9 +176,14 @@ src/server/inventory.ts    Staff-only inventory routes (/api/v1/admin/inventory*
 src/server/staff.ts        Staff authorization guard (requireStaff; server-side role check)
 src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
+src/server/practice.ts     Practice-mode routes (/api/v1/practice/*) + the 20/IP/UTC-day hunt-start cap
+src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
+src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
+src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations
+db/migrations/             D1 SQL migrations (0001..0009)
+db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
 ```
@@ -387,10 +398,11 @@ Bug-hunt mode (P3-M8):
   may tune. If the browser has a live session it is re-stamped in place (mode `bug_hunt`, hunt
   id) and keeps its cart, orders and customer binding; otherwise a fresh bug-hunt session is
   minted and returned via cookie. Starting the same hunt again is idempotent and does not count
-  against the start cap. Hunt starts are **softly capped per IP per UTC day** (20 starts; only a
-  SHA-256 hash of the IP is stored, one row per address, reset on the day boundary). Beyond the
-  cap the endpoint answers `429 hunt_start_cap_reached` with `Retry-After`; resetting never
-  counts against the cap, and local development without a visible client IP is not capped.
+  against the start cap. Hunt starts are **capped per IP per UTC day** (20 starts; only a
+  SHA-256 hash of the IP is stored, one row per address, reset on the day boundary; the cap is
+  enforced by atomic guarded increments and cannot overshoot). Beyond the cap the endpoint
+  answers `429 hunt_start_cap_reached` with `Retry-After`; resetting never counts against the
+  cap, and local development without a visible client IP is not capped.
 - `POST /api/v1/practice/session/reset` — return the session to clean mode. Non-destructive: the
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
@@ -431,6 +443,53 @@ behave as clean. Bug-hunt state cannot affect another learner's session.
 cart or checkout flows. Orders placed before sign-in stay attached to the practice session; after
 sign-in they remain readable through `GET /api/v1/orders` and `/orders/:reference` only, not
 through the account area.
+
+## Rate limits, retention and cleanup (P3-M9)
+
+**Rate limits** (all per client IP per UTC minute, all storage-capped, keyed only by a
+SHA-256 hash of the IP — never the raw address):
+
+- `mutate:<ip>` — global backstop, **120 mutating requests/minute** for every POST/PATCH/PUT/DELETE
+  under `/api/v1`. Overshooting answers `429 rate_limited` + `Retry-After`.
+- `login:<ip>` — **5 failed sign-ins/minute** (PBKDF2 is skipped once the budget is exhausted;
+  a successful sign-in clears it). Overshooting answers `429 login_rate_limited`.
+- `checkout:<ip>` — **30 order placements/minute** (every attempt, including invalid payloads,
+  counts). Overshooting answers `429 rate_limited`.
+- `hunt_start_caps` — **20 hunt starts per IP per UTC day**, atomically enforced (no overshoot).
+- Request bodies larger than **32 KB** are rejected with `413 payload_too_large` before parsing.
+- When no client IP is visible (local development), all IP-based limiters are skipped;
+  they are soft abuse controls, not an authentication boundary.
+
+**Retention and cleanup.** Expired rows are reclaimed three ways, all bounded and idempotent:
+
+1. Lazily, on contact (existing behaviour): an expired practice session or customer session
+   is deleted when it is next presented.
+2. On write: the hunt-start cap write prunes day-old rows (≤100 per call).
+3. Explicitly, via `POST /api/v1/admin/maintenance/sweep` (**staff-only**) — or
+   `npm run db:cleanup:local` for the local throwaway database. Every table is swept in
+   bounded batches (≤100 rows); re-running is a no-op. Pages Functions cannot register a cron
+   trigger (that would require a Workers project, deliberately not used here); after deployment
+   an operator may invoke the staff sweep on any cadence they choose.
+
+What the sweep deletes: expired `practice_sessions` (their `carts`, `cart_items`, `orders`,
+`order_items`, `checkout_idempotency` and bound `customer_sessions` cascade with them — synthetic
+learner state never outlives its session), expired `customer_sessions`, day-old
+`hunt_start_caps`, and `rate_limit_buckets` older than two hours.
+
+What nothing ever deletes automatically: **`inventory_adjustments` and `order_cancellations`**
+— they are the append-only audit trail and the exactly-once cancellation markers; deleting them
+would break stock accounting and idempotency. `order_cancellations` rows cascade-delete together
+with their order when that order's practice session expires (the whole session scope disappears
+as a unit); `inventory_adjustments` rows survive with their subject references nulled. Active
+sessions and their live carts/orders are never touched, regardless of age. Customer fixtures and
+the catalogue are never touched by maintenance.
+
+`npm run db:reset:local` is the **destructive, local-only** demo reset: it deletes ALL learner
+state (carts, orders, adjustments, sessions, caps, buckets) and restores the seed inventory
+quantities from `0002_commerce_domain.sql`. It is separate from the learner-facing Clean Mode
+reset (`POST /api/v1/practice/session/reset`), which remains non-destructive — it re-stamps the
+session to clean mode and always preserves cart, orders and sign-in. Nothing in `db/` or
+`scripts/` is ever run against a remote database by this project.
 
 **Simulated payment behaviour (read this before relying on it):** `paymentSimulation` chooses
 a deterministic outcome from the fictional practice gateway. `approved` places the practice
@@ -485,8 +544,9 @@ build limits, D1 daily reads/writes and per-invocation query limits).
   provider. The checkout's payment outcome is a simulation and nothing is really paid for or
   shipped. Deleting cookies or letting the 7-day session expire starts with a fresh empty cart and
   no order history (orders cascade with the session); customer sessions expire after 8 hours;
-  sessions are not swept automatically until P3-M9. Unavailable lines stay in the cart flagged as
-  such and block checkout with a `422` envelope until adjusted.
+  expired sessions and buckets are reclaimed by the cleanup sweep (see **Rate limits, retention
+  and cleanup**). Unavailable lines stay in the cart flagged as such and block checkout with a
+  `422` envelope until adjusted.
 - There is **no reservation system**. Inventory is decremented only at order placement and
   restored only on cancellation, both exactly-once; a staff restock is the only adjustment path.
   `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
@@ -496,10 +556,13 @@ build limits, D1 daily reads/writes and per-invocation query limits).
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
   anything), and there is no reveal/scoring flow yet — intended behaviour during an active hunt
   is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
-  starts are softly capped per IP per UTC day (20; only a hash of the IP is stored); all other
-  endpoints are not rate-limited yet (P3-M9). The mint/adopt semantics, migration 0008 and the
-  rejection envelope are documented in `docs/phase-3-commerce-practice-plan.md` and
-  `docs/bug-hunt-catalogue.md`.
+  starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
+  endpoints carry the rate limits described above; the limiter is a fixed-window approximation
+  (counts are exact within a minute, bursts at the window boundary can briefly exceed the
+  intended rate) and a soft abuse control, not a security boundary — see
+  `docs/phase-3-exit-audit.md` for the limitations of every control. The mint/adopt semantics,
+  migration 0009 and the rejection envelope are documented in
+  `docs/phase-3-commerce-practice-plan.md` and `docs/bug-hunt-catalogue.md`.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

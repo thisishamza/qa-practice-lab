@@ -29,15 +29,16 @@
 //   which is far more destructive than "restores clean mode" promises. Reset
 //   with no live session mints a fresh clean one so the learner always lands
 //   in a known-good state. Reset never counts against the start cap.
-// - Hunt starts are capped per IP per UTC day (HUNT_START_DAILY_CAP). Only a
-//   SHA-256 hash of the IP is stored (hunt_start_caps), never the raw
+// - Hunt starts are capped per IP per UTC day (HUNT_START_DAILY_CAP, 20).
+//   Only a SHA-256 hash of the IP is stored (hunt_start_caps), never the raw
 //   address, and the counter keeps one row per hashed IP, reset on the day
-//   boundary. The cap is a soft abuse control, not a security boundary; when
-//   no IP is visible (local development) it is skipped.
+//   boundary. The cap is exact (guarded increments, never overshoots) and is
+//   an abuse control, not a security boundary; when no IP is visible (local
+//   development) it is skipped.
 // - Responses never contain defect ids or hints; a bug_hunt session whose
 //   hunt_id is no longer in the registry reports plain clean mode.
 
-import { Hono, type Context } from 'hono'
+import { Hono } from 'hono'
 import { getCookie, setCookie } from 'hono/cookie'
 import type {
   HuntListResponse,
@@ -46,6 +47,7 @@ import type {
 } from '../shared/practice'
 import type { AppEnv } from './app'
 import { HUNTS, findHunt } from './hunts'
+import { clientIp, sha256Hex } from './rateLimit'
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -93,47 +95,60 @@ function sessionResponse(mode: 'clean' | 'bug_hunt', huntId: string | null): Pra
   return { mode: 'clean', hunt: null }
 }
 
-function clientIp(c: Context<AppEnv>): string | null {
-  const direct = c.req.header('cf-connecting-ip')?.trim()
-  if (direct) {
-    return direct
-  }
-  const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
-  return forwarded || null
-}
-
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-/**
- * Record one hunt start for this IP/day. Returns true when the start is
- * allowed; false when the daily cap is already reached (the counter is
- * left untouched). The check-then-increment sequence can overshoot the cap
- * by a request or two under concurrency — a soft cap by design.
- */
 async function consumeHuntStart(
   db: D1Database,
   day: string,
   ipHash: string,
 ): Promise<boolean> {
-  await db.prepare('DELETE FROM hunt_start_caps WHERE day != ?').bind(day).run()
-  const row = await db.prepare('SELECT starts FROM hunt_start_caps WHERE ip_hash = ?')
-    .bind(ipHash)
-    .first<{ starts: number }>()
-  if ((row?.starts ?? 0) >= HUNT_START_DAILY_CAP) {
-    return false
+  // Bound the table opportunistically: one bounded DELETE per call (old-day
+  // rows, at most 100) keeps hunt_start_caps small without a sweep job.
+  await db
+    .prepare(
+      `DELETE FROM hunt_start_caps
+       WHERE day != ?
+         AND ip_hash IN (SELECT ip_hash FROM hunt_start_caps WHERE day != ? LIMIT 100)`,
+    )
+    .bind(day, day)
+    .run()
+
+  // Exact cap, atomic at the row level. No overshoot under concurrency:
+  // every path that grants a start must increment or reset the counter
+  // itself, and increments are always guarded by the cap.
+  //
+  // Fast path handles the common case in one statement.
+  const bumped = await db
+    .prepare(
+      'UPDATE hunt_start_caps SET starts = starts + 1 WHERE ip_hash = ? AND day = ? AND starts < ?',
+    )
+    .bind(ipHash, day, HUNT_START_DAILY_CAP)
+    .run()
+  if (Number(bumped.meta.changes) === 1) {
+    return true
   }
-  await db.prepare(
-    `INSERT INTO hunt_start_caps (ip_hash, day, starts) VALUES (?, ?, 1)
-     ON CONFLICT(ip_hash) DO UPDATE SET
-       starts = CASE WHEN hunt_start_caps.day = excluded.day THEN hunt_start_caps.starts + 1 ELSE 1 END,
-       day = excluded.day`,
-  )
+  // No row for this IP today yet (or the counter is full). Single atomic
+  // upsert: insert a fresh row, or reset a leftover stale-day row to 1
+  // (covers pre-0009 rows and stale rows past the bounded delete). A
+  // same-day row at the cap fails the WHERE and reports changes = 0.
+  const upserted = await db
+    .prepare(
+      `INSERT INTO hunt_start_caps (ip_hash, day, starts) VALUES (?, ?, 1)
+       ON CONFLICT(ip_hash) DO UPDATE SET day = excluded.day, starts = 1
+       WHERE hunt_start_caps.day != excluded.day`,
+    )
     .bind(ipHash, day)
     .run()
-  return true
+  if (Number(upserted.meta.changes) === 1) {
+    return true
+  }
+  // Lost a race against a concurrent insert/reset, or genuinely at the cap:
+  // one final guarded bump decides. Never overshoots.
+  const retried = await db
+    .prepare(
+      'UPDATE hunt_start_caps SET starts = starts + 1 WHERE ip_hash = ? AND day = ? AND starts < ?',
+    )
+    .bind(ipHash, day, HUNT_START_DAILY_CAP)
+    .run()
+  return Number(retried.meta.changes) === 1
 }
 
 export const practiceRoutes = new Hono<AppEnv>()
@@ -203,7 +218,7 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
   }
 
   // Entering a hunt (fresh session or a switch from clean/another hunt)
-  // counts against the soft per-IP daily cap. When no IP is visible (local
+  // counts against the per-IP daily cap. When no IP is visible (local
   // dev), the cap is skipped.
   const ip = clientIp(c)
   if (ip) {
