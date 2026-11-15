@@ -9,8 +9,12 @@ import type {
   PracticeSessionResponse,
 } from '../../shared/practice'
 import type {
+  AttemptView,
   BugReportSubmission,
+  HintLevel,
+  HintResponse,
   ReportSubmissionResponse,
+  RevealResponse,
 } from '../../shared/learning'
 
 export class PracticeApiError extends Error {
@@ -109,6 +113,72 @@ export async function submitReport(
     throw await errorFrom(response, 'The report could not be submitted.')
   }
   return readJson<ReportSubmissionResponse>(response)
+}
+
+/**
+ * The caller's attempt view for one hunt. Status is the server's source of
+ * truth (`none` when the caller has no attempt yet). Ownership resolves from
+ * the HttpOnly session cookie — no attempt id is ever sent.
+ */
+export async function fetchAttempt(huntId: string, signal?: AbortSignal): Promise<AttemptView> {
+  const response = await fetch(`/api/v1/practice/hunts/${encodeURIComponent(huntId)}/attempt`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'The attempt status could not be loaded.')
+  }
+  return readJson<AttemptView>(response)
+}
+
+/**
+ * Unlock (or idempotently re-read) one hint level. Level N requires level
+ * N−1 already used on the attempt — enforced server-side. Re-requesting an
+ * unlocked level returns it again without double counting.
+ */
+export async function requestHint(huntId: string, level: HintLevel): Promise<HintResponse> {
+  const response = await fetch(`/api/v1/practice/hunts/${encodeURIComponent(huntId)}/hints`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ level }),
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'The hint could not be unlocked.')
+  }
+  return readJson<HintResponse>(response)
+}
+
+/**
+ * Retrieve the reveal for this attempt. Available only after the server
+ * authorizes it (report submitted or give-up recorded); otherwise the server
+ * answers 403 `reveal_locked` and no reveal content exists on the wire.
+ */
+export async function fetchReveal(huntId: string, signal?: AbortSignal): Promise<RevealResponse> {
+  const response = await fetch(`/api/v1/practice/hunts/${encodeURIComponent(huntId)}/reveal`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'The solution could not be loaded.')
+  }
+  return readJson<RevealResponse>(response)
+}
+
+/**
+ * The explicit, confirmed give-up path ("Show the solution"). Always requires
+ * confirm: true; the server marks the attempt `revealed` (never discovered,
+ * never submitted) and returns the reveal. Idempotent.
+ */
+export async function giveUpAndReveal(huntId: string): Promise<RevealResponse> {
+  const response = await fetch(`/api/v1/practice/hunts/${encodeURIComponent(huntId)}/reveal`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ confirm: true }),
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'The solution could not be revealed.')
+  }
+  return readJson<RevealResponse>(response)
 }
 
 export async function resetPracticeSession(): Promise<PracticeSessionResponse> {

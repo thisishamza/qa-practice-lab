@@ -1054,6 +1054,49 @@ the original **P4-M4**, **P4-M5** and **P4-M6**.
 > rule-based/no-AI honestly, as required. See PROJECT_STATE.md §11 for the
 > dated entry.
 >
+> **2026-11-16 — WP3 implemented (this note records the as-built behaviour; it
+> supersedes the sketch wording below where they differ):**
+>
+> **What shipped.** `src/components/ui/Modal.tsx` (the project's first shared
+> accessible dialog primitive — the two ad-hoc focus-trap copies in MobileNav/
+> ScenarioFilterBar were left untouched; no dependency added), the hint ladder
+> `src/features/practice/HintLadder.tsx` + pure `src/lib/hintReveal.ts`
+> (`buildLadder`/`levelStatus`/`restoreLadder`/`unlockHint`/`createSingleFlight`,
+> following WP2's `reportForm.ts` controller pattern), the gated reveal panel
+> `src/features/practice/RevealPanel.tsx` (403 `reveal_locked` renders a
+> zero-content locked callout; give-up only via the WAI-modal confirm dialog —
+> Escape/backdrop/cancel all make no request; confirm POSTs `{ confirm: true }`
+> through a single-flight gate; revealed view distinguishes "Revealed — give-up"
+> from "Revealed — report submitted"), the attempt-status chip
+> `src/features/practice/AttemptStatusChip.tsx` + `src/lib/attemptStatus.ts`
+> (neutral "Not started", amber "In progress", green "Submitted · score" (score
+> only when the server has one), neutral "Solution viewed" — the wording is
+> deliberately non-shaming; discovery is never inferred), and typed clients in
+> `src/features/practice/api.ts` (`fetchAttempt`, `requestHint`, `fetchReveal`,
+> `giveUpAndReveal`). **As-built integration details differing from the sketch:**
+> the panels are keyed by hunt id (switching hunts never leaks hint/reveal/report
+> presentation state into the next attempt); `BugReportForm` gained an optional
+> `onSubmitted` callback and both panels thread a `refreshToken` into
+> `RevealPanel` so **report submission unlocks the reveal in-place** — before
+> this wiring the panel would have stayed locked until a refresh or a wrong
+> give-up (found during the browser probe, fixed and re-verified);
+> refresh/session continuation restores the ladder by re-fetching the attempt
+> view and idempotently re-reading the used prefix of the ladder; the
+> "Found something?" panel note was deduped (it existed in both the panel
+> wrapper and the form); attempt-status chips show "Status unavailable" rather
+> than any guess when the attempt fetch fails, and nothing until the first
+> fetch resolves. **Test counts:** 78 new tests; **624/624 green**;
+> `npm run check` clean; `npm run build` passes; client bundle verified to
+> contain zero hint/reveal registry strings; **browser probe (Chrome over CDP)
+> against the rebuilt production build: 68/68 checks pass** — ladder skip
+> refused server-side (`409 hint_level_locked`, also via raw API call),
+> refresh-restored hints/reveal, zero-request cancel assertion, give-up vs.
+> report-submitted framing, chips on both themes × 375/768/1024/1440 px with
+> zero horizontal overflow and zero console errors. **P4-M2 (WP1 + WP2 + WP3) is
+> complete.** The 21 placeholder scenarios remain non-runnable; production D1
+> remains at `schema_version` 9 (0010 unapplied remotely); no migration was
+> required. Historical WP1/WP2 notes above are preserved unchanged.
+>
 
 1. **ID/title:** P4-M2 — Complete Bug-Hunt Learning Experience.
 2. **Objective / expected outcome:** learners can independently investigate defects,

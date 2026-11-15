@@ -19,6 +19,6 @@
     "noUncheckedSideEffectImports": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx", "tests/pages/curriculum-views.test.tsx", "tests/practice/bug-report-form.test.tsx"],
+  "include": ["src", "tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx", "tests/pages/curriculum-views.test.tsx", "tests/practice/bug-report-form.test.tsx", "tests/practice/hint-reveal-ui.test.tsx"],
   "exclude": ["src/server"]
 }

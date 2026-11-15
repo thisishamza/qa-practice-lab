@@ -39,13 +39,18 @@ P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-bas
 a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
 no AI), P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
 reveal as server-side API endpoints — unlocked only by a submitted report or an explicit
-confirmed give-up) and P4-M2 WP2 (the structured bug-report UI — labelled form, inline
+confirmed give-up), P4-M2 WP2 (the structured bug-report UI — labelled form, inline
 validation with a linked error summary, server-side submission, an evaluation result view
-and a downloadable markdown report — rendered on the wired hunt panels) are implemented,
+and a downloadable markdown report — rendered on the wired hunt panels) and P4-M2 WP3
+(the hint ladder UI (sequential three-level disclosures), the "Show the solution" give-up
+WAI-modal confirm dialog, the gated reveal panel (expected/actual/root cause/reproduction/
+verification/concepts) and attempt-status chips on the hunt cards — cancel makes no
+request; the report path unlocks the reveal in-place after submission) are implemented,
 reviewed and committed on the implementation branch;
-production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (hint/reveal UI,
-progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-only P4-M2 WP3 (hint/reveal UI) and P4-M3 remain **not** implemented.
+production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
+is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+P4-M2 is complete and **only P4-M3 (Progress API, aggregate scoring & Phase 4 release)
+remains not implemented**.
 
 ## What you can do now
 
@@ -198,9 +203,15 @@ src/server/attempts.ts     Phase 4 attempt lifecycle + GET /practice/attempts (b
 src/server/reports.ts      Phase 4 structured bug-report validation + POST .../report
 src/server/reportQuality.ts  Phase 4 deterministic §6.4 report evaluator (pure; server-only)
 src/lib/reportForm.ts      Phase 4 bug-report form logic (validation, submission flow, markdown download)
+src/lib/hintReveal.ts      Phase 4 hint-ladder/give-up/reveal flow logic (pure; injected transports)
+src/lib/attemptStatus.ts   Phase 4 attempt-status chip mapping (pure)
+src/components/ui/Modal.tsx        Phase 4 WAI-modal dialog primitive (focus trap, Escape, restore)
 src/features/practice/BugReportForm.tsx        Phase 4 structured report form (WP2)
 src/features/practice/ReportEvaluationView.tsx Phase 4 evaluation result view (WP2)
 src/features/practice/ReportErrorSummary.tsx   Phase 4 linked error summary (WP2)
+src/features/practice/HintLadder.tsx           Phase 4 progressive hint ladder UI (WP3)
+src/features/practice/RevealPanel.tsx          Phase 4 gated reveal panel + give-up dialog (WP3)
+src/features/practice/AttemptStatusChip.tsx    Phase 4 hunt-card attempt status chips (WP3)
 src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
 src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
@@ -487,9 +498,17 @@ Phase 4 practice learning (P4-M1 WP2 + WP3; rendered by the P4-M2 WP2 UI on the 
   revised and resubmitted (best score is kept) or downloaded as markdown generated from the
   submitted report plus the safe, learner-facing feedback — never from hidden evaluator state;
   no ids, defect data or evaluator internals appear in the file. A failed submission keeps the
-  learner's text. Hint/reveal rendering is P4-M2 WP3 and is **not** implemented yet.
+  learner's text. **P4-M2 WP3 (rendered).** While a hunt is active, the panels also carry a
+  **three-level hint ladder** ("Need a hint?" — sequential unlocks with a live "N of 3 hints
+  used" counter; unlocked hints persist across refreshes; locked levels are unavailable and
+  disclose nothing), a **gated reveal panel** ("The solution" — locked until a report is
+  submitted or the learner explicitly gives up through a WAI-modal "Show the solution?"
+  confirmation; cancel makes no request) and **attempt-status chips** on the hunt cards
+  (Not started · In progress · Submitted · score · Solution viewed). Report submission unlocks
+  the reveal in place. Hint text and reveal content are never present in the client bundle;
+  both are served only after server-side eligibility checks.
 
-Phase 4 learning experience (P4-M2 WP1; API-only — nothing is rendered in the UI yet):
+Phase 4 learning experience (P4-M2 WP1 + WP3; API and UI both shipped):
 
 - `POST /api/v1/practice/hunts/:huntId/hints` — request one progressive hint, three levels per
   hunt (Orient → Focus → Narrow). Body: `{ "level": 1|2|3 }` (strict). Level N requires level
@@ -665,9 +684,10 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
   bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
   server-side (session-scoped) and are evaluated by the deterministic §6.4
-  rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI (hint/reveal UI is
-  WP3, progress is P4-M3; both unimplemented); the progress page still shows labelled sample data and says so. Phase 4
-  (P4-M1 WP1–WP3 and P4-M2 WP1–WP2 implemented and committed on the branch) addresses exactly this — see
+  rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI and the
+  hint/reveal UI ships in the P4-M2 WP3 UI; only progress (P4-M3) remains unimplemented);
+  the progress page still shows labelled sample data and says so. Phase 4
+  (P4-M1 WP1–WP3 and P4-M2 WP1–WP3 implemented and committed on the branch) addresses exactly this — see
   `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the

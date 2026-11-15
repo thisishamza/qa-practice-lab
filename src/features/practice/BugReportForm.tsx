@@ -54,7 +54,14 @@ const REPRODUCIBILITY_OPTIONS = [
   { value: 'once', label: 'Once' },
 ] as const
 
-export function BugReportForm({ huntId }: { huntId: string }) {
+export function BugReportForm({
+  huntId,
+  onSubmitted,
+}: {
+  huntId: string
+  /** Called after a successful submission so surrounding UI (e.g. status chips) can refresh. */
+  onSubmitted?: (response: ReportSubmissionResponse) => void
+}) {
   const [values, setValues] = useState<ReportFormValues>(EMPTY_REPORT_FORM_VALUES)
   const [errors, setErrors] = useState<Partial<Record<ReportFieldName, string>>>({})
   /** Server message for the failure shown above the form (null when there is none). */
@@ -151,6 +158,7 @@ export function BugReportForm({ huntId }: { huntId: string }) {
       setErrors({})
       setFailure(null)
       setResult(outcome.response)
+      onSubmitted?.(outcome.response)
     } finally {
       inFlight.current = false
       setSubmitting(false)
