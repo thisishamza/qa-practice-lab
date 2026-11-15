@@ -330,6 +330,17 @@ phase starts.
 
 ## 11. Progress log
 
+### 2026-11-16 — Deployment finalization: review, commit `1796f20`, push to `main`
+
+- **Precondition verification (all passed):** branch `main`; `HEAD == origin/main == 1f0847f38cec5723633057a4f94b35bd84ac04a4`; exactly the five expected files modified (`wrangler.jsonc`, `PROJECT_STATE.md`, `README.md`, `AGENTS.md`, `docs/phase-3-exit-audit.md`). Nothing was reset, stashed or discarded.
+- **Review results (per file):** `wrangler.jsonc` — `database_id` `928b4ed6-6284-46a2-b374-f1c569c1affe` matches the created production database; binding `DB` matches `c.env.DB` in the app code; `pages_build_output_dir`/`compatibility_date`/`migrations_dir` preserved; no credentials introduced; JSONC parses. `PROJECT_STATE.md` — URL, SHA, schema 9, smoke results and unverified items accurate. `README.md` — production instructions reflect the actual setup; no stale "not deployed" statements remain. `AGENTS.md` — workflow/state lines now reflect merged + deployed reality; OpenCode workflow guidance preserved. `docs/phase-3-exit-audit.md` — original audit preserved; the dated addendum distinguishes audit-time findings from post-deployment verification.
+- **Corrections made during review:** (1) §13 resume prompt had an unmatched `**` in the Phase 3 status sentence (stray bold after "done and verified") — restructured into two clean spans; (2) the §11 "Git state at end of session" file list was missing `docs/phase-3-exit-audit.md` — added.
+- **Safety checks:** `git diff --check` clean; no secrets/tokens/keys in the staged diff; no application source, tests, migrations or production data touched; no destructive database commands run.
+- **Commit & push:** `1796f20` — `docs: finalize phase 3 production deployment` (exactly the five files). Pushed `1f0847f..1796f20` to `origin/main`. Post-push: local `main` == `origin/main` == `1796f20`; working tree clean.
+- **Pages deployment status after push:** the `qa-practice-lab` Pages project has **no Git integration** (`Git Provider: No`), so the push triggered **no automatic deployment**. The only deployment remains `99ef81ca` (source commit `1f0847f`, production branch `main`) and is live; post-push `/api/health` → `schemaVersion: "9"`. The docs/config commit changed no application code; production serves the `1f0847f` bundle, which is identical in behaviour to the reviewed state (the uncommitted `wrangler.jsonc` change from the deployment session is now committed in `1796f20` and does not change the bundle).
+- **Note:** GitHub reported the known moderate Dependabot advisory on the default branch (dev-only tooling chain; production deps clean) — unchanged by this push.
+- **Next exact action:** user decides the maintenance sweep cadence and any monitoring setup; Phase 4 has not started and must not begin without explicit instruction.
+
 ### 2026-11-16 — Phase 3 production deployment to Cloudflare Pages
 
 - **Precondition checks (all passed):** branch `main`; `HEAD == origin/main == 1f0847f38cec5723633057a4f94b35bd84ac04a4` (merge of PR #4); working tree clean at session start; Phase 3 merge commit present; all nine migrations (`0001`–`0009`) present. No branches switched, reset, merged, or pushed.
@@ -359,7 +370,7 @@ phase starts.
 - **Maintenance sweep procedure (operator, no in-product scheduler):** sign in with a staff account (synthetic fixture `rowan.ellison@example.com / demo-rowan-9001`, or a browser session) and `POST /api/v1/admin/maintenance/sweep` with an empty JSON body; the response reports bounded `deleted` counts per table and is idempotent. Recommended cadence: **at least weekly** (daily during active cohorts/classes). If a Workers project is introduced later, it should call the same `sweepExpiredData()` unchanged.
 - **Future releases:** `npm run check && npm run build && npx wrangler pages deploy dist` (deploys from the `main` branch working tree; the `DB` binding comes from `wrangler.jsonc`). Local development is unchanged (`npm run db:migrate:local`, `npm run dev`).
 - **Git state at end of session:** branch `main`; uncommitted changes — `wrangler.jsonc` (real `database_id`), `README.md`, `PROJECT_STATE.md`, `AGENTS.md`, `docs/phase-3-exit-audit.md` (deployment addendum). Nothing committed, pushed or PR'd in that session.
-- **Next exact action:** user reviews and commits the deployment documentation + `wrangler.jsonc` change (only with explicit instruction), then decides the sweep cadence and any monitoring. Phase 4 has not started and must not begin without explicit instruction.
+- **Next exact action:** user reviews and commits the deployment documentation + `wrangler.jsonc` change (only with explicit instruction). **Done on 2026-11-16 — commit `1796f20` pushed to `origin/main`; see the 2026-11-16 finalization entry above. Phase 4 has not started and must not begin without explicit instruction.**
 
 ### 2026-11-15 — Phase 3 PR self-review: findings and fixes
 
