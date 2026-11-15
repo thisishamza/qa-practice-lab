@@ -6,7 +6,9 @@ import { difficultyLabels, formatMinutes } from '../lib/labels'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Breadcrumbs } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { FactList } from '../components/ui/FactList'
+import { LevelMeter } from '../components/ui/LevelMeter'
+import { Tag } from '../components/ui/Tag'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
@@ -77,7 +79,7 @@ export function GuideDetailPage() {
       />
 
       <div className="meta-row">
-        <Badge tone="info">{difficultyLabels[guide.level]}</Badge>
+        <LevelMeter level={guide.level} />
         <span className="meta-item">
           <Icon name="clock" size={15} />
           {formatMinutes(guide.readingMinutes)} read
@@ -116,7 +118,7 @@ export function GuideDetailPage() {
                 <figure key={example.title} className="code-example">
                   <figcaption>
                     <span>{example.title}</span>
-                    <Badge tone="neutral">{example.language}</Badge>
+                    <Tag tone="neutral">{example.language}</Tag>
                   </figcaption>
                   <p>{example.description}</p>
                   <pre>
@@ -216,24 +218,14 @@ export function GuideDetailPage() {
 
           <div className="panel">
             <h2>Guide facts</h2>
-            <dl className="fact-list">
-              <div>
-                <dt>Discipline</dt>
-                <dd>{track?.name ?? guide.trackId}</dd>
-              </div>
-              <div>
-                <dt>Level</dt>
-                <dd>{difficultyLabels[guide.level]}</dd>
-              </div>
-              <div>
-                <dt>Reading time</dt>
-                <dd>{formatMinutes(guide.readingMinutes)}</dd>
-              </div>
-              <div>
-                <dt>Related exercises</dt>
-                <dd>{relatedScenarios.length}</dd>
-              </div>
-            </dl>
+            <FactList
+              items={[
+                { label: 'Discipline', value: track?.name ?? guide.trackId },
+                { label: 'Level', value: difficultyLabels[guide.level] },
+                { label: 'Reading time', value: formatMinutes(guide.readingMinutes) },
+                { label: 'Related exercises', value: relatedScenarios.length },
+              ]}
+            />
           </div>
 
           {siblingGuides.length > 0 ? (

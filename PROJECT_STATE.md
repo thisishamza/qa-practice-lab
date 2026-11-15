@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations) and M2 (shell, navigation, search, route management) are complete and verified. M3 has not started.** Phase 3 (commerce practice app) remains paused.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations), M2 (shell, navigation, search, route management) and M3 (primitives and cards) are complete and verified. M4 (dashboard and tracks) has not started.** Phase 3 (commerce practice app) remains paused.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -183,7 +183,8 @@ qa-practice-lab/
 │   ├── app/App.tsx                    # ThemeProvider + AppShell routes
 │   ├── components/
 │   │   ├── layout/                    # AppShell, TopBar, Sidebar, MobileNav
-│   │   └── ui/                        # Icon, badges, states, callouts, progress, theme
+│   │   └── ui/                        # Icon, Button, IconButton, Tag, LevelMeter, Meta,
+│   │                                  # FactList, StatTile, Callout, States, progress, theme
 │   ├── data/                          # typed tracks, categories, scenarios, guides, demo
 │   ├── features/
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
@@ -194,7 +195,7 @@ qa-practice-lab/
 │   ├── pages/                         # 11 route-level pages (dashboard … about, not found)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
 │   ├── shared/health.ts               # shared response type
-│   ├── styles/                        # tokens, base, layout, components, pages, global
+│   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
 │   └── migrations/0001_initial_schema.sql
@@ -219,6 +220,8 @@ Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `c
 `package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
 IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
 
+Redesign M3 changed the shared primitives in `src/components/ui/` (new Button, IconButton, Tag, LevelMeter, Meta, FactList, StatTile; Badge/DomainBadges/StatCard removed), the three feature cards, the fact-list call sites in four pages, callout/progress/stat styles and card/button tokens in `components.css`, added `workspace.css` (scaffold only), and wired the two Reset-filters buttons to the new `Button`. It redesigned no page layouts; page-level restructures remain M4–M7.
+
 Redesign M2 changed the shell files (`AppShell`, `TopBar`, `Sidebar`, `MobileNav`,
 `navigation.ts`, `layout.css`, `tokens.css` widths), added `src/lib/useRouteManagement.ts` and
 `src/pages/AboutPage.tsx`, added minimal `?q=` handling to `ScenariosPage`, and wrapped the
@@ -231,6 +234,36 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M3: primitives and cards
+
+- **Completed:** The third approved redesign milestone (per `docs/phase-2.5-ui-ux-audit.md` §11). No route, page layout, content, or scenario status changed; all 24 scenarios remain non-runnable placeholders and demo progress remains labelled sample data.
+- **Commit state noted at takeover:** the handoff described M2 as uncommitted, but the repository shows M2 committed as `d77a446` on `feat/phase-2.5-redesign` with a clean tree; M1 is `b84b210`. Nothing was committed, reset, or pushed in this milestone.
+- **Skill:** the `ui-ux-pro-max` skill was loaded before implementation; focused queries only — `--stack react` (focus management, labels, submission handling) and `--domain ux` (status/badge accessible names, compact control semantics, ARIA labels). No `--design-system` run, because the direction (The Test Bench) was already approved. Skill output was treated as recommendation and checked against repo rules.
+- **Components implemented (new, `src/components/ui/`):**
+  - `Button.tsx` — semantic `<button>` primitive: primary/secondary/ghost/danger variants, md (44 px) / sm (36 px), `loading` prop (spinner + `aria-busy` + disabled), `type="button"` default. Plain-router `<Link>` elements keep the shared class language (`button button-secondary button-small`); no `asChild` helper was added because nothing needs it yet.
+  - `IconButton.tsx` — 40 px square, required `label` (accessible name), children aria-hidden by convention; used by ThemeToggle, the top-bar menu trigger, and the drawer close button.
+  - `Tag.tsx` — `Tag` (neutral/ready/in-design/planned/warn) and `StatusTag` (status→tone mapping; dot shape + mandatory text label, never colour alone). Status dots: filled (ready), ring (in-design), hollow (planned).
+  - `LevelMeter.tsx` — three 3 px bars (ascending height) + mono micro label; bars are `aria-hidden`, the text carries meaning; optional `aria-label` mode when the label is hidden.
+  - `Meta.tsx` — inline dot-separated (`·`, aria-hidden separator) meta row; drops null/false children.
+  - `FactList.tsx` — test-report rows (mono key left, tabular value right, hairline dividers); replaces hand-written `<dl className="fact-list">` at the four call sites (ScenarioDetail, TrackDetail, GuideDetail, Practice).
+  - `StatTile.tsx` — mono micro label, tabular value, optional hint; no icon by design.
+  - `workspace.css` (new, `src/styles/`) — scaffold only: comment header describing the workspace-scope contract and why no feature styles exist yet. Imported between `components.css` and `pages.css`.
+- **Components updated:** `Callout.tsx` (rule-based: 3 px left rule + sunken surface; full tint only for new `danger` tone; success/warning/info/neutral icon colours, neutral uses the same ink-muted icon), `ProgressBar.tsx` (8 px track, always-visible `value/max · percent` text, `aria-valuetext`, accent fill maps to near-black action / run-green / warn), `ThemeToggle.tsx`, `TopBar.tsx` (menu trigger), `MobileNav.tsx` (close button) now use `IconButton`; `ScenarioFilterBar.tsx` and `ScenariosPage.tsx` (empty-state reset) now use `Button`.
+- **Components removed:** `Badge.tsx` (six tones, pill, 10.56 px) → split into `Tag` (status) + `Meta` (text meta). `DomainBadges.tsx` → `StatusTag` + `LevelMeter`. `StatCard.tsx` → `StatTile`. `scenarioStatusTone()` in `lib/labels.ts` removed (only consumer was `DomainBadges`). `scenario.difficulty` raw id in the scenario fact list now renders `difficultyLabels`.
+- **Cards de-chipped:** one `StatusTag` per `ScenarioCard` (Difficulty and Mode are plain meta text / gone from the card); `TrackCard` shows `LevelMeter` and drops the duplicate "Level" fact row; `GuideCard` shows `LevelMeter` + neutral track tag and drops the foot link; per-track icon hue CSS (12 rules) deleted — all cards use a single-tone 32 px bordered-square icon; duplicate "Open track"/"View scenario"/"Read guide" foot links removed — one accessible name per card (the title link); card shadows and hover `translateY(-2px)` removed; cards separated by hairline borders + radius 12.
+- **CSS regrouped, not reorganized:** `components.css` keeps its file and cascade position; sections were rewritten in place (buttons, tags/meters, panels/callouts, stats/progress, cards, filter panel, lists/state/health). `.scenario-meta`, `.guide-meta`, `.scenario-badges`, `.stat-icon`, `.card-foot-link`, all `.badge*` and hue rules deleted. Mechanical compatibility-alias remap applied where consumers are gone (`--line`→`--border`, `--muted*`→`--ink*`, `--accent-soft`→`--surface-selected`, etc.). Remaining `--accent`/`--cyan` references are the M4 (dashboard hero/quick-practice) and M7 (404) gradients, deliberately untouched. `workspace.css` added to `global.css` import order.
+- **Typography/spacing standardisation:** eyebrow is now mono micro ink-muted; card h3 = `--text-h3`; section h2 = `--text-h2`; meta/labels ≥ 12 px (`--text-micro`) / 14 px (`--text-meta`); fact keys mono micro uppercase; code blocks `--text-code` mono; buttons/inputs 44 px (`--control-h`), sm 36 px; filter inputs/selects use `--border-strong` boundary + `--surface`; all remaining sub-12 px text in `components.css` eliminated. Weights 550/650/750/800 removed (400/500/600 only).
+- **Accessibility:** dot + text status (never colour alone); visible focus preserved globally; `aria-busy` + disabled for loading buttons; status tags use text as the accessible name; bars `aria-hidden`; ProgressBar `aria-valuetext`; duplicate card link names = 0 (verified); focus ring ≥ 2 px verified on a card title link; top-bar icon target ≥ 40 px; reduced-motion for the button spinner; `forced-colors` untouched from M1.
+- **Commands and results:**
+  - `npm run check` — **passed**: ESLint clean (one warning found and fixed during the milestone: `buttonClassName` export broke `react-refresh/only-export-components`; the helper was removed before completion), all three TypeScript projects clean, 3 files / 30 tests passing.
+  - `npm run build` — passed. Final bundle: JS **379.70 kB** (115.22 kB gzip), CSS **50.19 kB** (11.17 kB gzip). Versus M2 (380.28 kB JS / 49.37 kB CSS): **−0.58 kB JS, +0.82 kB CSS raw**. No dependency changes.
+  - Browser verification (Playwright/Chrome from the external install reused in M2, against `wrangler pages dev dist`): **121/121 checks passed** at 375/768/1024/1440 across all 11 routes — no horizontal overflow, exactly one `h1` per route, zero duplicate card accessible names, both themes apply, workspace scope flips the palette (action `#E6EBF5`, tag `#4ADE80`-family), card-link focus ring ≥ 2 px, theme toggle target ≥ 40 px, `/` shortcut + `/scenarios?q=cart` deep link still works (5 filtered cards), mobile drawer opens/closes on Escape, zero console errors. A Reset-filters click cycle (disabled at idle → enabled with a filter → resets to 24 cards, clears the field, re-disables) passed with zero console errors.
+  - Screenshots (light + dark, 1440; scenarios 375) live in `/tmp/opencode` (`m3-*.png`), not in the repo. Known cosmetic note: the meta separator dot can start a wrapped line (e.g. guide cards); accepted — Meta separators are aria-hidden.
+- **Issue found and fixed during verification:** guide cards' neutral track tag overflowed at 375 px (`white-space: nowrap`, full row width); fixed with `.guide-card-top .tag { min-width: 0; overflow: hidden; text-overflow: ellipsis; }`. Also `.scenario-card > .tag` was `align-self: stretch` (full-width tag banner); fixed to `flex-start`.
+- **Known limitations / deferred:** compatibility aliases remain for `layout.css`/`pages.css` (dashboard hero gradient, 404) — removal belongs to the milestones that own those surfaces (M4/M7), then a cleanup pass. No `data-surface="workspace"` element exists in a shipped route yet; scope correctness was verified with a synthetic probe only. `Button`'s `danger` variant, `LevelMeter` hidden-label mode, and `Meta` custom class are unused but reserved (approved in the audit inventory). HealthStatus is unchanged (M7). Route error boundaries, full URL filter state, and catalog layout remain M5/M7.
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M4 — Dashboard, tracks index, track detail** from `docs/phase-2.5-ui-ux-audit.md` §11 (run `npm run check` first). Do not start M5 or Phase 3 in the same change.
 
 ### 2026-11-15 — Redesign M2: shell, navigation, search, route management
 
@@ -446,4 +479,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color) and M2 (shell, navigation, search, drawer, route management) are complete and verified, and M3 has not started.** Continue with **M3 — primitives and cards** only after explicit instruction, then proceed through M4 dashboard/tracks → M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management) and M3 (primitives and cards) are complete and verified, and M4 has not started.** Continue with **M4 — dashboard and tracks** only after explicit instruction, then proceed through M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

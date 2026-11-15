@@ -7,8 +7,9 @@ import { difficultyLabels, pluralize } from '../lib/labels'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Breadcrumbs, SectionHeader } from '../components/ui/PageChrome'
-import { DifficultyBadge } from '../components/ui/DomainBadges'
-import { Badge } from '../components/ui/Badge'
+import { FactList } from '../components/ui/FactList'
+import { LevelMeter } from '../components/ui/LevelMeter'
+import { Tag } from '../components/ui/Tag'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
@@ -67,7 +68,7 @@ export function TrackDetailPage() {
       />
 
       <div className="meta-row">
-        <DifficultyBadge difficulty={track.difficulty} />
+        <LevelMeter level={track.difficulty} />
         <span className="meta-item">
           <Icon name="target" size={15} />
           {pluralize(track.plannedExerciseCount, 'exercise')} planned
@@ -79,9 +80,9 @@ export function TrackDetailPage() {
         {track.categoryIds.map((categoryId) => {
           const category = testingCategoriesById.get(categoryId)
           return category ? (
-            <Badge key={categoryId} tone="accent">
+            <Tag key={categoryId} tone="neutral">
               {category.name}
-            </Badge>
+            </Tag>
           ) : null
         })}
       </div>
@@ -165,24 +166,14 @@ export function TrackDetailPage() {
         <aside className="detail-aside">
           <div className="panel">
             <h2>Track facts</h2>
-            <dl className="fact-list">
-              <div>
-                <dt>Difficulty</dt>
-                <dd>{difficultyLabels[track.difficulty]}</dd>
-              </div>
-              <div>
-                <dt>Planned exercises</dt>
-                <dd>{track.plannedExerciseCount}</dd>
-              </div>
-              <div>
-                <dt>Listed now</dt>
-                <dd>{trackScenarios.length}</dd>
-              </div>
-              <div>
-                <dt>Guide</dt>
-                <dd>{guide ? 'Available' : 'Scheduled'}</dd>
-              </div>
-            </dl>
+            <FactList
+              items={[
+                { label: 'Difficulty', value: difficultyLabels[track.difficulty] },
+                { label: 'Planned exercises', value: track.plannedExerciseCount },
+                { label: 'Listed now', value: trackScenarios.length },
+                { label: 'Guide', value: guide ? 'Available' : 'Scheduled' },
+              ]}
+            />
           </div>
 
           <div className="panel">

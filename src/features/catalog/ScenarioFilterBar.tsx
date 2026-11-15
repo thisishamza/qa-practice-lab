@@ -14,6 +14,7 @@ import {
   scenarioStatusLabels,
 } from '../../lib/labels'
 import { Icon } from '../../components/ui/Icon'
+import { Button } from '../../components/ui/Button'
 
 const modes: ScenarioMode[] = ['clean', 'bug-hunt']
 const statuses: ScenarioStatus[] = ['planned', 'in-design']
@@ -135,15 +136,15 @@ export function ScenarioFilterBar({
         <p className="filter-count" aria-live="polite">
           Showing <strong>{resultCount}</strong> of {pluralize(totalCount, 'scenario')}
         </p>
-        <button
-          type="button"
-          className="button button-ghost button-small"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onReset}
           disabled={!active}
         >
           <Icon name="reset" size={15} />
           Reset filters
-        </button>
+        </Button>
       </div>
     </form>
   )

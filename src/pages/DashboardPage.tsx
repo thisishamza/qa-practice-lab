@@ -14,10 +14,10 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { pluralize } from '../lib/labels'
 import { Callout } from '../components/ui/Callout'
 import { Icon } from '../components/ui/Icon'
-import { StatCard } from '../components/ui/StatCard'
+import { StatTile } from '../components/ui/StatTile'
 import { ProgressBar } from '../components/ui/ProgressBar'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { Tag } from '../components/ui/Tag'
 import { TrackCard } from '../features/tracks/TrackCard'
 import { ScenarioCard } from '../features/catalog/ScenarioCard'
 
@@ -115,29 +115,25 @@ export function DashboardPage() {
           }
         />
         <div className="stats-grid">
-          <StatCard
+          <StatTile
             label="Learning tracks"
             value={learningTracks.length}
             hint="Manual through accessibility"
-            icon="tracks"
           />
-          <StatCard
+          <StatTile
             label="Scenario placeholders"
             value={scenarios.length}
             hint="Structured, not runnable yet"
-            icon="scenarios"
           />
-          <StatCard
+          <StatTile
             label="Guides"
             value={guides.length}
             hint="Concepts, examples, and steps"
-            icon="guides"
           />
-          <StatCard
+          <StatTile
             label="Completed (demo)"
             value={demoProgress.completedExercises}
             hint={`${demoProgress.inProgressExercises} in progress · sample only`}
-            icon="progress"
           />
         </div>
       </section>
@@ -223,7 +219,7 @@ export function DashboardPage() {
             id="progress-title"
             title="Learning progress"
             description="Sample progress used to validate the progress interface."
-            action={<Badge tone="warning">Demo data</Badge>}
+            action={<Tag tone="warn">Demo data</Tag>}
           />
           <div className="panel">
             <p className="panel-note">{demoDisclaimer}</p>
@@ -257,9 +253,9 @@ export function DashboardPage() {
               })}
             </div>
 
-            <Link className="card-foot-link" to="/progress">
+            <Link className="text-link" to="/progress">
               Open progress page
-              <Icon name="arrow-right" size={15} />
+              <Icon name="arrow-right" size={14} />
             </Link>
           </div>
         </section>
@@ -271,7 +267,7 @@ export function DashboardPage() {
             id="recent-title"
             title="Recently visited"
             description="Latest sample activity."
-            action={<Badge tone="warning">Demo data</Badge>}
+            action={<Tag tone="warn">Demo data</Tag>}
           />
           <ul className="activity-list">
             {recent.map(({ activity, scenario }) => (

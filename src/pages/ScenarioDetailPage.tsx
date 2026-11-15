@@ -3,15 +3,13 @@ import { getScenario, getScenariosForTrack } from '../data/scenarios'
 import { getTrack } from '../data/tracks'
 import { getGuide } from '../data/guides'
 import { testingCategoriesById } from '../data/categories'
-import { formatMinutes } from '../lib/labels'
+import { difficultyLabels, formatMinutes, scenarioModeLabels } from '../lib/labels'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Breadcrumbs, SectionHeader } from '../components/ui/PageChrome'
-import {
-  DifficultyBadge,
-  ModeBadge,
-  StatusBadge,
-} from '../components/ui/DomainBadges'
+import { FactList } from '../components/ui/FactList'
+import { StatusTag } from '../components/ui/Tag'
+import { LevelMeter } from '../components/ui/LevelMeter'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
@@ -74,9 +72,9 @@ export function ScenarioDetailPage() {
       />
 
       <div className="meta-row">
-        <DifficultyBadge difficulty={scenario.difficulty} />
-        <ModeBadge mode={scenario.mode} />
-        <StatusBadge status={scenario.status} />
+        <StatusTag status={scenario.status} />
+        <LevelMeter level={scenario.difficulty} />
+        <span className="meta-item">{scenarioModeLabels[scenario.mode]}</span>
         <span className="meta-item">
           <Icon name="clock" size={15} />
           {formatMinutes(scenario.estimatedMinutes)}
@@ -151,34 +149,25 @@ export function ScenarioDetailPage() {
         <aside className="detail-aside">
           <div className="panel">
             <h2>Scenario facts</h2>
-            <dl className="fact-list">
-              <div>
-                <dt>Track</dt>
-                <dd>
-                  {track ? (
+            <FactList
+              items={[
+                {
+                  label: 'Track',
+                  value: track ? (
                     <Link to={`/tracks/${track.id}`}>{track.name}</Link>
                   ) : (
                     scenario.trackId
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Category</dt>
-                <dd>{category?.name ?? scenario.categoryId}</dd>
-              </div>
-              <div>
-                <dt>Difficulty</dt>
-                <dd>{scenario.difficulty}</dd>
-              </div>
-              <div>
-                <dt>Estimated time</dt>
-                <dd>{formatMinutes(scenario.estimatedMinutes)}</dd>
-              </div>
-              <div>
-                <dt>Availability</dt>
-                <dd>{scenario.runnable ? 'Runnable' : 'Not runnable yet'}</dd>
-              </div>
-            </dl>
+                  ),
+                },
+                { label: 'Category', value: category?.name ?? scenario.categoryId },
+                { label: 'Difficulty', value: difficultyLabels[scenario.difficulty] },
+                { label: 'Estimated time', value: formatMinutes(scenario.estimatedMinutes) },
+                {
+                  label: 'Availability',
+                  value: scenario.runnable ? 'Runnable' : 'Not runnable yet',
+                },
+              ]}
+            />
           </div>
 
           <Callout tone="warning" title="This exercise is not runnable yet">

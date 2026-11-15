@@ -6,10 +6,10 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { pluralize } from '../lib/labels'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Callout } from '../components/ui/Callout'
-import { StatCard } from '../components/ui/StatCard'
+import { StatTile } from '../components/ui/StatTile'
 import { ProgressBar } from '../components/ui/ProgressBar'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { Tag } from '../components/ui/Tag'
 import { Icon } from '../components/ui/Icon'
 
 export function ProgressPage() {
@@ -34,29 +34,25 @@ export function ProgressPage() {
       </Callout>
 
       <div className="stats-grid">
-        <StatCard
+        <StatTile
           label="Completed (demo)"
           value={demoProgress.completedExercises}
           hint="Sample exercise completions"
-          icon="check"
         />
-        <StatCard
+        <StatTile
           label="In progress (demo)"
           value={demoProgress.inProgressExercises}
           hint="Sample unfinished exercises"
-          icon="progress"
         />
-        <StatCard
+        <StatTile
           label="Streak (demo)"
           value={`${demoProgress.streakDays} days`}
           hint="Sample consecutive activity"
-          icon="sparkles"
         />
-        <StatCard
+        <StatTile
           label="Weekly goal (demo)"
           value={`${demoProgress.completedExercises}/${demoProgress.weeklyGoal}`}
           hint="Sample target, not tracked"
-          icon="target"
         />
       </div>
 
@@ -66,7 +62,7 @@ export function ProgressPage() {
             id="track-progress-title"
             title="Track progress"
             description="A four-track sample of the progress view."
-            action={<Badge tone="warning">Demo data</Badge>}
+            action={<Tag tone="warn">Demo data</Tag>}
           />
           <div className="panel">
             <div className="progress-list">
@@ -133,9 +129,9 @@ export function ProgressPage() {
                 </span>
               </li>
             </ul>
-            <Link className="card-foot-link" to="/scenarios">
+            <Link className="text-link" to="/scenarios">
               Explore the real catalogue
-              <Icon name="arrow-right" size={15} />
+              <Icon name="arrow-right" size={14} />
             </Link>
           </div>
         </section>
@@ -146,7 +142,7 @@ export function ProgressPage() {
           id="activity-title"
           title="Recent activity"
           description="Sample visits used to validate the activity list."
-          action={<Badge tone="warning">Demo data</Badge>}
+          action={<Tag tone="warn">Demo data</Tag>}
         />
         <ul className="activity-list activity-list-wide">
           {recent.map(({ activity, scenario }) => (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type R
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '../ui/ThemeToggle'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 
 interface TopBarProps {
   mobileOpen: boolean
@@ -106,17 +107,16 @@ export function TopBar({
   return (
     <header className="topbar" inert={inert || undefined}>
       <div className="topbar-inner">
-        <button
+        <IconButton
           ref={menuButtonRef}
-          type="button"
-          className="icon-button topbar-menu"
+          label="Open navigation menu"
+          className="topbar-menu"
           onClick={onOpenMobileNav}
-          aria-label="Open navigation menu"
           aria-controls="mobile-navigation"
           aria-expanded={mobileOpen}
         >
           <Icon name="menu" size={20} />
-        </button>
+        </IconButton>
 
         <Link className="brand" to="/" aria-label="QA Practice Lab overview">
           <span className="brand-mark" aria-hidden="true">

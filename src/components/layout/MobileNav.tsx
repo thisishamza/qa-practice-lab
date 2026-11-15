@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { isNavItemActive, primaryNav } from '../../lib/navigation'
 import { Icon } from '../ui/Icon'
+import { IconButton } from '../ui/IconButton'
 
 interface MobileNavProps {
   open: boolean
@@ -108,15 +109,13 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           <h2 id="mobile-nav-title" className="sr-only">
             Navigation
           </h2>
-          <button
+          <IconButton
             ref={closeButtonRef}
-            type="button"
-            className="icon-button"
+            label="Close navigation menu"
             onClick={() => onClose(true)}
-            aria-label="Close navigation menu"
           >
             <Icon name="close" size={20} />
-          </button>
+          </IconButton>
         </div>
 
         <nav className="mobile-nav-list" aria-label="Primary">

@@ -2,12 +2,9 @@ import { Link } from 'react-router-dom'
 import type { Scenario } from '../../data/types'
 import { getTrack } from '../../data/tracks'
 import { testingCategoriesById } from '../../data/categories'
-import { formatMinutes } from '../../lib/labels'
-import {
-  DifficultyBadge,
-  ModeBadge,
-  StatusBadge,
-} from '../../components/ui/DomainBadges'
+import { difficultyLabels, formatMinutes } from '../../lib/labels'
+import { StatusTag } from '../../components/ui/Tag'
+import { Meta } from '../../components/ui/Meta'
 import { Icon } from '../../components/ui/Icon'
 
 export function ScenarioCard({ scenario }: { scenario: Scenario }) {
@@ -16,33 +13,25 @@ export function ScenarioCard({ scenario }: { scenario: Scenario }) {
 
   return (
     <article className="scenario-card">
-      <div className="scenario-badges">
-        <DifficultyBadge difficulty={scenario.difficulty} />
-        <ModeBadge mode={scenario.mode} />
-        <StatusBadge status={scenario.status} />
-      </div>
+      <StatusTag status={scenario.status} />
 
       <h3>
         <Link to={`/scenarios/${scenario.id}`}>{scenario.title}</Link>
       </h3>
       <p className="scenario-summary">{scenario.summary}</p>
 
-      <div className="scenario-meta">
-        <span>
+      <Meta>
+        <span className="meta-item">
           <Icon name="target" size={14} />
           {track?.name ?? scenario.trackId}
         </span>
-        <span>
+        <span className="meta-item">{difficultyLabels[scenario.difficulty]}</span>
+        <span className="meta-item">
           <Icon name="clock" size={14} />
           {formatMinutes(scenario.estimatedMinutes)}
         </span>
-        {category ? <span className="muted-inline">{category.name}</span> : null}
-      </div>
-
-      <Link className="card-foot-link" to={`/scenarios/${scenario.id}`}>
-        View scenario
-        <Icon name="arrow-right" size={15} />
-      </Link>
+        {category ? <span className="meta-item">{category.name}</span> : null}
+      </Meta>
     </article>
   )
 }

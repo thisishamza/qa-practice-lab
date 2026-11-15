@@ -4,7 +4,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Callout } from '../components/ui/Callout'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { Tag } from '../components/ui/Tag'
 import { GuideCard } from '../features/guides/GuideCard'
 
 export function GuidesPage() {
@@ -32,8 +32,8 @@ export function GuidesPage() {
       </Callout>
 
       <div className="guide-index-meta">
-        <Badge tone="accent">{guides.length} guides</Badge>
-        <Badge tone="neutral">{groups.length} disciplines covered</Badge>
+        <Tag tone="neutral">{guides.length} guides</Tag>
+        <Tag tone="neutral">{groups.length} disciplines covered</Tag>
       </div>
 
       {groups.map(({ track, trackGuides }) => (

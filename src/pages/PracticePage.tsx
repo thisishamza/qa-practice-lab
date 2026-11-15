@@ -5,7 +5,8 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Callout } from '../components/ui/Callout'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { Tag } from '../components/ui/Tag'
+import { FactList } from '../components/ui/FactList'
 import { Icon } from '../components/ui/Icon'
 
 const plannedFormats: { title: string; description: string; icon: IconName }[] = [
@@ -62,24 +63,14 @@ export function PracticePage() {
 
         <div className="panel">
           <h2>Environment facts</h2>
-          <dl className="fact-list">
-            <div>
-              <dt>Frontend</dt>
-              <dd>React + TypeScript + Vite</dd>
-            </div>
-            <div>
-              <dt>API</dt>
-              <dd>Hono on Cloudflare Pages Functions</dd>
-            </div>
-            <div>
-              <dt>Platform data</dt>
-              <dd>Cloudflare D1 (health metadata only)</dd>
-            </div>
-            <div>
-              <dt>Exercise targets</dt>
-              <dd>Not implemented</dd>
-            </div>
-          </dl>
+          <FactList
+            items={[
+              { label: 'Frontend', value: 'React + TypeScript + Vite' },
+              { label: 'API', value: 'Hono on Cloudflare Pages Functions' },
+              { label: 'Platform data', value: 'Cloudflare D1 (health metadata only)' },
+              { label: 'Exercise targets', value: 'Not implemented' },
+            ]}
+          />
           <p className="panel-note">
             The health check is the only live API call in Phase 2. It confirms the
             platform wiring, not an exercise environment.
@@ -92,7 +83,7 @@ export function PracticePage() {
           id="formats-title"
           title="Planned practice formats"
           description="Each format will be added behind a bounded, first-party target."
-          action={<Badge tone="neutral">Planned</Badge>}
+          action={<Tag tone="planned">Planned</Tag>}
         />
         <div className="format-grid">
           {plannedFormats.map((format) => (
@@ -102,9 +93,9 @@ export function PracticePage() {
               </span>
               <h3>{format.title}</h3>
               <p>{format.description}</p>
-              <Badge tone="neutral" icon="lock">
+              <Tag tone="neutral" icon="lock">
                 Not available
-              </Badge>
+              </Tag>
             </div>
           ))}
         </div>

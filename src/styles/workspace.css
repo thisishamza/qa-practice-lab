@@ -1,0 +1,15 @@
+/*
+ * Workspace scope — dark technical panels inside either theme.
+ *
+ * The palette itself lives in tokens.css under [data-surface="workspace"].
+ * This file is the scaffold for workspace-specific component patterns
+ * (console, log, query and request/response panels). It intentionally
+ * contains no feature styles yet: those arrive with the milestones that
+ * build the API, SQL and logs surfaces (M6/M7 and Phase 3+).
+ *
+ * Rules for future additions, per The Test Bench direction:
+ * - Always rendered inside [data-surface="workspace"]; never re-declare colors
+ *   here, only structure.
+ * - Monospace body, 1px header strip with a mono label.
+ * - No gradients, no shadows; depth comes from surface steps only.
+ */

@@ -2,15 +2,21 @@ import type { ReactNode } from 'react'
 import type { IconName } from '../../data/types'
 import { Icon } from './Icon'
 
-type CalloutTone = 'info' | 'warning' | 'success' | 'neutral'
+type CalloutTone = 'info' | 'warning' | 'success' | 'danger' | 'neutral'
 
 const toneIcons: Record<CalloutTone, IconName> = {
   info: 'info',
   warning: 'alert',
   success: 'check',
-  neutral: 'sparkles',
+  danger: 'alert',
+  neutral: 'info',
 }
 
+/**
+ * Rule-based callout: 3 px left rule + label + copy on a sunken surface.
+ * Full danger tint is reserved for blocking errors. Never colour alone —
+ * the icon and title carry the tone as well.
+ */
 export function Callout({
   tone = 'info',
   title,

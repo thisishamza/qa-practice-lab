@@ -142,7 +142,7 @@ kbd {
   border-radius: var(--radius-sm);
   background: var(--ink-strong);
   color: var(--bg);
-  font-weight: 700;
+  font-weight: var(--weight-semibold);
 }
 
 .skip-link:focus {

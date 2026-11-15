@@ -11,6 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
+import { Button } from '../components/ui/Button'
 import { ScenarioFilterBar } from '../features/catalog/ScenarioFilterBar'
 import { ScenarioCard } from '../features/catalog/ScenarioCard'
 
@@ -67,14 +68,10 @@ export function ScenariosPage() {
           description="Try a broader search, a different track, or reset the filters to see the full catalogue."
           icon="filter"
           action={
-            <button
-              type="button"
-              className="button button-small"
-              onClick={() => setFilters(defaultScenarioFilters)}
-            >
+            <Button size="sm" onClick={() => setFilters(defaultScenarioFilters)}>
               <Icon name="reset" size={15} />
               Reset filters
-            </button>
+            </Button>
           }
         />
       )}
