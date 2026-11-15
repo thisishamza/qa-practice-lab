@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { CartProvider } from '../features/cart/CartContext'
 import { AuthProvider } from '../features/auth/AuthContext'
+import { PracticeSessionProvider } from '../features/practice/PracticeSessionProvider'
 import { AppShell } from '../components/layout/AppShell'
 import { CartPage } from '../pages/CartPage'
 import { CheckoutPage } from '../pages/CheckoutPage'
@@ -31,6 +32,7 @@ export function App() {
       <BrowserRouter>
         <CartProvider>
           <AuthProvider>
+            <PracticeSessionProvider>
             <Routes>
               <Route element={<AppShell />}>
                 <Route index element={<DashboardPage />} />
@@ -56,6 +58,7 @@ export function App() {
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>
+            </PracticeSessionProvider>
           </AuthProvider>
         </CartProvider>
       </BrowserRouter>

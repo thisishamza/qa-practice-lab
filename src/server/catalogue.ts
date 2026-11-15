@@ -10,6 +10,7 @@ import {
   type StockStatus,
 } from '../shared/commerce'
 import type { AppEnv } from './app'
+import { isDefectActive } from './defects'
 
 interface ProductRow {
   id: number
@@ -129,11 +130,21 @@ catalogueRoutes.get('/products', async (c) => {
     bindings.push(category)
   }
   if (query) {
-    conditions.push(
-      `(p.name LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\')`,
-    )
     const pattern = `%${escapeLike(query)}%`
-    bindings.push(pattern, pattern, pattern)
+    // BUG-HUNT DEFECT CATALOGUE-001 (hunt-catalogue-001): in a bug-hunt
+    // session carrying this defect, the description facet of the search
+    // predicate is dropped. Clean mode always matches name OR description
+    // OR category. Only this branch differs; count and rows stay consistent
+    // because both queries share the same conditions/bindings.
+    if (await isDefectActive(c, 'CATALOGUE-001')) {
+      conditions.push(`(p.name LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\')`)
+      bindings.push(pattern, pattern)
+    } else {
+      conditions.push(
+        `(p.name LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\')`,
+      )
+      bindings.push(pattern, pattern, pattern)
+    }
   }
   const where = conditions.join(' AND ')
 

@@ -41,7 +41,7 @@ security challenge exists yet.
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | No-persistence progress preview, clearly labelled as sample data |
-| `/practice` | Live health check plus the planned practice formats and safety boundaries |
+| `/practice` | Live health check, bug-hunt mode controls (start/reset the practice hunt), planned practice formats and safety boundaries |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -60,6 +60,11 @@ pieces of server-side practice state: they persist in D1 under an opaque `mpl_se
 Signing in adds a second, independent `mpl_customer` cookie (HttpOnly, `SameSite=Strict`,
 8-hour expiry) bound to that same practice session — the two cookies are never interchangeable,
 and a customer session is only honoured while its owning practice session is live.
+
+Every page carries a slim **mode banner** showing whether the commerce app is in
+**Clean mode** (default, intended behaviour) or **Bug-hunt mode** (a deliberately broken
+state for testing practice). The bug-hunt controls live on `/practice` — see
+[Bug-hunt mode](#bug-hunt-mode-p3-m7).
 
 ## Training-only synthetic sign-in
 
@@ -370,6 +375,36 @@ but the synthetic account is suspended; `404 not_found` = the resource is unknow
 by the caller (existence concealed). `403` is deliberately not used for cross-customer access, so
 the 401/403/404 triple each has one unambiguous meaning.
 
+Bug-hunt mode (P3-M7):
+
+- `GET /api/v1/practice/session` — the current practice mode: `{ "mode": "clean", "hunt": null }`
+  or `{ "mode": "bug_hunt", "hunt": { "id", "title", "summary" } }`. Read-only; unknown browsers
+  get clean mode and no cookie is minted by reads. Never contains defect ids.
+- `POST /api/v1/practice/hunts/:huntId/start` — enter bug-hunt mode for a registered hunt.
+  The hunt id must match the server-side registry (`hunt-catalogue-001` is the only hunt in v1);
+  unknown ids answer `404 hunt_not_found`, malformed ids `400 invalid_request`. The request
+  **takes no body** — there is nothing a client may tune. If the browser has a live session it is
+  re-stamped in place (mode `bug_hunt`, hunt id) and keeps its cart, orders and customer binding;
+  otherwise a fresh bug-hunt session is minted and returned via cookie. Starting the same hunt
+  again is idempotent.
+- `POST /api/v1/practice/session/reset` — return the session to clean mode. Non-destructive: the
+  live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
+  synthetic sign-in are kept. With no live session, a fresh clean session is minted.
+
+**Bug-hunt mode — learner-facing summary.** Starting a hunt puts *your browser session only*
+into an intentionally broken state (the banner turns amber and names the hunt). One defect is
+active; it is deterministic and reproducible. Nothing about the hunt is stored anywhere but your
+own `practice_sessions` row, other browsers never share it, and `reset` always returns the shop
+to clean behaviour. In v1 the single hunt (`hunt-catalogue-001`) breaks one facet of the shop
+search — work out which. Reset restores correct behaviour. Defect ids, expected/actual details
+and repro steps are deliberately **not** exposed to the learner; they live in
+`docs/bug-hunt-catalogue.md` for maintainers.
+
+**Engine guarantees:** Clean mode never reaches a defect branch. Activation is re-resolved
+per request from the caller's own session row — there is no global flag, cache or shared
+"defects on" switch, and no endpoint accepts a defect id. Expired or unknown-hunt sessions
+behave as clean. Bug-hunt state cannot affect another learner's session.
+
 **Guest checkout remains fully supported.** Sign-in is never required for the existing catalogue,
 cart or checkout flows. Orders placed before sign-in stay attached to the practice session; after
 sign-in they remain readable through `GET /api/v1/orders` and `/orders/:reference` only, not
@@ -434,6 +469,12 @@ build limits, D1 daily reads/writes and per-invocation query limits).
   `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
   yet. Cancelling an order whose product was deleted returns nothing to stock (the snapshot
   outlives the catalogue).
+- Bug-hunt mode ships **one** proof hunt (`hunt-catalogue-001`, one deterministic defect in the
+  shop search). It is the engine v1, not the catalogue: the full 5–7 defect set, scenario wiring
+  and hunt discovery arrive in P3-M8. Reset preserves the cart, orders and sign-in (it re-stamps
+  the session; it does not cascade-delete anything), and there is no reveal/scoring flow yet —
+  intended behaviour during an active hunt is intentionally not documented to the learner until
+  the reveal flow lands (Phase 4+). Hunt starts and resets are not rate-limited yet (P3-M9).
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

@@ -58,12 +58,12 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M4 (done) | `GET /api/v1/checkout` · `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:reference` | Orders |
 | M5 (done) | `GET /api/v1/auth/accounts` · `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` · `GET /api/v1/account` · `GET /api/v1/account/orders` · `GET /api/v1/account/orders/:reference` | Synthetic auth + protected account |
 | M6 (implemented) | `GET /api/v1/admin/inventory` · `PATCH /api/v1/admin/inventory/:productId` (staff role) · `POST /api/v1/orders/:reference/cancel` (stock re-check inside checkout) | Inventory |
-| M7 | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
+| M7 (implemented) | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
 
 All mutating endpoints require an anonymous practice session cookie; M5 adds synthetic
 bearer-style auth on top. Nothing here is exposed without the session cookie.
 
-## 4. Bug-hunt engine architecture (design only — not implemented until M7)
+## 4. Bug-hunt engine architecture (implemented in M7 — see §P3-M7 and docs/bug-hunt-catalogue.md)
 
 **Hard requirements:** reproducible, server-controlled, session-isolated, documented.
 **Explicit non-goals:** random frontend bug generation, client-side activation flags,
@@ -85,15 +85,17 @@ open-ended defect toggling, defects in clean mode.
 - **Clean mode** is the default session (`mode='clean'`): no defect branch ever executes.
   The storefront banner shows "Clean mode" vs "Bug-hunt mode — defects are intentional".
 - **Application sites:** each defect has exactly one (or as few as possible) code sites that
-  branch on `await isDefectActive(c, 'PRICE-001')`. The defective branch implements the
+  branch on `await isDefectActive(c, '<DEFECT-ID>')`. The defective branch implements the
   documented wrong behavior *precisely*; no other path is touched. Unit tests cover both
   branches per defect.
 - **Isolation:** mutable state is always session-scoped. Read-path defects (e.g. stale stock
   after a cart update) apply only to responses served for that session. The seeded catalogue
   is identical for everyone; learner mutations never leak across sessions because carts and
   orders are keyed by `session_id`.
-- **Reset:** `POST …/practice/session/reset` expires the current session and issues a fresh
-  clean one — the learner always lands in a known-good state.
+- **Reset:** `POST …/practice/session/reset` re-stamps the live session to clean mode
+  (`mode='clean'`, `hunt_id=NULL`) — the learner always lands in a known-good state with
+  cart/orders intact (as built in M7; see the M7 deviation note below about why the
+  expire+fresh-session sketch was not used).
 - **Abuse controls:** hunt starts capped per IP per day; session rows swept on expiry (M9);
   no admin/teacher activation UI in Phase 3; rate limits on cart/checkout/hunt endpoints.
 - **Docs:** every defect documents Expected vs Actual, reproduction steps, and the fix in
@@ -255,18 +257,43 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
   write, audit row only on success), catalogue staleness after restock, cancel exactly-once,
   idempotency across sessions/customers, race for the last unit, CHECK-constraint rollback.
 
-### P3-M7 — Bug-hunt engine v1
+### P3-M7 — Bug-hunt engine v1 *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** the machinery for clean/bug-hunt modes — sessions, hunt registry, isolation.
-- **Scope:** `practice_sessions`; `hunts.ts`/`defects.ts` registries;
-  `POST /api/v1/practice/hunts/:huntId/start`, `POST …/session/reset`, `GET …/session`;
-  `mpl_session` cookie; `isDefectActive()` helper; **one** end-to-end proof defect
-  (planned: free-shipping threshold off-by-one, id `PRICE-001`); storefront banner
-  distinguishing clean vs bug-hunt; engine doc + `docs/bug-hunt-catalogue.md` skeleton.
+- **Scope (as built):** `practice_sessions` extended with `mode`/`hunt_id` (migration
+  `0007_bug_hunt.sql`, additive, `schema_version` → `7`); `src/server/hunts.ts` (hunt registry)
+  and `src/server/defects.ts` (defect registry + `isDefectActive`); `POST /api/v1/practice/hunts/:huntId/start`,
+  `POST /api/v1/practice/session/reset`, `GET /api/v1/practice/session`; `isDefectActive()`
+  server-resolved activation; one end-to-end proof defect — **`CATALOGUE-001`** (hunt
+  `hunt-catalogue-001`, "Catalogue search under-matches": the description facet of the `q`
+  search predicate is dropped), chosen instead of the sketched `PRICE-001` free-shipping
+  off-by-one because no shipping/free-shipping feature exists to hang the defect on — the
+  smallest defect demonstrated through an existing commerce workflow. Learner-facing surfaces:
+  a persistent mode banner in the app shell (Clean vs Bug-hunt) and start/reset controls on
+  `/practice`; engine doc `docs/bug-hunt-catalogue.md` (internal Expected vs Actual, repro,
+  fix, isolation).
+- **Database:** additive columns only; `hunt_id` is deliberately NOT a foreign key (hunts are
+  compiled TypeScript, not rows). Existing sessions default to `clean`.
 - **Acceptance:** clean session never sees the defect; bug-hunt session sees exactly
-  `PRICE-001`; reset returns to clean; no endpoint accepts defect ids; two sessions are
-  isolated. **Testing:** both-branch unit tests + integration via fake-D1; cookie isolation
-  probe with two browser contexts.
+  `CATALOGUE-001`; reset returns to clean; no endpoint accepts defect ids; two sessions are
+  isolated. ✅ verified 2026-11-15 (unit/integration + browser probe).
+- **Deviations (documented, deliberate):**
+  1. Proof defect is `CATALOGUE-001`, not the sketched free-shipping `PRICE-001` (no shipping
+     exists; inventing one was scope creep).
+  2. Reset is a **non-destructive re-stamp** (`mode='clean'`, `hunt_id=NULL`), not the
+     "expire + fresh session" sketch: expiring the practice session would cascade-delete the
+     learner's orders and cart (M4 FKs) and detach their synthetic customer session (M5 FKs) —
+     far more destructive than "restores clean mode" promises. The cart, orders and
+     sign-in binding survive reset; verified by test.
+  3. Hunt start re-stamps the live session in place rather than minting a new one (cart and
+     orders stay put); repeated starts are idempotent. The learner-facing hunt list is
+     hard-coded on `/practice` until P3-M8 wires hunts into the scenario catalogue
+     (no `GET /api/v1/practice/hunts` endpoint yet — hunt→scenario wiring is M8).
+- **Testing:** `tests/server/hunt.test.ts` (24 tests: registry integrity, start/reset, both
+  defect branches, two-learner isolation, guest + synthetic-account compatibility across
+  reset, forged body/defect-id rejection, expired/unknown-hunt → clean, idempotency,
+  non-destructive order preservation) + `tests/practice/api.test.ts` (client) + browser probe
+  (two isolated contexts) + all pre-existing suites green.
 
 ### P3-M8 — Bug-hunt defect set & scenario wiring
 
@@ -295,9 +322,9 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
 
 | Hunt | Scenario area | Defect(s) |
 |---|---|---|
-| `hunt-pricing-001` | Checkout totals | `PRICE-001` threshold off-by-one |
+| `hunt-catalogue-001` | Filtering/search | `CATALOGUE-001` description facet ignored — **shipped in M7** |
+| `hunt-pricing-001` | Checkout totals | threshold off-by-one (candidate — no shipping feature exists; re-scope in M8) |
 | `hunt-inventory-001` | Inventory/staleness | stale stock read after cart mutation |
-| `hunt-catalogue-001` | Filtering | one filter facet ignored |
 | `hunt-validation-001` | Checkout form | empty-name/postcode edge case accepted |
 | `hunt-authz-001` | Order ownership | missing ownership check on one endpoint |
 
@@ -309,7 +336,7 @@ Final hunt set is fixed in M8; this table is a sketch, not a contract.
   negligible against 5 GB.
 - Reads/writes per learner action: ≤ 5 D1 statements per request; list endpoints paginated;
   no N+1 (joins aliased in M1).
-- No cron/queues/Workers in Phase 3; M7 adds one `practice_sessions` row per hunt start.
+- No cron/queues/Workers in Phase 3; M7 hunt starts create a practice-session row only when the browser has no live one (otherwise the row is re-stamped).
 - Pages builds unaffected (static bundle + Functions). No remote resources are created or
   migrated in this phase — everything is local until deployment is explicitly approved.
 

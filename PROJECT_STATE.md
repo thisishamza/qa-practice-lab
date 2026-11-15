@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation) and P3-M6 (inventory depth, staff restock, order cancellation) are implemented and verified; P3-M7 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth, staff restock, order cancellation) and P3-M7 (bug-hunt engine v1, mode banner + `/practice` hunt controls, one proof defect) are implemented and verified; P3-M8 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -148,8 +148,8 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
 P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
-(checkout & orders), P3-M5 (synthetic customers & auth simulation) and P3-M6 (inventory depth)
-are implemented and verified on that branch.
+(checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth)
+and P3-M7 (bug-hunt engine v1) are implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -194,6 +194,8 @@ qa-practice-lab/
 │   │                                  # FactList, StatTile, Callout, States, progress, theme
 │   ├── data/                          # typed tracks, categories, scenarios, guides, demo
 │   ├── features/
+│   │   ├── practice/                  # P3-M7 api client, PracticeSessionProvider, ModeBanner,
+│   │   │                              # HuntPanel (bug-hunt controls on /practice)
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
 │   │   ├── cart/                      # CartContext (provider), cart-context, useCart,
 │   │   │                              # CartView, api (cart client)
@@ -222,14 +224,18 @@ qa-practice-lab/
 │   ├── server/staff.ts                # P3-M6 requireStaff guard (401/403 staff_required; role from DB only)
 │   ├── server/customer.ts             # P3-M5 customer sessions (mpl_customer cookie, hashed tokens,
 │   │                                  # practice-session binding, suspended handling)
+│   ├── server/practice.ts             # P3-M7 practice-session mode routes (/api/v1/practice/*)
+│   ├── server/hunts.ts                # P3-M7 hunt registry (code, not data)
+│   ├── server/defects.ts              # P3-M7 defect registry + isDefectActive() (server-resolved)
 │   ├── shared/health.ts               # shared response type
 │   ├── shared/commerce.ts             # shared catalogue + cart + order contracts (Phase 3)
+│   ├── shared/practice.ts             # shared practice-mode/hunt-summary contracts (P3-M7)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
 │   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
 │                                      # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql,
-│                                      # 0006_inventory_depth.sql
+│                                      # 0006_inventory_depth.sql, 0007_bug_hunt.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
@@ -246,6 +252,9 @@ qa-practice-lab/
     ├── server/inventory.test.ts       # staff authz matrix, restock validation/cap, exactly-once
     │                                  # cancel, race for the last unit, audit-trail assertions
     ├── server/health.test.ts
+    ├── server/hunt.test.ts            # P3-M7 bug-hunt engine: registries, activation, isolation,
+    │                                  # reset, idempotency, guest+account compatibility, forged ids
+    ├── practice/api.test.ts           # P3-M7 browser client (stubbed fetch)
     ├── lib/checkout.test.ts           # checkout form validation
     └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
                                        # (+ cart/checkout views & API client tests since P3-M3/M4)
@@ -267,6 +276,10 @@ Phase 3 (P3-M6) added `/admin/inventory` — staff-only inventory view and resto
 enforces authorization; the page renders honest guest/customer/staff states; the sidebar and
 mobile nav carry an Inventory entry for staff only). Both confirmation pages gained an inline
 cancel panel (`placed → cancelled`, stock restored exactly once).
+Phase 3 (P3-M7) mounted no new routes: every page now renders a slim `ModeBanner`
+(clean vs bug-hunt, `role="status"`, reset action) above the routed content, and `/practice`
+gained a Bug-hunt mode section (`HuntPanel`) with start/reset controls.
+`App.tsx` wraps the routes in `PracticeSessionProvider`.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -300,6 +313,93 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M7: bug-hunt engine v1
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `db71597` (P3-M6), tree
+  clean; `main` untouched; nothing pushed. Changes land in the milestone commit at the end of
+  this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work; focused `--domain ux` queries
+  (status semantics → visible focus + `role="status"` live regions; submit feedback →
+  loading→success/error states; destructive confirm → reset is deliberately NON-destructive, so
+  no confirm dialog). Test Bench tokens are authoritative; no new dependencies, no icons package.
+  The `--design-system` route was not used — this is a consistency pass on an existing design
+  system, not a new page.
+- **Migration `db/migrations/0007_bug_hunt.sql` (additive only, applied locally, `schema_version`
+  → `7`):** `practice_sessions` gains `mode TEXT NOT NULL DEFAULT 'clean' CHECK (mode IN ('clean',
+  'bug_hunt'))` and `hunt_id TEXT NULL CHECK (hunt_id IS NULL OR length(hunt_id) BETWEEN 1 AND
+  64)`. `hunt_id` is deliberately NOT a foreign key — hunts are compiled TypeScript
+  (`src/server/hunts.ts`), not database rows. Pre-M7 rows default to clean; guest and signed-in
+  behaviour is byte-identical.
+- **Engine design (as built):** registries are code — `src/server/hunts.ts` exports
+  `HUNTS: [{ id: 'hunt-catalogue-001', title, summary, defectIds: ['CATALOGUE-001'] }]`;
+  `src/server/defects.ts` exports `DEFECTS` (internal Expected/Actual/repro/fix per defect) and
+  `isDefectActive(c, defectId)`, which reads the caller's `mpl_session` cookie exactly like the
+  other session-scoped routes, loads the live session (one indexed lookup — `findLiveSession`
+  was extended to select `mode`/`hunt_id`), requires `mode='bug_hunt'`, and checks the code
+  registry's defect list for the hunt. Clean/expired/unknown-hunt/malformed-cookie sessions all
+  resolve to false. No client-supplied defect id, role, owner or activation flag is ever
+  consulted; `POST .../hunts/:huntId/start` takes NO body. No global flags, no process memory,
+  no shared DB switch. Determinism: defect branches are static; no randomness or wall-clock.
+- **API (`src/server/practice.ts`, mounted in `/api/v1`):** `GET /api/v1/practice/session`
+  (read-only; never mints; `{ mode, hunt: { id, title, summary } | null }`; never defect ids),
+  `POST /api/v1/practice/hunts/:huntId/start` (hunt id format-validated → 400
+  `invalid_request`; registry miss → 404 `hunt_not_found`; live session is re-stamped in place —
+  cart/orders/customer binding preserved — otherwise a fresh bug-hunt session is minted;
+  same-hunt re-start is idempotent), `POST /api/v1/practice/session/reset` (NON-destructive
+  re-stamp to clean; with no live session a fresh clean session is minted). Deviation from the
+  plan's "expire + fresh session" sketch, documented in the plan + README: expiring the practice
+  session would cascade-delete the learner's orders and cart (M4 FKs) and detach their synthetic
+  customer session (M5 FKs) — far more destructive than "restores clean mode" promises. Existing
+  session-cookie minting (`createSessionWithCart`) gained an optional `{ mode, huntId }` argument.
+- **Proof defect `CATALOGUE-001` (hunt `hunt-catalogue-001`, "Catalogue search under-matches"):**
+  expected — `GET /api/v1/products?q=` matches name OR description OR category name
+  (case-insensitive substring, escaped LIKE, bind params); bug-hunt — the `p.description LIKE`
+  clause is dropped in exactly ONE branch (`src/server/catalogue.ts`, guarded by
+  `await isDefectActive(c, 'CATALOGUE-001')`); list and count share the predicate. Only the
+  hunting session sees it. Repro: start hunt → shop search `vestibules` → 0 hits (clean: 1 —
+  Ridgeline 2-Person Tent). Chosen instead of the sketched `PRICE-001` free-shipping off-by-one
+  because NO shipping feature exists to hang the defect on; smallest defect demonstrated through
+  an existing commerce workflow. Internal repro/fix/isolation in `docs/bug-hunt-catalogue.md`.
+- **Frontend:** mode banner in the app shell (`ModeBanner`, `role="status"`; clean = green left
+  border + check, bug-hunt = amber + bug icon + hunt title + Reset button; loading skeleton
+  reserves space; error state with retry). `/practice` gained a Bug-hunt mode section
+  (`HuntPanel`): current mode tag, hunt title/summary, Start button (loading → success
+  `role="status"` announcement), Reset button (keeps cart/orders), inline `role="alert"` errors.
+  Fresh `PracticeSessionProvider` context reads `/api/v1/practice/session` on mount; nothing in
+  localStorage. Both themes verified at 375/768/1024/1440 (zero overflow, one h1, reduced-motion).
+- **Tests:** `tests/server/hunt.test.ts` (+24): registry integrity (every hunt defect exists),
+  fresh-browser clean read (never mints), start flow (mint/re-stamp/idempotent/legacy-session
+  keep cart), malformed/unknown hunt ids, forged defect ids/mode/huntId in the body ignored,
+  both defect branches, two-learner isolation, unrelated behaviour intact in hunt mode (sort),
+  cart/checkout functional in hunt mode, unknown-hunt_id stamp resolves clean, expired hunt
+  session purged → clean, non-destructive reset (cart + order placement survive), guest +
+  synthetic Amara sign-in compatibility across start/reset, repeated reset idempotent, no-cookie
+  reset mints clean. `tests/practice/api.test.ts` (+7): browser client contracts. schema_version
+  assertions bumped 6→7 (catalogue/cart/checkout). Existing suites otherwise untouched and green.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **294/294 tests**, was 287). `npm run build` — passed (JS **466.40 kB** / gzip 136.42 kB vs
+  459.35/134.76 at M6; CSS **74.51 kB** / gzip 14.08 kB; no new runtime dependencies). Local D1
+  migration applied (`0007`; `/api/health` reads `schemaVersion: 7`). Playwright/Chrome probe
+  against the production build on port **8791**: **40/40 checks pass** — clean defaults both
+  contexts, start flow, banner flip, hunt-only description-facet defect (A sees 0 results, B sees
+  1, name facet works in hunt, reload persistence), cart functional in hunt + isolated from B,
+  reset via banner and via panel round-trips, cart survives reset, keyboard reachability,
+  both themes × 375/768/1024/1440 (zero overflow, one h1), reduced-motion render, zero unexpected
+  console errors (by-design 401 guest probes filtered). Port 8791 confirmed closed.
+- **Docs:** README (route table, mode-banner note, bug-hunt mode section incl. API + learner
+  summary + engine guarantees, known constraints), `docs/bug-hunt-catalogue.md` (internal),
+  `docs/phase-3-commerce-practice-plan.md` (M7 implemented, deviations recorded, §4/§6/§7
+  reconciled), AGENTS.md state lines, PROJECT_STATE.md.
+- **Known limitations / open items:** exactly one proof hunt (full 5–7 defect set is P3-M8);
+  no reveal/scoring flow (Phase 4+); hunts not discoverable from the catalogue UI yet (M8 wires
+  hunt→scenario links; `/practice` hard-codes the single hunt id); no rate limits on hunt
+  start/reset (M9); hunt starts are not capped per IP/day (M8/M9); expired bug-hunt sessions are
+  purged lazily on next contact only — no sweep (M9); `schema_version` reads 7.
+- **Git:** single milestone commit `feat: implement bug-hunt engine v1` (hash in the final
+  report). `main` untouched, nothing pushed, P3-M8 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M8 (bug-hunt defect set & scenario
+  wiring)** — do not begin without approval.
 
 ### 2026-11-15 — Phase 3 P3-M6: inventory depth and stock management
 
@@ -1109,7 +1209,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 - Testing: server tests run against an in-memory SQLite (`node:sqlite`) that applies the **real**
   migration files — no hand-mocked SQL (`tests/helpers/fake-d1.ts`).
 
-### Bug-hunt engine (designed, NOT implemented — lands in P3-M7/P3-M8)
+### Bug-hunt engine (v1 implemented in P3-M7; catalogue lands in P3-M8)
 
 - **Clean mode** is the default: zero defect branches execute. **Bug-hunt mode** activates a
   hunt's fixed defect set; never anything else.
@@ -1121,9 +1221,11 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
   apply only to that session's responses; seeded catalogue is identical for everyone.
 - Every defect is a single (minimal) code site branching on an `isDefectActive()` check with
   unit tests for both branches; deterministic — no randomness, no wall-clock ordering.
-- Reset issues a fresh clean session; sessions swept on expiry (M9); per-IP hunt-start caps;
-  no admin/teacher activation UI in Phase 3. Internal catalogue documents Expected vs Actual,
-  repro and fix in `docs/bug-hunt-catalogue.md`.
+- Reset re-stamps the live session to clean mode non-destructively (cart/orders/customer
+  binding kept; hunt state removed); sessions swept on expiry (M9); per-IP hunt-start caps are
+  not in yet (M8/M9); no admin/teacher activation UI in Phase 3. Internal catalogue documents
+  Expected vs Actual, repro and fix in `docs/bug-hunt-catalogue.md`. In v1 exactly one hunt
+  exists (`hunt-catalogue-001` → `CATALOGUE-001`, description-facet search defect).
 
 ### Milestone status
 
@@ -1135,7 +1237,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 | P3-M4 | Checkout & orders (simulated payments, transactional D1 placement, idempotency) | **Done & verified 2026-11-15** (this branch) |
 | P3-M5 | Synthetic customers & auth simulation (roles, ownership) | **Done & verified 2026-11-15** (this branch) |
 | P3-M6 | Inventory depth (stock re-check in order transaction, restock, cancellation) | **Done & verified 2026-11-15** (this branch) |
-| P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | Planned |
+| P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | **Done & verified 2026-11-15** (this branch) |
 | P3-M8 | Bug-hunt defect set & scenario wiring (5–7 defects) | Planned |
 | P3-M9 | Hardening, reset, Phase 3 exit audit | Planned |
 
@@ -1262,11 +1364,27 @@ view + restock tool), staff-only nav entries, inline cancel panel on both confir
 production build (port 8791). Known gaps: no rate limits (M9); restock-only adjustments (no
 removal path); `order_cancellations` not swept (M9); staff list unpaginated (~42 rows).
 
-Next recommended milestone: **P3-M7 — bug-hunt engine v1** (requires explicit instruction; do not
-start without approval).
+P3-M7 detail: additive migration `db/migrations/0007_bug_hunt.sql` (`practice_sessions.mode`
+CHECK clean|bug_hunt default 'clean', `hunt_id` nullable, `schema_version` → `7`); registries are
+code (`src/server/hunts.ts` — one hunt `hunt-catalogue-001`; `src/server/defects.ts` — defect
+`CATALOGUE-001` + `isDefectActive(c, defectId)` resolved per request from the caller's session
+row; clean/expired/unknown-hunt sessions resolve to false). Endpoints
+`GET /api/v1/practice/session`, `POST /api/v1/practice/hunts/:huntId/start` (no body; live session
+re-stamps in place, cart/orders kept; unknown hunt → 404 `hunt_not_found`), `POST
+/api/v1/practice/session/reset` (non-destructive re-stamp; cart/orders/sign-in kept). One code
+site: the `q` predicate in `GET /api/v1/products` (description facet dropped for hunt sessions).
+Frontend: `ModeBanner` in the app shell (role=status, Clean green / Bug-hunt amber + reset) and a
+Bug-hunt mode section on `/practice` (`HuntPanel`; start/reset with loading/success/error states).
+294/294 tests green (+24 server, +7 client; schema_version assertions 6→7); production build clean;
+Playwright/Chrome probe **40/40** against the production build on port 8791 (two isolated contexts:
+hunt-vs-clean search results, isolation, reload persistence, cart in hunt mode, reset round-trips,
+themes × 375/768/1024/1440, reduced-motion). Local D1 migrated to 0007.
+
+Next recommended milestone: **P3-M8 — bug-hunt defect set & scenario wiring** (requires explicit
+instruction; do not start without approval).
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy) and P3-M6 (inventory depth — staff-only `/admin/inventory` with restock tool, `placed → cancelled` order cancellation restoring stock exactly once, immutable `inventory_adjustments` audit trail, NO reservations) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M7 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy), P3-M6 (inventory depth — staff-only `/admin/inventory` with restock tool, `placed → cancelled` order cancellation restoring stock exactly once, immutable `inventory_adjustments` audit trail, NO reservations) and **P3-M7 (bug-hunt engine v1 — `practice_sessions.mode`/`hunt_id`, code-not-data hunt/defect registries, server-resolved `isDefectActive()`, `GET /api/v1/practice/session` + start/reset, one proof defect `CATALOGUE-001` in the shop search, mode banner + hunt controls on `/practice`, reset non-destructive) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M8 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

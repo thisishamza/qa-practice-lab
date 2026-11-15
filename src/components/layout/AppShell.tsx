@@ -4,6 +4,7 @@ import { useRouteManagement } from '../../lib/useRouteManagement'
 import { MobileNav } from './MobileNav'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { ModeBanner } from '../../features/practice/ModeBanner'
 
 const SIDEBAR_STORAGE_KEY = 'qa-practice-lab-sidebar-collapsed'
 
@@ -98,6 +99,7 @@ export function AppShell() {
 
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="page-container">
+            <ModeBanner />
             <Outlet />
           </div>
 

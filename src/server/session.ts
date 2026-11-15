@@ -6,8 +6,10 @@
 // Path=/). Sessions expire after 7 days. Deleting the cookie starts a fresh
 // session — there is nothing to sign in to and no accounts exist until M5.
 //
-// M7 will extend practice_sessions with mode/hunt_id columns; the cart only
-// depends on id/token_hash/expires_at, so it is unaffected by that migration.
+// M7 extends practice_sessions with mode/hunt_id columns (migration 0007);
+// the cart only depends on id/token_hash/expires_at, so it is unaffected.
+// mode/hunt_id are resolved here so defect activation (defects.ts) can be
+// served from the same single lookup instead of a second query.
 //
 // No cart data or prices are ever stored in browser storage — the server is
 // the only source of truth.
@@ -37,6 +39,10 @@ export function isTokenFormat(token: string): boolean {
 export interface PracticeSession {
   id: number
   expiresAt: string
+  /** 'clean' by default; 'bug_hunt' while a hunt is active. */
+  mode: 'clean' | 'bug_hunt'
+  /** Registry id of the active hunt (src/server/hunts.ts); null in clean mode. */
+  huntId: string | null
 }
 
 /** Looks up a live session by token hash. Expired rows are deleted in passing. */
@@ -46,9 +52,9 @@ export async function findLiveSession(
 ): Promise<PracticeSession | null> {
   const now = new Date().toISOString()
   const row = await db
-    .prepare('SELECT id, expires_at FROM practice_sessions WHERE token_hash = ?')
+    .prepare('SELECT id, expires_at, mode, hunt_id FROM practice_sessions WHERE token_hash = ?')
     .bind(tokenHash)
-    .first<{ id: number; expires_at: string }>()
+    .first<{ id: number; expires_at: string; mode: 'clean' | 'bug_hunt'; hunt_id: string | null }>()
 
   if (!row) {
     return null
@@ -60,7 +66,7 @@ export async function findLiveSession(
     return null
   }
 
-  return { id: row.id, expiresAt: row.expires_at }
+  return { id: row.id, expiresAt: row.expires_at, mode: row.mode, huntId: row.hunt_id }
 }
 
 /**
@@ -70,17 +76,23 @@ export async function findLiveSession(
  * empty session row with an expiry (swept later), never a broken one, and
  * `ensureCart` re-creates a missing cart on the next request. No batch
  * inter-statement visibility assumptions are needed.
+ *
+ * P3-M7: callers may open the session directly in bug-hunt mode by passing
+ * `{ mode: 'bug_hunt', huntId }`; anything unspecified defaults to clean.
  */
 export async function createSessionWithCart(
   db: D1Database,
+  options: { mode?: 'clean' | 'bug_hunt'; huntId?: string | null } = {},
 ): Promise<{ sessionId: number; cartId: number; token: string }> {
   const token = generateSessionToken()
   const tokenHash = await hashSessionToken(token)
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString()
+  const mode = options.mode ?? 'clean'
+  const huntId = mode === 'bug_hunt' ? (options.huntId ?? null) : null
 
   await db
-    .prepare('INSERT INTO practice_sessions (token_hash, expires_at) VALUES (?, ?)')
-    .bind(tokenHash, expiresAt)
+    .prepare('INSERT INTO practice_sessions (token_hash, expires_at, mode, hunt_id) VALUES (?, ?, ?, ?)')
+    .bind(tokenHash, expiresAt, mode, huntId)
     .run()
 
   const row = await db

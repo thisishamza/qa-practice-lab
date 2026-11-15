@@ -2793,3 +2793,145 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Practice-mode banner + bug-hunt panel (P3-M7) -------------------------- */
+
+.mode-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.5;
+}
+
+.mode-banner svg {
+  flex: 0 0 auto;
+}
+
+.mode-banner-loading {
+  min-height: 2.1rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.mode-banner-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mode-banner-text strong {
+  color: var(--ink-strong);
+  font-weight: var(--weight-semibold);
+}
+
+.mode-banner-clean {
+  border-left: 3px solid var(--run);
+}
+
+.mode-banner-clean svg {
+  color: var(--run);
+}
+
+.mode-banner-hunt {
+  border-left: 3px solid var(--warn);
+  background: var(--surface-sunken);
+}
+
+.mode-banner-hunt svg {
+  color: var(--warn);
+}
+
+.mode-banner-error {
+  border-left: 3px solid var(--danger);
+}
+
+.mode-banner-error > svg {
+  color: var(--danger);
+}
+
+.mode-banner-link {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-left: auto;
+  color: var(--link);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mode-banner-link:hover {
+  text-decoration: underline;
+}
+
+.mode-banner .button {
+  margin-left: auto;
+}
+
+.mode-banner-error-text {
+  flex-basis: 100%;
+  color: var(--danger);
+  font-size: var(--text-micro);
+}
+
+.hunt-panel-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.hunt-panel-hunt {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.hunt-panel-hunt-title {
+  color: var(--ink-strong);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+}
+
+.hunt-panel-hunt-summary {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.6;
+}
+
+.hunt-panel-success,
+.hunt-panel-error {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: var(--text-meta);
+  line-height: 1.5;
+}
+
+.hunt-panel-success {
+  color: var(--run);
+}
+
+.hunt-panel-error {
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .hunt-panel-status {
+    flex-direction: column;
+  }
+
+  .mode-banner .button {
+    margin-left: 0;
+  }
+}
