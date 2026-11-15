@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { isNavItemActive, primaryNav } from '../../lib/navigation'
+import { isNavItemActive, primaryNav, staffNavItem } from '../../lib/navigation'
+import { useAuth } from '../../features/auth/useAuth'
 import { Icon } from '../ui/Icon'
 
 interface SidebarProps {
@@ -9,6 +10,8 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { pathname } = useLocation()
+  const { customer } = useAuth()
+  const isStaff = customer?.role === 'staff' && customer.status === 'active'
   const aboutActive = pathname === '/about'
 
   function renderItems(items: typeof primaryNav) {
@@ -39,7 +42,10 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         <ul>{renderItems(primaryNav.slice(0, 4))}</ul>
 
         <p className="side-nav-heading">Workspace</p>
-        <ul>{renderItems(primaryNav.slice(4))}</ul>
+        <ul>
+          {renderItems(primaryNav.slice(4))}
+          {isStaff ? renderItems([staffNavItem]) : null}
+        </ul>
       </nav>
 
       <div className="side-utility">

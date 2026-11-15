@@ -124,13 +124,13 @@ describe('filterScenarios', () => {
   it('combines filters', () => {
     const result = filterScenarios(scenarios, {
       ...defaultScenarioFilters,
-      trackId: 'manual-testing',
+      trackId: 'api-testing',
       difficulty: 'beginner',
       mode: 'clean',
       status: 'planned',
     })
 
-    expect(result.map((scenario) => scenario.id)).toEqual(['manual-cart-totals'])
+    expect(result.map((scenario) => scenario.id)).toEqual(['api-catalog-pagination'])
   })
 
   it('returns an empty list when nothing matches', () => {
@@ -176,7 +176,7 @@ describe('catalogue counts', () => {
     const total = Object.values(counts).reduce((sum, value) => sum + value, 0)
 
     expect(total).toBe(scenarios.length)
-    expect(counts['manual-testing']).toBe(2)
+    expect(counts['manual-testing']).toBe(4)
   })
 
   it('counts scenarios per category', () => {
@@ -201,6 +201,7 @@ describe('URL search-param state', () => {
       mode: 'clean',
       status: 'planned',
       category: 'functional',
+      hunt: 'all',
     })
     expect(sortFromSearchParams(params)).toBe('title')
   })
@@ -292,6 +293,28 @@ describe('countScenariosByStatus', () => {
     expect(total).toBe(scenarios.length)
     expect(counts['in-design']).toBe(scenarios.filter((s) => s.status === 'in-design').length)
     expect(counts.planned).toBe(scenarios.filter((s) => s.status === 'planned').length)
-    expect(counts.ready).toBe(0)
+    expect(counts.ready).toBe(7)
+  })
+})
+
+
+describe('hunt filter', () => {
+  it('parses ?hunt=available and drops unknown values', () => {
+    expect(filtersFromSearchParams(new URLSearchParams('hunt=available')).hunt).toBe('available')
+    expect(filtersFromSearchParams(new URLSearchParams('hunt=bogus')).hunt).toBe('all')
+    expect(filtersFromSearchParams(new URLSearchParams('')).hunt).toBe('all')
+  })
+
+  it('round-trips through buildSearchParams, dropping the default', () => {
+    expect(
+      buildSearchParams({ ...defaultScenarioFilters, hunt: 'available' }).toString(),
+    ).toBe('hunt=available')
+    expect(buildSearchParams(defaultScenarioFilters).toString()).toBe('')
+  })
+
+  it('keeps only scenarios wired to a bug-hunt exercise', () => {
+    const wired = filterScenarios(scenarios, { ...defaultScenarioFilters, hunt: 'available' })
+    expect(wired.length).toBeGreaterThan(0)
+    expect(wired.every((scenario) => Boolean(scenario.huntId))).toBe(true)
   })
 })

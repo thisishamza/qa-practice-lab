@@ -27,7 +27,7 @@ import { Button } from '../../components/ui/Button'
 import { IconButton } from '../../components/ui/IconButton'
 
 const modes: ScenarioMode[] = ['clean', 'bug-hunt']
-const statuses: ScenarioStatus[] = ['planned', 'in-design']
+const statuses: ScenarioStatus[] = ['planned', 'in-design', 'ready']
 const sorts: ScenarioSort[] = ['recommended', 'title', 'difficulty', 'time']
 
 const focusableSelector = [
@@ -129,6 +129,18 @@ function FilterControls({
       </div>
 
       <div className="filter-field">
+        <label htmlFor={`${idPrefix}-hunt`}>Exercise</label>
+        <select
+          id={`${idPrefix}-hunt`}
+          value={filters.hunt}
+          onChange={(event) => update('hunt', event.target.value as ScenarioFilters['hunt'])}
+        >
+          <option value="all">All scenarios</option>
+          <option value="available">Bug-hunt exercise available</option>
+        </select>
+      </div>
+
+      <div className="filter-field">
         <label htmlFor={`${idPrefix}-category`}>Category</label>
         <select
           id={`${idPrefix}-category`}
@@ -216,6 +228,13 @@ function buildChips(
       key: 'status',
       label: `Status: ${scenarioStatusLabels[filters.status]}`,
       onRemove: remove('status'),
+    })
+  }
+  if (filters.hunt !== 'all') {
+    chips.push({
+      key: 'hunt',
+      label: 'Exercise: Bug-hunt available',
+      onRemove: remove('hunt'),
     })
   }
   if (filters.category !== 'all') {

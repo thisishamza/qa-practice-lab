@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2).** M9 (optional polish) is not started and only on request. **Phase 3 (commerce practice app) is next on the roadmap and has not been started.**
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth, staff restock, order cancellation), P3-M7 (bug-hunt engine v1, mode banner + `/practice` hunt controls), P3-M8 (bug-hunt defect set & scenario wiring — seven hunts/defects, hunt→scenario wiring, `GET /api/v1/practice/hunts`, local bug-report export, 20/IP/day hunt-start cap, exact atomic since M9) and P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) are implemented and verified. The exit audit is `docs/phase-3-exit-audit.md`; deployment (Cloudflare) and merging to `main` remain user decisions — nothing is pushed or deployed. Phase 4 has not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -144,6 +144,12 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 2.5. UI/UX audit & redesign planning | Evaluate the Phase 2 interface, choose a visual direction, and plan a component/page redesign | `docs/phase-2.5-ui-ux-audit.md` exists with evidence, tokens, page plans, accessibility plan, and milestones; implementation approved by the user |
 | 2.6. UI/UX redesign implementation | Execute the approved milestones M1–M8 in order (M9 optional) | Every approved milestone is implemented, verified, and recorded; Phase 3 resumes only on explicit instruction |
 | 3. Commerce practice app | Synthetic catalog/cart/checkout, clean mode, bug-hunt mode, reset | UI scenarios can be completed and known defects are reproducible |
+
+Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
+sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status and `docs/phase-3-exit-audit.md` for the audit.
+P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
+(checkout & orders), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth)
+and P3-M7 (bug-hunt engine v1) are implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -167,7 +173,10 @@ qa-practice-lab/
 ├── PROJECT_STATE.md
 ├── README.md
 ├── docs/
-│   └── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
+│   ├── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
+│   ├── phase-3-commerce-practice-plan.md  # Phase 3 plan: milestones P3-M1..P3-M9, bug-hunt engine design
+│   ├── bug-hunt-catalogue.md             # internal maintainer registry: Expected vs Actual per defect
+│   └── phase-3-exit-audit.md             # P3-M9 exit audit (milestones, schema, security, cleanup, limits)
 ├── package.json / package-lock.json   # v0.2.0
 ├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
@@ -187,30 +196,106 @@ qa-practice-lab/
 │   │                                  # FactList, StatTile, Callout, States, progress, theme
 │   ├── data/                          # typed tracks, categories, scenarios, guides, demo
 │   ├── features/
+│   │   ├── practice/                  # P3-M7 api client, HuntPanel (M8 registry-driven),
+│   │   │                              # PracticeSessionProvider, ModeBanner, HuntLaunchPanel,
+│   │   │                              # BugReportExport (local markdown)
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
+│   │   ├── cart/                      # CartContext (provider), cart-context, useCart,
+│   │   │                              # CartView, api (cart client)
+│   │   ├── auth/                      # AuthContext (provider), auth-context, useAuth,
+│   │   │                              # api (account/auth client)
+│   │   ├── checkout/                  # CheckoutView, OrderConfirmationView, useCancelOrder, api
+│   │   ├── inventory/                 # InventoryManager (staff-only restock UI) + api client
 │   │   ├── guides/                    # GuideCard
+│   │   ├── shop/                      # ProductCard, ProductDetail, ProductStates,
+│   │   │                              # ShopFilterBar, Pagination, api (catalogue client)
 │   │   ├── system/                    # HealthStatus
 │   │   └── tracks/                    # TrackCard
 │   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
-│   ├── pages/                         # 11 route-level pages (dashboard … about, not found)
-│   ├── server/app.ts                  # testable Hono app, basePath /api
+│   ├── pages/                         # route-level pages (dashboard … about, shop, shop product,
+│   │                                  # cart, checkout, orders confirmation, login, account,
+│   │                                  # account orders, account order detail, admin inventory (staff), 404)
+│   ├── server/app.ts                  # testable Hono app, basePath /api; body-size guard (413),
+│   │                                  # global mutation rate limit, no-store/nosniff headers
+│   ├── server/rateLimit.ts            # P3-M9 fixed-window limiter (login/checkout/mutate scopes)
+│   ├── server/maintenance.ts          # P3-M9 bounded cleanup sweep + staff-only sweep endpoint
+│   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search; hunts CATALOGUE-001/002)
+│   ├── server/cart.ts                 # Phase 3 session cart routes (/api/v1/cart)
+│   ├── server/checkout.ts             # Phase 3 checkout & order routes (/api/v1/checkout, /api/v1/orders)
+│   │                                  # + P3-M6 cancellation (/api/v1/orders/:reference/cancel)
+│   ├── server/session.ts              # anonymous practice sessions (SHA-256-hashed tokens)
+│   ├── server/auth.ts                 # P3-M5 auth + protected account routes (/api/v1/auth/*,
+│   │                                  # /api/v1/account/*); PBKDF2 verify, token rotation, 401/403/404
+│   ├── server/inventory.ts            # P3-M6 staff-only inventory routes (/api/v1/admin/inventory*)
+│   ├── server/staff.ts                # P3-M6 requireStaff guard (401/403 staff_required; role from DB only)
+│   ├── server/customer.ts             # P3-M5 customer sessions (mpl_customer cookie, hashed tokens,
+│   │                                  # practice-session binding, suspended handling)
+│   ├── server/practice.ts             # P3-M7 practice-mode routes + P3-M8 hunts list, exact 20/IP/UTC-day cap
+│   ├── server/hunts.ts                # P3-M7→M8 hunt registry (code, not data; scenarioId wiring)
+│   ├── server/defects.ts              # P3-M7→M8 defect registry + isDefectActive() (server-resolved)
 │   ├── shared/health.ts               # shared response type
+│   ├── shared/commerce.ts             # shared catalogue + cart + order contracts (Phase 3)
+│   ├── shared/practice.ts             # shared practice-mode/hunt-summary/list contracts (P3-M7/M8)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
-│   └── migrations/0001_initial_schema.sql
+│   ├── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
+│   │                                  # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql,
+│   │                                  # 0006_inventory_depth.sql, 0007_bug_hunt.sql,
+│   │                                  # 0008_hunt_start_caps.sql, 0009_rate_limit_buckets.sql
+│   └── maintenance/                   # P3-M9 local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 ├── public/
 │   └── favicon.svg
 └── tests/
     ├── data/content.test.ts           # content integrity and non-runnable guarantees
     ├── lib/catalog.test.ts            # filtering, search, counts, URL-param state, sorting
-    └── server/health.test.ts
+    ├── lib/shop.test.ts               # storefront URL-state, price formatting, labels
+    ├── helpers/fake-d1.ts             # node:sqlite-backed D1 harness (applies real migrations;
+    │                                  # also implements all-or-nothing batch())
+    ├── server/catalogue.test.ts       # /api/v1 catalogue API against the seeded schema (incl. q search)
+    ├── server/cart.test.ts            # session cart API: isolation, validation, totals, transactions
+    ├── server/checkout.test.ts        # checkout & orders: transaction, rollback, idempotency
+    ├── server/auth.test.ts            # auth & authorization: login/logout/me, rotation, expiry,
+    │                                  # practice-session binding, ownership, compatibility
+    ├── server/inventory.test.ts       # staff authz matrix, restock validation/cap, exactly-once
+    │                                  # cancel, race for the last unit, audit-trail assertions
+    ├── server/health.test.ts
+    ├── server/hunt.test.ts            # P3-M7 bug-hunt engine: registries, activation, isolation,
+    │                                  # reset, idempotency, guest+account compatibility, forged ids
+    ├── server/hunt-set.test.ts        # P3-M8 defect set: both branches per defect, whole-set reset,
+    │                                  # two-learner isolation, per-IP daily cap, hunt catalogue
+    ├── server/hardening.test.ts       # P3-M9: migration 0009 (fresh + upgrade paths), body-size
+    │                                  # guard, rate limits (mutate/login/checkout), sweep authz
+    │                                  # + bounded idempotent deletion, hunt cap atomicity
+    ├── practice/api.test.ts           # P3-M7 browser client (stubbed fetch)
+    ├── lib/checkout.test.ts           # checkout form validation
+    └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
+                                       # (+ cart/checkout views & API client tests since P3-M3/M4)
 ```
 
 Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
 `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, and a
-catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"), and nothing
-else.
+catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"). Phase 3
+(P3-M2) added `/shop` and `/shop/products/:slug` — both render inside `AppShell` and fetch
+the real `/api/v1` catalogue. Phase 3 (P3-M3) added `/cart`, which reads/writes the
+session cart through `/api/v1/cart`. Phase 3 (P3-M4) added `/checkout` and
+`/orders/:reference` — both render inside `AppShell`; `/checkout` reads the same cart and
+places a simulated order, `/orders/:reference` renders the session-scoped confirmation.
+Phase 3 (P3-M5) added `/login`, `/account`, `/account/orders` and `/account/orders/:reference` —
+all render inside `AppShell`; `/account` shows the synthetic customer profile (or an honest guest
+state), order history and detail are protected resources owned by the signed-in customer. The
+top bar carries an account indicator and the sidebar/mobile nav an Account entry.
+Phase 3 (P3-M6) added `/admin/inventory` — staff-only inventory view and restock tool (server
+enforces authorization; the page renders honest guest/customer/staff states; the sidebar and
+mobile nav carry an Inventory entry for staff only). Both confirmation pages gained an inline
+cancel panel (`placed → cancelled`, stock restored exactly once).
+Phase 3 (P3-M8) wired hunts into the scenario catalogue: seven scenarios flipped to
+`ready`/`runnable` with a `huntId`, wired scenario pages carry `HuntLaunchPanel`, `/practice`
+lists the registry, the catalogue shows a badge and `?hunt=available` facet. Phase 3 (P3-M7)
+mounted no new routes: every page now renders a slim `ModeBanner`
+(clean vs bug-hunt, `role="status"`, reset action) above the routed content, and `/practice`
+gained a Bug-hunt mode section (`HuntPanel`) with start/reset controls.
+`App.tsx` wraps the routes in `PracticeSessionProvider`.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -244,6 +329,709 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 PR self-review: findings and fixes
+
+- **Branch before work:** `feat/phase-3-commerce-practice` @ `98bcfdf` (P3-M9), tree clean;
+  `main` untouched. The Phase 3 branch was confirmed in sync with `origin` (a background
+  process outside this session mirrored it — no manual push was performed here).
+- **Review:** two adversarial passes over the complete `main...HEAD` diff (115 files,
+  +20,292). Server pass: 10 findings (1 latent correctness defect, 2 doc/comment-vs-code
+  contradictions, rest informational). Frontend pass: 8 findings (2 Medium, rest Low).
+  Every finding was verified against the code before acceptance; severity re-graded honestly.
+- **Fixed (commit below):** cart context resyncs on failed checkout (unavailable/empty
+  outcomes); hunt-launch panel renders `actionError`; hunt panel clears justStarted/justReset
+  on external mode changes (render-phase adjustment, no setState-in-effect); account order
+  pages render the auth-error state with retry instead of the guest prompt; HealthStatus
+  sequences its retry via a monotonic request id; cancel confirm panel is focusable and takes
+  focus (Button now accepts a `ref`, mirroring IconButton); dead symbols removed
+  (`MAX_LINE_QUANTITY` re-export, unused `emailRef`, unreachable suspended copy — now wired to
+  the context's `suspended` flag); nameless `role="radiogroup"` dropped; cart/checkout/staff
+  inventory reads made `LEFT JOIN` fail-closed (missing inventory rows flag out of stock
+  instead of silently vanishing — checkout 422s, staff view shows 0 units); cart-item id
+  pattern bounded to 16 digits. Regression tests added (LEFT-JOIN fail-closed incl. staff
+  view; bounded id) — **344/344 green**. `npm run build` clean. Browser probe re-verified
+  **25/25** against the production build after the fixes.
+- **Documented, not changed (deliberate):** `inventory_adjustments.product_id` is
+  `ON DELETE CASCADE` (contradicts the "audit outlives its subjects" comment — unreachable in
+  app since products are deactivated, never deleted; fixing needs a table rebuild, deferred);
+  migration 0004's header comment says request_hash binds cart contents (code deliberately
+  excludes cart — comment frozen, contract documented in README/checkout.ts/audit §5);
+  sequential item ids appear in order payloads (the opaque claim applies to `orders.id`);
+  `orders.status` stores only `placed` (by design, derived cancellation); no cap on
+  `inventory.quantity` upper bound (restock-only control, documented); `x-forwarded-for`
+  trusted only as a dev fallback (soft limiter, documented); D1 statement count per checkout
+  is high (~15) — a request-scoped session-resolution optimization is the known follow-up,
+  deliberately not bundled into this review; sweep deletes a signed-in customer's order
+  history when the practice session expires after 7 days (the designed, documented retention
+  policy); account pages still show guest prompt during wishful "loading" windows.
+- **Git:** one follow-up commit on the branch (`fix: address PR self-review findings`,
+  `cd4865f`); **PR #4 opened** — https://github.com/thisishamza/qa-practice-lab/pull/4
+  (`feat/phase-3-commerce-practice` → `main`, 10 commits, 117 files, +20,542/−127,
+  mergeable). Note: GitHub's Dependabot banner reports 1 moderate advisory on the default
+  branch (README documents the same moderates, dev-only; production deps clean). Branch push
+  was performed explicitly (`git push` via the environment's credential flow); no force-push,
+  no merge, `main` untouched. Phase 4 remains unstarted.
+- **Next exact action:** user opens the PR from the prepared compare URL (body in the final
+  report); review thread lands there. Phase 4 remains unstarted.
+
+### 2026-11-15 — Phase 3 P3-M9: hardening, reset & Phase 3 exit audit
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `7996c98` (P3-M8), tree
+  clean; `main` untouched; nothing pushed. Changes land in the milestone commit at the end of
+  this turn (`feat: harden phase 3 and complete exit audit`; hash in the final report).
+- **Audit findings (fixed):** (1) no rate limits anywhere except the soft hunt-start cap, and
+  that cap could overshoot under concurrency and leak stale-day rows past the bounded delete;
+  (2) login had zero brute-force protection — the plan deferred the 5/min/IP limit to M9 and
+  it was never built; (3) failed logins minted a throwaway practice session before
+  verification; (4) expired sessions/customer-sessions/cap/bucket rows were deleted only
+  lazily, never boundedly; (5) no request body-size guard on mutations; (6) no local demo
+  reset script (`db:reset:local` required by the plan); (7) expired `customer_sessions` from
+  vanished practice sessions were only deleted on contact; (8) frontend fetch/error handling
+  re-audited — no new defects found (loading/error/empty/expiry states, idempotency-key
+  rotation, suspended-account handling all correct); no UI behaviour changed.
+- **Migration `db/migrations/0009_rate_limit_buckets.sql` (additive, applied locally,
+  `schema_version` → 9):** `rate_limit_buckets(key, window_start, count)` (PK `(key,
+  window_start)`, `count >= 0`, index on `window_start`). `key` = `<scope>:<SHA-256 IP>`.
+  One row per scope/IP/UTC-minute window; swept after two hours.
+- **`src/server/rateLimit.ts` (new):** fixed-window limiter with one atomic
+  `INSERT … ON CONFLICT DO UPDATE … RETURNING` per consume (one D1 statement, no per-request
+  prune); `clientIp`/`sha256Hex` shared; `peekRateLimit`/`resetRateLimit` for the login
+  budget. Scopes: `mutate` (global backstop, **120/min** per IP — deliberate: 60 was too
+  tight for the legitimate ~71 mutating calls a hunt-cap test session issues in a minute;
+  scoped budgets do the real work), `login` (**5 failed sign-ins/minute**, PBKDF2 skipped
+  once exhausted, budget cleared on success, 429 `login_rate_limited` + `Retry-After`),
+  `checkout` (**30 placements/minute**, every attempt counts, 429 `rate_limited`). No visible
+  IP (local dev) → limiter skipped entirely. Mounted as middleware in `app.ts` for all
+  mutating `/api/v1` requests.
+- **Hunt-start cap made exact:** `consumeHuntStart` rewritten — guarded
+  `UPDATE … WHERE starts < 20` (fast path, one statement) → single atomic upsert that inserts
+  or resets a stale-day row → final guarded bump. Cannot overshoot; a pre-existing stale-day
+  row is correctly reset instead of capping the IP forever; day-old rows pruned ≤100/call.
+- **Login flow restructured (`auth.ts`):** 429 check first (before any PBKDF2), practice
+  session minted only on success (failed brute force no longer creates throwaway sessions),
+  `403 account_suspended` unchanged, success clears the failure budget.
+- **`src/server/maintenance.ts` (new):** `sweepExpiredData(db, { now?, limit? })` — bounded
+  (≤100/table) subquery-DELETE of expired `customer_sessions`, expired `practice_sessions`
+  (cascades carts/items/orders/items/idempotency/bound customer sessions), day-old
+  `hunt_start_caps`, two-hour-old `rate_limit_buckets`. Idempotent; never touches
+  `inventory_adjustments`/`order_cancellations` (audit/exactly-once markers), active sessions,
+  catalogue or customer fixtures. Exposed as **`POST /api/v1/admin/maintenance/sweep`**
+  (staff-only via `requireStaff`; Pages Functions have no cron — operator-invoked) and as
+  **`npm run db:cleanup:local`** (local SQL equivalent, `--local`). **`npm run db:reset:local`**
+  (`db/maintenance/reset-local.sql`) restores the seed inventory and deletes ALL local
+  learner state; local-only, explicitly destructive, never run by application code.
+- **Request body cap:** `app.ts` rejects `Content-Length > 32 KB` with `413
+  payload_too_large` before any parsing (lying small bodies are the platform's problem).
+- **`tests/server/hardening.test.ts` (+13):** migration 0009 fresh **and** 0001–0008 → 0009
+  upgrade paths (data survives), body-size 413, mutate-cap 429 integration (pre-filled
+  bucket), checkout-cap 429, login 5×401 → 429 with correct password, per-IP independence,
+  budget reset on success, hunt-cap stale-day reset (starts=1), sweep authz (401/403/200),
+  sweep deletes expired rows + cascaded order/items/cancellation markers, preserves active
+  `bug_hunt` session + `inventory_adjustments`, idempotent second sweep. Fresh-harness
+  `createMigratedD1({ through })` + `applyRemainingMigrations` added to `fake-d1.ts`.
+  schema_version assertions bumped 8→9. **342/342 tests green** (was 329).
+- **Verification:** `npm run check` — passed; `npm run build` — passed (JS 477.54 kB / gzip
+  139.01 kB, CSS 76.55 kB / gzip 14.36 kB, no new runtime deps); `db:migrate:local` applied
+  0009 (local `/api/health` → `schemaVersion: "9"`); `db:cleanup:local` + `db:reset:local`
+  executed (inventory restored, learner state 0, audit rows intact). Browser probe
+  (headless Chrome vs production build, port 8791): **25/25 pass** — guest flow
+  (home → shop → search Kestrel Dry Bag → add → cart → checkout → reference → cancel →
+  cancelled), hunt start/reset banner flips, staff sign-in → inventory → staff sweep
+  (401 guest / 200 staff, bounded-count report), login brute-force (5×401 → 429 +
+  `Retry-After`), 413 on a real 40 KB body, **zero unexpected console errors**. Probe IP is
+  randomized per run (per-minute buckets make repeated runs order-dependent otherwise).
+  Port 8791 confirmed closed. No visual/UI changes — `ui-ux-pro-max` checklist applied to
+  touched surfaces only (semantics preserved; no layout work).
+- **Docs:** `docs/phase-3-exit-audit.md` (new — milestones & commits, schema 0001–0009,
+  security controls + limitations, inventory/order accounting guarantees, bug-hunt engine,
+  retention/cleanup policy, rate-limit limitations, test/build/browser results, known
+  issues, Cloudflare deployment steps, exit criteria verdict), README (commands, architecture
+  tree, retention & rate limits section, schema v9, constraints), plan doc (M9 as-built, §3
+  table, §4/§7), `docs/bug-hunt-catalogue.md` (exact cap; sweep behaviour), AGENTS.md, this
+  file.
+- **Known limitations / open items (full list in `docs/phase-3-exit-audit.md` §10):** no
+  deployment and no remote resources (user decision); no cron on Pages — sweep is
+  operator-invoked; login cap can overshoot slightly under a tight concurrent burst (fixation
+  of exactly one statement short — documented); limiters skipped without a visible IP;
+  rate-limit buckets and caps are per-IP (shared egress IPs share a budget); `orders.status`
+  stores only `placed` (cancellation derived); 21 placeholder scenarios remain non-runnable;
+  local D1 accumulates probe state until `db:reset:local`.
+- **Git:** single milestone commit `feat: harden phase 3 and complete exit audit`.
+  `main` untouched, nothing pushed, Phase 4 not started.
+- **Next exact action:** STOP. Phase 3 is implementation-complete and verified. Await user
+  instruction — merge/deployment decisions or Phase 4 (do not begin without approval).
+
+### 2026-11-15 — Phase 3 P3-M8: bug-hunt defect set & scenario wiring
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `59baeed` (P3-M7), tree
+  clean; `main` untouched; nothing pushed. Changes land in the milestone commit at the end of
+  this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work. No new `--design-system` run —
+  this is a consistency pass on the existing Test Bench system (hunt rows reuse the index-row
+  language; launch/reset follows the M7 panel pattern; filter facet reuses the chip/drawer
+  system). Applied web-relevant guidance from the skill's checklist: ≥4.5:1 contrast, visible
+  focus rings (`--focus`), `prefers-reduced-motion` render, semantic buttons/links with real
+  accessible names, `role="status"`/`role="alert"` announcements, no emoji icons, no new
+  dependencies. The `/practice` hunt list is the dense, keyboard-first control surface; the
+  scenario badge is visual reinforcement, never the only signal.
+- **Migration `db/migrations/0008_hunt_start_caps.sql` (additive, applied locally, `schema_version` → 8):**
+  per-IP daily hunt-start cap rows (`hunt_start_caps`: SHA-256-hashed IP as PK, UTC `day`,
+  `starts` counter). One row per address; previous-day rows are deleted on write. No defect,
+  hunt or session state lives here — activation is still per-request from the caller's session.
+- **Hunt registry (`src/server/hunts.ts`):** seven hunts, one defect each, all wired to a
+  learner-safe `scenarioId`: `hunt-catalogue-001`→`manual-shop-search` (`CATALOGUE-001`),
+  `hunt-catalogue-002`→`api-catalogue-filters` (`CATALOGUE-002`), `hunt-cart-001`→
+  `manual-cart-add-quantity` (`CART-001`), `hunt-inventory-001`→`api-checkout-exact-stock`
+  (`INVENTORY-001`), `hunt-pricing-001`→`manual-cart-totals` (`PRICING-001`),
+  `hunt-checkout-001`→`manual-address-edge-cases` (`CHECKOUT-001`), `hunt-authz-001`→
+  `security-object-access` (`AUTHZ-001`). Registry stays code, not data; responses carry only
+  `{ id, title, summary, scenarioId }`.
+- **Defect sites (one per defect, static branches, `await isDefectActive(c, …)`):**
+  catalogue category predicate dropped (`catalogue.ts`); cart upsert replaces instead of
+  accumulating quantity (both branches keep the stock guard, `cart.ts`); checkout
+  `blockingProblems` boundary off-by-one (`checkout.ts`; one `rejectExactStock` flag shared by
+  the pre-batch and post-batch callers so they cannot disagree); order_items snapshot stores
+  unit price as line total (`checkout.ts`; id/qty/subtotal/total elsewhere stay correct);
+  NAME_PATTERN check skipped in `validateDetails` (`checkout.ts`); account order-detail lookup
+  drops the `customer_id` predicate (`auth.ts`). Clean branches untouched and verified
+  defect-free per defect.
+- **Scenario wiring (data):** three existing placeholders promoted/rewritten
+  (`manual-cart-totals`, `manual-address-edge-cases`, `security-object-access`) and four new
+  (`manual-shop-search`, `api-catalogue-filters`, `manual-cart-add-quantity`,
+  `api-checkout-exact-stock`) — all `ready`/`runnable`, `mode: 'bug-hunt'`, `huntId` set.
+  `Scenario.huntId` is optional and learner-safe. Bidirectional `huntId ↔ scenarioId` integrity
+  and the two-tier catalogue rule (unwired stay non-runnable) are asserted in
+  `tests/data/content.test.ts`; the content suite went from "all placeholders non-runnable" to
+  the M8 contract.
+- **API:** new `GET /api/v1/practice/hunts` (registry list, no cookie required, always 200).
+  `hunt` summaries in `/api/v1/practice/session` and `/api/v1/practice/hunts/.../start` gained
+  `scenarioId` (optional, learner-safe). Hunt starts are **softly capped at 20/IP/UTC day**
+  (`cf-connecting-ip`, fallback first `x-forwarded-for`; hashed; previous-day rows purged on
+  write). Idempotent same-hunt re-starts and resets are exempt; no visible IP (local dev) is
+  uncapped; beyond 20 the endpoint answers `429 hunt_start_cap_reached` with `Retry-After`.
+- **Frontend:** `HuntPanel` rewritten registry-driven (list from `GET /api/v1/practice/hunts`,
+  loading/error/empty/ready states, retry, Start/Switch per row, Active tag + per-row reset,
+  scenario deep-links, hunt count in the section header, no defect ids anywhere in the DOM —
+  verified in the probe). `HuntLaunchPanel` on wired scenario pages (start/reset in place,
+  loading/error/unavailable states). `BugReportExport` — local markdown download generated in
+  the browser (nothing uploaded/stored/graded). Catalogue: **Bug-hunt exercise** badge on wired
+  cards, `/scenarios?hunt=available` deep link, `Ready` in the status filter, `?hunt=available`
+  URL state round-trips through the existing filter system. Both themes × 375/768/1024/1440
+  verified (zero overflow, one h1).
+- **Tests:** +28 server (`tests/server/hunt-set.test.ts`: per-defect both branches + reset
+  semantics, envelope shapes, two-learner different-hunts isolation, all-7 hunts' forged-input
+  rejection, per-IP cap matrix (20-cap, different IP, day rollover, idempotent-restart exempt,
+  no-IP skip, resets exempt), whole-set reset table, registry integrity/no-leak, list endpoint
+  contract); +3 client (`tests/practice/api.test.ts`); +3 lib (`?hunt=available`);
+  `tests/data/content.test.ts` rewritten for the two-tier rule (+1 test). schema_version
+  assertions bumped 7→8. **329/329 tests green**.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  329/329). `npm run build` — passed (JS **477.54 kB** / gzip 139.01 kB, CSS **76.55 kB** /
+  gzip 14.36 kB; no new runtime dependencies). Local D1 migration applied (0008; schema_version
+  reads 8; `/api/health` OK). Playwright/Chrome probe against the production build on port
+  **8791**: **60/60 checks pass** — two isolated contexts: all seven defects defective-in-hunt +
+  clean-outside, per-defect reset round-trips, catalogue discovery (7 wired cards, badge,
+  `?hunt=available`, `Ready` facet), scenario launch panel flip, banner flips on start/reset,
+  themes × widths, reduced-motion, Tab reachability, bug-report markdown download. **Zero
+  unexpected console errors** (by-design 401/404/400/422 filtered). Port 8791 confirmed closed.
+- **Docs:** README (status, routes, bug-hunt section rewritten for seven hunts + discovery +
+  cap + local export, known constraints), `docs/bug-hunt-catalogue.md` (full maintainer
+  registry: engine rules, hunt table, per-defect Expected/Actual/repro/fix/isolation/reset/
+  tests), `docs/phase-3-commerce-practice-plan.md` (M8 marked implemented with as-built
+  deviations; §3 API table, §6 mapping, risks), AGENTS.md (state lines), this file.
+- **Known limitations / open items:** no reveal/scoring flow (Phase 4+); hunt starts are a
+  **soft** cap (a request or two may overshoot under concurrency; day-boundary sweep is the
+  `DELETE day != today` on write, not a job); 21 non-wired catalogue placeholders remain
+  non-runnable; bug-report export is local-only by design; `hunt_start_caps` accumulates one
+  row per IP until the day rolls (then it is deleted on the next write); expired sessions still
+  swept only lazily (M9); local D1 accumulates probe state (throwaway).
+- **Git:** single milestone commit `feat: expand bug-hunt scenarios and defect catalogue`
+  (hash in the final report). `main` untouched, nothing pushed, P3-M9 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M9 (hardening, reset & Phase 3
+  exit)** — do not begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M7: bug-hunt engine v1
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `db71597` (P3-M6), tree
+  clean; `main` untouched; nothing pushed. Changes land in the milestone commit at the end of
+  this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work; focused `--domain ux` queries
+  (status semantics → visible focus + `role="status"` live regions; submit feedback →
+  loading→success/error states; destructive confirm → reset is deliberately NON-destructive, so
+  no confirm dialog). Test Bench tokens are authoritative; no new dependencies, no icons package.
+  The `--design-system` route was not used — this is a consistency pass on an existing design
+  system, not a new page.
+- **Migration `db/migrations/0007_bug_hunt.sql` (additive only, applied locally, `schema_version`
+  → `7`):** `practice_sessions` gains `mode TEXT NOT NULL DEFAULT 'clean' CHECK (mode IN ('clean',
+  'bug_hunt'))` and `hunt_id TEXT NULL CHECK (hunt_id IS NULL OR length(hunt_id) BETWEEN 1 AND
+  64)`. `hunt_id` is deliberately NOT a foreign key — hunts are compiled TypeScript
+  (`src/server/hunts.ts`), not database rows. Pre-M7 rows default to clean; guest and signed-in
+  behaviour is byte-identical.
+- **Engine design (as built):** registries are code — `src/server/hunts.ts` exports
+  `HUNTS: [{ id: 'hunt-catalogue-001', title, summary, defectIds: ['CATALOGUE-001'] }]`;
+  `src/server/defects.ts` exports `DEFECTS` (internal Expected/Actual/repro/fix per defect) and
+  `isDefectActive(c, defectId)`, which reads the caller's `mpl_session` cookie exactly like the
+  other session-scoped routes, loads the live session (one indexed lookup — `findLiveSession`
+  was extended to select `mode`/`hunt_id`), requires `mode='bug_hunt'`, and checks the code
+  registry's defect list for the hunt. Clean/expired/unknown-hunt/malformed-cookie sessions all
+  resolve to false. No client-supplied defect id, role, owner or activation flag is ever
+  consulted; `POST .../hunts/:huntId/start` takes NO body. No global flags, no process memory,
+  no shared DB switch. Determinism: defect branches are static; no randomness or wall-clock.
+- **API (`src/server/practice.ts`, mounted in `/api/v1`):** `GET /api/v1/practice/session`
+  (read-only; never mints; `{ mode, hunt: { id, title, summary } | null }`; never defect ids),
+  `POST /api/v1/practice/hunts/:huntId/start` (hunt id format-validated → 400
+  `invalid_request`; registry miss → 404 `hunt_not_found`; live session is re-stamped in place —
+  cart/orders/customer binding preserved — otherwise a fresh bug-hunt session is minted;
+  same-hunt re-start is idempotent), `POST /api/v1/practice/session/reset` (NON-destructive
+  re-stamp to clean; with no live session a fresh clean session is minted). Deviation from the
+  plan's "expire + fresh session" sketch, documented in the plan + README: expiring the practice
+  session would cascade-delete the learner's orders and cart (M4 FKs) and detach their synthetic
+  customer session (M5 FKs) — far more destructive than "restores clean mode" promises. Existing
+  session-cookie minting (`createSessionWithCart`) gained an optional `{ mode, huntId }` argument.
+- **Proof defect `CATALOGUE-001` (hunt `hunt-catalogue-001`, "Catalogue search under-matches"):**
+  expected — `GET /api/v1/products?q=` matches name OR description OR category name
+  (case-insensitive substring, escaped LIKE, bind params); bug-hunt — the `p.description LIKE`
+  clause is dropped in exactly ONE branch (`src/server/catalogue.ts`, guarded by
+  `await isDefectActive(c, 'CATALOGUE-001')`); list and count share the predicate. Only the
+  hunting session sees it. Repro: start hunt → shop search `vestibules` → 0 hits (clean: 1 —
+  Ridgeline 2-Person Tent). Chosen instead of the sketched `PRICE-001` free-shipping off-by-one
+  because NO shipping feature exists to hang the defect on; smallest defect demonstrated through
+  an existing commerce workflow. Internal repro/fix/isolation in `docs/bug-hunt-catalogue.md`.
+- **Frontend:** mode banner in the app shell (`ModeBanner`, `role="status"`; clean = green left
+  border + check, bug-hunt = amber + bug icon + hunt title + Reset button; loading skeleton
+  reserves space; error state with retry). `/practice` gained a Bug-hunt mode section
+  (`HuntPanel`): current mode tag, hunt title/summary, Start button (loading → success
+  `role="status"` announcement), Reset button (keeps cart/orders), inline `role="alert"` errors.
+  Fresh `PracticeSessionProvider` context reads `/api/v1/practice/session` on mount; nothing in
+  localStorage. Both themes verified at 375/768/1024/1440 (zero overflow, one h1, reduced-motion).
+- **Tests:** `tests/server/hunt.test.ts` (+24): registry integrity (every hunt defect exists),
+  fresh-browser clean read (never mints), start flow (mint/re-stamp/idempotent/legacy-session
+  keep cart), malformed/unknown hunt ids, forged defect ids/mode/huntId in the body ignored,
+  both defect branches, two-learner isolation, unrelated behaviour intact in hunt mode (sort),
+  cart/checkout functional in hunt mode, unknown-hunt_id stamp resolves clean, expired hunt
+  session purged → clean, non-destructive reset (cart + order placement survive), guest +
+  synthetic Amara sign-in compatibility across start/reset, repeated reset idempotent, no-cookie
+  reset mints clean. `tests/practice/api.test.ts` (+7): browser client contracts. schema_version
+  assertions bumped 6→7 (catalogue/cart/checkout). Existing suites otherwise untouched and green.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **294/294 tests**, was 287). `npm run build` — passed (JS **466.40 kB** / gzip 136.42 kB vs
+  459.35/134.76 at M6; CSS **74.51 kB** / gzip 14.08 kB; no new runtime dependencies). Local D1
+  migration applied (`0007`; `/api/health` reads `schemaVersion: 7`). Playwright/Chrome probe
+  against the production build on port **8791**: **40/40 checks pass** — clean defaults both
+  contexts, start flow, banner flip, hunt-only description-facet defect (A sees 0 results, B sees
+  1, name facet works in hunt, reload persistence), cart functional in hunt + isolated from B,
+  reset via banner and via panel round-trips, cart survives reset, keyboard reachability,
+  both themes × 375/768/1024/1440 (zero overflow, one h1), reduced-motion render, zero unexpected
+  console errors (by-design 401 guest probes filtered). Port 8791 confirmed closed.
+- **Docs:** README (route table, mode-banner note, bug-hunt mode section incl. API + learner
+  summary + engine guarantees, known constraints), `docs/bug-hunt-catalogue.md` (internal),
+  `docs/phase-3-commerce-practice-plan.md` (M7 implemented, deviations recorded, §4/§6/§7
+  reconciled), AGENTS.md state lines, PROJECT_STATE.md.
+- **Known limitations / open items:** exactly one proof hunt (full 5–7 defect set is P3-M8);
+  no reveal/scoring flow (Phase 4+); hunts not discoverable from the catalogue UI yet (M8 wires
+  hunt→scenario links; `/practice` hard-codes the single hunt id); no rate limits on hunt
+  start/reset (M9); hunt starts are not capped per IP/day (M8/M9); expired bug-hunt sessions are
+  purged lazily on next contact only — no sweep (M9); `schema_version` reads 7.
+- **Git:** single milestone commit `feat: implement bug-hunt engine v1` (hash in the final
+  report). `main` untouched, nothing pushed, P3-M8 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M8 (bug-hunt defect set & scenario
+  wiring)** — do not begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M6: inventory depth and stock management
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `fb68c78` (P3-M5), tree clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end of this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work. The `--design-system` output (industrial slate/green palette, Fira fonts) was rejected as off-direction — the Test Bench token system is authoritative — while its applicable guidance was applied: flat design, dense dashboard, 4.5:1 contrast, visible focus, keyboard access, reduced motion, and a restock form using the same inline-error + `role="alert"` pattern as checkout/login (confirmed via `--domain ux` "focusable error summary"/"inline validation"). The staff list is a dense grid of rows with mono tabular numerals; it degrades to stacked cards ≤1024px.
+- **Migration `db/migrations/0006_inventory_depth.sql` (additive only, applied locally, `schema_version` → `6`):** `inventory_adjustments` (id, product_id → products CASCADE, quantity_delta INTEGER CHECK > 0, reason CHECK IN ('restock','order_cancellation'), note NULL, actor_customer_id NULL → customers SET NULL, actor_session_id NULL → practice_sessions SET NULL, order_id NULL → orders SET NULL, created_at default now()) — immutable audit trail; indexes on product and order. `order_cancellations` (order_id PK → orders CASCADE, session_id NULL SET NULL, actor_customer_id NULL SET NULL, created_at) — the exactly-once/idempotency marker for `placed → cancelled`. No existing table altered; orders remain append-only snapshots.
+- **Stock accounting decisions (documented in README.md + code comments):** NO reservations and no `inventory.reserved` — available stock is `inventory.quantity`; a cart line never holds stock; the plan's preference for conditional writes over a reservation framework was confirmed, not overridden. Inventory decrements ONLY at order placement (all-or-nothing D1 batch + `inventory.quantity >= 0` CHECK backstop + honest `422 cart_unavailable` re-read on failure), exactly once; declined payments change nothing; retries replay the idempotency record without touching stock. `placed → cancelled` restores stock exactly once: the cancelling batch INSERTs into `order_cancellations` first; a retry/concurrent cancel hits the primary key, rolls the whole batch back, and the handler replays the already-cancelled order with 200. The public order status is DERIVED at read time (`order_cancellations` LEFT JOIN) because D1 cannot alter a CHECK constraint without a table rebuild; `orders.status` therefore only ever stores `placed` (deliberate, documented deviation from the "CHECK may add cancelled" sketch — the transition exists as first-class behavior).
+- **Staff restock (`PATCH /api/v1/admin/inventory/:productId`, `src/server/inventory.ts`):** adds units (never absolute set); validated positive integer 1..10,000 per adjustment; absolute ceiling 1,000,000 units per product; atomic guarded `UPDATE … WHERE quantity + ? <= 1000000` + audit INSERT guarded by `changes() = 1` in ONE batch (a rejected adjustment records nothing — `422 stock_limit_exceeded`); immutable `inventory_adjustments` row records product, delta, reason, note (optional, ≤200 chars, no control chars), acting staff customer, acting practice session, timestamp; restocks allowed on discontinued products; unknown id → 404; malformed → 400; response returns the authoritative `{ inventory, adjustment }`. Companion `GET /api/v1/admin/inventory` returns the full staff view (bounded catalogue; quantity, threshold, derived status, active flag). Client-supplied roles/customer ids/body `role` are never consulted — role comes from the stored customer row only.
+- **Authorization (`src/server/staff.ts`, reusable `requireStaff`):** guest/invalid/expired/cross-practice-session cookie → 401 `unauthorized`; suspended (incl. mid-session) → 403 `account_suspended`; active customer → 403 `staff_required`; active staff → allowed. Replays a staff session bound to another practice session → 401 (same binding rule as customer protection). Customers see the honest staff-required page; guests a sign-in CTA; neither can call the admin endpoints.
+- **Cancellation endpoint (`POST /api/v1/orders/:reference/cancel`):** callable by the placing practice session or (when signed in as an active account) the owning customer; unknown/foreign/unauthorised references → identical 404 `not_found`. Multi-item restores run in the same batch with per-line audit rows (`order_cancellation`). Items whose product was deleted (product_id NULL) cannot restock — by design. Confirmation pages (`/orders/:reference`, `/account/orders/:reference`) gained an inline cancel panel (request → confirm → busy/error; `role="alert"`, keyboard accessible) with the server's answer replacing the displayed order; the Callout/status tag switch to the cancelled state, and `cancelledAt` renders.
+- **Frontend:** `/admin/inventory` (guest CTA / staff-required / staff manager), staff-only `Inventory` sidebar + mobile-nav entry (`staffNavItem`, icon `grid`); low-stock badge already existed (M2) and now has a staff management surface.
+- **Tests:** `tests/server/inventory.test.ts` (+24): staff authz matrix (incl. body-role forgery ignored, suspended Rowan mid-session 403, cross-session replay 401), catalogue staleness after restock, restock validation matrix, cap with zero-write proof, cancel exactly-once + idempotency (stock, marker, audit rows), ownership matrix (foreign session/customer 404; owning customer from a fresh practice session 200), two-checkout race for the last unit (one 201 one 422, inventory 0, one order), CHECK-constraint rollback proof, `node:sqlite` harness gained `last_row_id` in `meta` (mirrors D1). Existing schema_version assertions bumped 5→6 in catalogue/cart/checkout tests; `checkout-views.test.tsx` OrderDetail fixture gained `cancelledAt: null`.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean; **263/263 tests**, was 239). `npm run build` — passed (JS **459.35 kB** / gzip 134.76 kB vs 448.08/131.88 at M5; CSS **72.61 kB** / gzip 13.82 kB; no new runtime dependencies). Local D1 migration applied (`0006` — additive; pre-existing local orders remain valid, `order_cancellations` empty); schema_version reads `6` (verified via wrangler). Playwright/Chrome probe against the production build on port **8791**: **30/30 checks pass** — guest guard on `/admin/inventory`, staff sign-in + nav entry + 42 rows, restock round-trip with audit-adjustment success copy (local D1 only), inline rejection of 0 / 10,001 units, filter narrowing, both themes × 375/768/1024/1440 (zero overflow, one h1), customer-denied state with hidden nav entry, guest checkout → confirmation → cancel → refresh persistence of cancelled state, zero unexpected console errors. Port 8791 confirmed closed afterwards.
+- **Docs:** README.md (admin endpoints + full inventory accounting section + staff fixture note + known constraints: no reservations, no removal adjustments, orders.status stays 'placed'), `docs/phase-3-commerce-practice-plan.md` (M6 marked implemented with as-built deviations), AGENTS.md state lines, PROJECT_STATE.md.
+- **Known limitations / open items:** no rate limits (M9); no removal/negative adjustments (restock only); `order_cancellations` and `inventory_adjustments` accumulate forever and are not swept (M9); the staff list returns all rows (bounded by the ~42-row catalogue; paginate if it grows); cancellation of an order whose product was deleted restores nothing; the `changes() = 1` guarded audit insert relies on sequential statement execution on one connection (SQLite semantics; documented; verified in the node:sqlite harness which mirrors D1's batch).
+- **Git:** single milestone commit `feat: implement inventory management and stock controls` (hash in the final report). `main` untouched, nothing pushed, P3-M7 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M7 (bug-hunt engine v1)** — do not begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M5: synthetic customers and authentication simulation
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `9b00d71` (P3-M4), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work; verified guidance applied
+  (WCAG 2.2 accessible authentication — password managers/paste allowed,
+  `autocomplete="current-password"`; focusable error summary at the top of the form with linked
+  field errors; `role="alert"`; inline field errors). The login view follows the existing
+  Checkout form patterns and tokens (`checkout-form`, `checkout-field`, `checkout-error-summary`,
+  `catalogue-availability`, `cart-layout`), so no new design language was introduced.
+- **Identity architecture (documented in README.md + code comments):** TWO independent concepts.
+  1. **Practice session** — `mpl_session`, opaque 128-bit token, SHA-256 hash in
+     `practice_sessions`, 7-day expiry; owns the cart and unassociated orders; the isolation
+     boundary for exercises; unchanged from P3-M3/M4.
+  2. **Simulated customer identity** — `mpl_customer`, a SEPARATE opaque 128-bit token; only its
+     SHA-256 hash is stored, in `customer_sessions`, bound to `practice_session_id`. A customer
+     session is honoured only while its owning practice session is live in the same browser; a
+     token replayed against another practice session (or without one) resolves to 401 with the
+     cookie cleared. The two cookies are never interchangeable, and customer identity never
+     replaces the practice session. Deleting the practice cookie or expiry detaches the customer
+     session with it.
+- **Token lifecycle:** login ALWAYS mints a brand-new customer token and first destroys every
+  `customer_sessions` row for the current practice session (rotation — a pre-existing browser
+  token can never remain valid after sign-in; fixation impossible by construction). Logout deletes
+  the presented token's row (idempotent, `200 {ok:true}`) and clears the cookie. Expired rows are
+  deleted on first contact. Cookies: HttpOnly, SameSite=Strict, Path=/, Max-Age 28800 (8 h),
+  `Secure` only over HTTPS (same convention as `mpl_session`). Tokens and hashes never appear in
+  any API response; DB stores only hashes (verified by test).
+- **Password strategy:** PBKDF2-HMAC-SHA256, **100,000 iterations**, 8-byte FIXED salts — the
+  fixtures are deterministic (`pbkdf2:<iterations>:<salt_hex>:<hash_hex>`), so a fresh migration
+  always yields the same digests; stored hashes were verified against the documented plaintexts
+  via `crypto.subtle`. Web Crypto `crypto.subtle` (Workers-compatible) is the only KDF; no new
+  dependency, no Node-only crypto API in production paths. Login answers an IDENTICAL
+  `401 invalid_credentials` for unknown email and wrong password; the unknown-email path still
+  runs a PBKDF2 verification against a dummy digest so response timing does not enumerate
+  accounts. Suspended accounts get `403 account_suspended` (only reachable with the correct
+  password); suspending mid-session flips protected endpoints to the same 403.
+- **Seed data (deterministic, RFC 2606 domains, zero real data):** migration
+  `db/migrations/0005_customers.sql` — `customers` (id, email UNIQUE COLLATE NOCASE, name,
+  password_hash, role `customer|staff`, status `active|suspended`, synthetic address
+  line/city/postcode, created_at), `customer_sessions` (token_hash UNIQUE, customer_id →
+  customers ON DELETE CASCADE, practice_session_id → practice_sessions ON DELETE CASCADE,
+  expires_at; indexes on customer/practice/expires), and `orders.customer_id` (nullable →
+  customers ON DELETE SET NULL; indexed). `schema_version` → `5`. Five fictional fixtures:
+  Amara Okafor (`amara.okafor@example.com`, `demo-amara-1001`, customer, active),
+  Ben Whitmore (`ben.whitmore@example.net`, `demo-ben-1002`, active),
+  Priya Raman (`priya.raman@example.org`, `demo-priya-1003`, active) — two independent active
+  identities for IDOR practice; Dana Reyes (`dana.reyes@example.com`, `demo-dana-1004`,
+  **suspended** — documented sign-in refusal case); Rowan Ellison
+  (`rowan.ellison@example.com`, `demo-rowan-9001`, **staff** — role seeded for M6).
+  Credentials documented in README.md ("Training-only synthetic sign-in") — never in the UI bundle.
+- **API (`src/server/auth.ts` + `src/server/customer.ts`, mounted in `/api/v1`):**
+  `GET /api/v1/auth/accounts` (safe directory — name/email/role/status only, never secrets),
+  `POST /api/v1/auth/login` (400 on malformed bodies; identical 401 `invalid_credentials`;
+  403 `account_suspended`; lazy-mints a practice session+pair when the browser has neither;
+  binds the new customer session to it; anti-fixation rotation),
+  `POST /api/v1/auth/logout`, `GET /api/v1/auth/me`, protected `GET /api/v1/account`
+  (profile incl. synthetic address + member-since), `GET /api/v1/account/orders` (≤50, newest
+  first, scoped to `customer_id`), `GET /api/v1/account/orders/:reference` (own details only).
+  Shared guard `requireActiveCustomer` (401 unauthorized / 403 account_suspended); stale or
+  malformed/foreign-bound cookies are cleared in the same response.
+- **Ownership policy (documented + tested):** 401 = unauthenticated; 403 = authenticated but
+  suspended; 404 = unknown OR not owned (existence concealed, consistent with the session-scoped
+  confirmation policy). Account order history = orders with this `customer_id` (any practice
+  session — it is the same fictional person); account order detail requires BOTH reference AND
+  caller's `customer_id`; unknown and not-owned references return the IDENTICAL 404 envelope;
+  out-of-format references get 400. `403` is deliberately never used for cross-customer access.
+- **Order ownership decision:** orders placed while signed in get `orders.customer_id` set in the
+  placement batch (explicit, transactional, practice-session-scoped binding). Orders placed as a
+  guest or before sign-in keep `customer_id NULL` and are NEVER silently adopted; they stay
+  readable through the session-scoped `/api/v1/orders*` endpoints. Guest cart and guest checkout
+  are fully unchanged — sign-in is never a prerequisite for them. Pre-M5 orders in existing local
+  D1 remain valid (column added nullable, no backfill).
+- **Frontend:** `/login`, `/account`, `/account/orders`, `/account/orders/:reference` inside
+  `AppShell`; `AuthProvider` (`src/features/auth/`) reads `/api/v1/auth/me` on mount and after
+  sign-in/out — refresh restores identity from the cookie, nothing in localStorage/sessionStorage;
+  login page with clearly-labelled fictional demo-account directory (email fill buttons, no
+  passwords shown, suspended case labelled), aggregated `role="alert"` error summary with linked
+  field errors, `autocomplete="username"/"current-password"`, paste allowed; account profile view
+  (FactList, synthetic address card, member since, sign-out, suspended callout, guest state with
+  sign-in CTA); order history list (reference links, status/payment tags, item count, total);
+  order detail reuses `OrderConfirmationView` (new optional `crumbs` prop only). Top bar gained an
+  account indicator (first name when signed in; "Sign in" otherwise; hidden ≤640px where the
+  sidebar/mobile drawer instead carries an **Account** entry added to `primaryNav`). New inline
+  icons `user`, `logout`. Both themes + 375/768/1024/1440 verified.
+- **Compatibility:** anonymous cart and cart UX unchanged; anonymous checkout unchanged (guest
+  orders confirmed readable via `/api/v1/orders/:reference` after later sign-in); catalogue
+  untouched; 212 pre-existing tests kept green (schema_version assertions bumped 4→5).
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **239/239 tests**, was 212; +27 new auth/ownership/compatibility tests incl. token-hash-only
+  storage assertions, rotation, expiry purge, cross-practice-session replay, suspended mid-
+  session 403, guest/non-adoption, byte-identical login failure payloads). `npm run build` —
+  passed (JS **448.08 kB** / gzip 131.88 kB vs 447.98/448.08 at M4, CSS **68.39 kB** / gzip
+  13.27 kB; no new runtime dependencies). Playwright/Chrome probe against the production build on
+  port **8791** (8788/5173 untouched): **51/51 checks pass** — guest navigation on all new
+  routes, non-enumerating login failure, empty-submit error summary with field links, sign-in,
+  refresh persistence, signed-in order placement appearing in account history, Ben unable to see
+  Amara's order (history + direct reference → concealed not-found state), Amara's own detail,
+  logout → guest state on /account and /account/orders, session scoping of the cart, all new
+  routes × 375/768/1024/1440 × light/dark (zero overflow, exactly one h1), reduced-motion render,
+  zero unexpected console errors (the by-design 401 guest probe and concealed-order 404 are
+  filtered). Port 8791 confirmed closed afterwards. One layout bug found and fixed during
+  verification: the extra top-bar control overflowed 375 px by 37 px — the account indicator is
+  now hidden ≤640 px and Account lives in the sidebar/mobile drawer (`primaryNav`).
+- **Local D1 note:** `npm run db:migrate:local` applied `0005_customers.sql` to the existing
+  local database (additive; pre-existing orders keep `customer_id NULL`); seeds verified
+  (5 customers, correct roles/statuses) and all fixture digests verify against README passwords.
+  Local probes accumulated synthetic signed-in orders in local state (throwaway).
+- **Docs:** README.md (routes, training-only credential table, identity architecture, auth +
+  account endpoint reference, authorization policy, guest-checkout compatibility, limitations),
+  `docs/phase-3-commerce-practice-plan.md` (M5 marked implemented with as-built deviations),
+  AGENTS.md (state lines), PROJECT_STATE.md.
+- **Known limitations / open items:** NO rate limiting on login (or cart/checkout) — deferred to
+  M9 with the rest; no registration/password-reset/MFA (deliberately out of scope); no staff-only
+  endpoint yet (`staff` role seeded for M6); customer sessions are not swept until M9 (expired
+  rows are deleted lazily on first contact); the staff account's role is stored but unused by any
+  endpoint yet; login does not prefill the checkout form (deliberate — keeps the form honest);
+  `node:sqlite` harness remains the only database test path; interaction-level auth testing relies
+  on the (uncommitted) Playwright probe + SSR markup tests, same convention as before; local dev
+  D1 accumulates probe orders (throwaway local state).
+- **Git:** single milestone commit `feat: implement synthetic customer authentication` (hash in
+  the final report). `main` untouched, nothing pushed, P3-M6 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M6 (inventory depth)** — do not
+  begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M4: checkout & order workflow
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `58f119d` (P3-M3), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in the final report).
+- **Migration `db/migrations/0004_orders.sql` (applied locally, `schema_version` → `4`):**
+  `orders(id PK, session_id → practice_sessions ON DELETE CASCADE, reference TEXT UNIQUE NOT NULL
+  /* opaque ORD- + 16 uppercase hex chars — sequential ids never exposed */,
+  status CHECK IN ('placed'), payment_status CHECK IN ('approved','declined'),
+  customer_name, customer_email, shipping_line, shipping_city, shipping_postcode,
+  subtotal_cents, total_cents /* integer cents, >= 0 */, created_at)`,
+  `order_items(id PK, order_id → orders ON DELETE CASCADE, product_id nullable → products
+  ON DELETE SET NULL /* snapshots survive product deletion */, product_slug, product_name,
+  unit_price_cents, quantity CHECK 1..99, line_total_cents)`,
+  `checkout_idempotency(session_id → practice_sessions ON DELETE CASCADE, idempotency_key,
+  request_hash, outcome CHECK IN ('approved','declined'), order_id NULLABLE → orders
+  ON DELETE SET NULL, created_at, PRIMARY KEY (session_id, idempotency_key))`. Orders cascade
+  with the anonymous session (same semantics as carts; 7-day expiry). Indexes:
+  orders(session_id, created_at DESC), order_items(order_id), checkout_idempotency(order_id).
+  Only synthetic name/email/address are stored; no card or banking fields exist anywhere.
+- **Simulated payments (documented approach):** `paymentSimulation ∈ {approved, declined}`,
+  deterministic, chosen on the checkout form behind an explicit “not a real payment” wording.
+  `declined` ⇒ NO order row is created, no stock is touched, cart stays intact; the attempt is
+  recorded in `checkout_idempotency` so a retry replays the decline verbatim. `approved` ⇒ the
+  practice order is placed. `orders.payment_status` can therefore only ever hold `approved` in
+  P3-M4 (the CHECK also allows `declined` for M6 flexibility); `status` and `payment_status`
+  are stored separately as the plan required.
+- **Transaction design (D1 has no interactive transactions; `batch()` is all-or-nothing):**
+  read-only validation first (resolve session → read lines joined to products/inventory →
+  verify every line active + stock sufficient → compute totals from DB rows). Approved
+  payments then run as ONE `batch()`: INSERT order, INSERT item snapshots (order resolved via
+  `(SELECT id FROM orders WHERE reference = ?)` inside the batch), unguarded-but-CHECK-protected
+  `UPDATE inventory SET quantity = quantity - ?` (the existing `inventory.quantity >= 0` CHECK
+  turns an oversell into a statement failure that aborts the whole batch), DELETE cart lines,
+  INSERT idempotency record. Any failure rolls back everything — no partial order, no stock
+  decrement without an order, never a cleared cart after failure. Verified against the real
+  migration SQL in the node:sqlite harness and live via the API.
+- **Idempotency (request-scoped, details fingerprint):** client may send an `Idempotency-Key`
+  header (8–128 chars of `[A-Za-z0-9_-]`; an `idempotencyKey` body field is also accepted;
+  generated when absent). The fingerprint is SHA-256 over the validated checkout details +
+  payment outcome — deliberately NOT the cart contents, because a legitimate retry after the
+  first placement finds an empty cart. Behaviour: same key + same payload → the recorded outcome
+  replayed verbatim (`201` + original order, or the recorded decline) with header
+  `Idempotent-Replay: true`; same key + materially different payload → `409
+  idempotency_conflict`; concurrent twins resolve through the PRIMARY KEY — loser’s batch rolls
+  back and its response becomes a replay of the winner’s outcome. The idempotency lookup happens
+  BEFORE the empty-cart rejection so retry-after-success works. Frontend generates a UUID key per
+  form session, rotates it after every settled server response, and keeps it across network
+  failures — a double-click can never place two orders.
+- **API (`src/server/checkout.ts`):** `GET /api/v1/checkout` (summary + `checkoutable`, never
+  mints a session), `POST /api/v1/checkout` (validate → idempotency pre-check → eligibility
+  check → batch; envelopes: 400 `invalid_request` + per-field `fields` map, 422 `empty_cart`,
+  422 `cart_unavailable` + per-line reasons, 422 `payment_declined`, 409
+  `idempotency_conflict`), `GET /api/v1/orders` (session history, ≤50, newest first), `GET
+  /api/v1/orders/:reference` (format 400; unknown OR foreign session → identical 404 envelope;
+  reference regex `^ORD-[0-9A-F]{16}$`).
+- **Frontend:** routes `/checkout` and `/orders/:reference` inside `AppShell`. Checkout page:
+  breadcrumb + PageHeader, honest “practice checkout” availability line, two-column layout
+  (form + sticky summary with Item lines, subtotal, total), HTML5/`noValidate` form with
+  server-mirroring client validation (`src/lib/checkout.ts`, unit-tested), mono-uppercase field
+  labels, blur validation, accessible error summary (`role="alert" tabIndex=-1`) whose items
+  link to the offending fields, inline field errors (`aria-describedby`/`aria-invalid`),
+  explicit Approved/Declined radio cards with practice-only wording, submit disabled while busy,
+  success → `refresh()` cart (badge clears) → navigate to `/orders/:reference`. Confirmation
+  page: status/payment tags (text, not colour), reference in mono, immutable item snapshots,
+  delivery block (synthetic), “No real payment was processed” Callout, links to shop and
+  dashboard; unknown/foreign reference renders an honest EmptyState; refresh persists within the
+  owning session only. `/cart` summary now has a **Proceed to checkout** button (disabled when
+  any line is unavailable) and updated honest copy; ShopPage/ProductDetail copy updated; no new
+  dependencies; two icons reused (`lock`, `check`).
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **212/212 tests**, was 155; +30 server checkout tests incl. full-rollback batch proof,
+  concurrent same-key/different-key placement, declined replay, payload-drift 409, snapshot
+  survival of rename/reprice/deactivation/deletion; +8 views/api tests; +5 lib validation
+  tests). `npm run build` — passed (JS **429.38 kB** / gzip 127.83 kB vs 408.70 / 123.21 at M3;
+  CSS **64.89 kB** / gzip 12.88 kB; no new runtime dependencies). Playwright/Chrome probe against
+  the production build on port **8791** (8788/5173 untouched; curl liveness confirmed 8791 closed
+  after): **live flow** — add to cart → checkout → place approved order (redirect, reference,
+  tags, snapshot, refresh persistence, foreign-session 404, unknown reference, malformed
+  reference) and declined order (notice shown, cart intact); **422/400 by-design API responses**;
+  **idempotency replay verified live against the production build** (same key+payload after the
+  cart was emptied → `201` + original reference + `Idempotent-Replay: true`; payload drift →
+  `409`); **both themes × 375/768/1024/1440** for `/checkout` and `/orders/:reference` (zero
+  overflow, exactly one h1), reduced-motion render; client-side validation blocks empty submit
+  with linked error summary; zero unexpected console errors. Port 8788/5173 appear down at end of
+  session; this turn never started or stopped them (only a pattern-scoped pkill for 8791, which
+  also terminated the probe harness shell; nothing owned by the user was touched).
+- **Docs:** README.md (M4 functionality, endpoint reference, explicit simulated-payment
+  behaviour section, limitations), `docs/phase-3-commerce-practice-plan.md` (M4 marked
+  implemented with as-built deviations), AGENTS.md (state lines), PROJECT_STATE.md.
+- **Known limitations / open items:** no rate limits yet (deferred to M9); order history UI not
+  exposed (API-only; `/orders/:reference` is the only orders UI); expired sessions cascade-delete
+  their orders (by design, documented); `react-dom/server` SSR markup tests assert rendering,
+  browser probes cover interaction and are not committed (same convention as before); local dev
+  D1 accumulates practice orders from probes/tests (throwaway local state; `rm -rf .wrangler` +
+  `db:migrate:local` resets); `npm run check` is green but the `node:sqlite` harness remains the
+  only database test path.
+- **Git:** single milestone commit `feat: implement checkout and order workflow` (hash in the
+  final report). `main` untouched, nothing pushed, P3-M5 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M5 (synthetic customers &
+  auth simulation)** — do not begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M3: session-keyed shopping cart
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `942967c` (P3-M2), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in final report).
+- **Migration `db/migrations/0003_cart.sql` (applied locally, `schema_version` → `3`):**
+  `practice_sessions(id, token_hash UNIQUE, created_at, expires_at DEFAULT fixed insert in code,
+  index on expires_at)`, `carts(id, session_id UNIQUE → practice_sessions ON DELETE CASCADE,
+  created_at, updated_at)`, `cart_items(id, cart_id → carts ON DELETE CASCADE, product_id →
+  products, quantity INTEGER CHECK 0 < quantity <= 99, UNIQUE(cart_id, product_id))`. The raw
+  session token is never stored — only its SHA-256 hash; 7-day expiry; expired rows are purged
+  on contact. M7 will ALTER `practice_sessions` for hunt mode, so M7 touches nothing cart-side.
+- **Session design (documented limitation):** lazy mint on the first cart **mutation** (reads
+  never create sessions); cookie `mpl_session` (HttpOnly, SameSite=Strict, Path=/, Max-Age
+  604800, `Secure` only over HTTPS); token = 16 random bytes as 32 hex chars; fresh session =
+  delete the cookie (no login exists until M5). Two rapid first-adds from a cookieless browser
+  could mint two sessions; the UI disables cart controls while a mutation is in flight and
+  double-submissions therefore can't orphan lines from the learner's perspective.
+- **API (`src/server/cart.ts`):** `GET /api/v1/cart` (never mints; clears stale cookie;
+  empty cart otherwise), `POST /api/v1/cart/items` (validate slug format → product must exist
+  and be active → inventory must be > 0 → mint session if needed → 400 for bad quantity or
+  `>99`, 422 `out_of_stock`, 422 `insufficient_stock` with `availableStock`/`maxQuantity`;
+  stock-guarded `INSERT … ON CONFLICT … DO UPDATE … WHERE …` clause makes oversell
+  impossible even in a race), `PATCH /api/v1/cart/items/:id` and `DELETE …/:id` (id must be a
+  positive integer; non-numeric → 400; everything is scoped to the caller's cart — other
+  sessions get 404), `DELETE /api/v1/cart` (clear, idempotent). All responses recompute
+  `lineTotalCents = price_cents * quantity` and `totalCents = subtotalCents` (integer cents;
+  shipping/discounts/tax don't exist until M4) from the **current** catalogue, so adding after
+  a price change or deactivation is honest: deactivated/under-stocked lines stay in the cart
+  flagged `available: false` / `exceedsStock: true`, cart sets `hasUnavailableItems: true`,
+  and the UI surfaces per-line warnings and a summary Callout. Error envelopes stay
+  `{ error, message, … }` consistent with the catalogue API.
+- **Frontend:** `CartProvider` + `useCart` (context split into `cart-context.ts` /
+  `CartContext.tsx` / `useCart.ts` to satisfy react-refresh) — on mount, fetches the cart,
+  replaces state with the **server-recomputed** cart after every mutation, exposes
+  `pending` to disable controls. `/cart` page (`CartPage` → `CartView` presentational split):
+  breadcrumb, `PageHeader`, honest session note, loading/empty/error(`role="alert"` + Try
+  again)/ready states, per-line name link, unit price, stock tag, −/number/+ stepper
+  (input commits on blur/Enter, Escape resets, +/- respect 99-cap and known stock ceiling),
+  line total, Remove, summary panel (Items count, Subtotal, Cart total, *Checkout is not
+  implemented yet* note, Clear cart, Continue shopping), `hasUnavailableItems` warning
+  Callout, and per-line `role="alert"` notes for deactivated/under-stocked items. Top bar
+  gained a cart entry point with an item-count badge (`aria-label` includes the count).
+  Product cards and the detail page gained Add to cart (disabled + "Out of stock" when
+  unavailable; detail gets a quantity stepper `#product-add-quantity` 1–99). Two inline SVG
+  icons added to the existing set (`cart`, `minus`, `plus` — no icon package).
+- **`fake-d1.ts` harness extended:** `batch()` now executes statements inside one SQLite
+  transaction with all-or-nothing rollback (mirrors D1's contract, used by a rollback test),
+  and `PRAGMA foreign_keys = ON` is set to match D1's FK enforcement/cascade behaviour.
+- **Verification:** `npm run check` — **passed** (ESLint clean, all three TS projects clean,
+  **155/155 tests**, was 98; +35 cart API tests incl. tampering/IDOR/expiry/batch-rollback,
+  +23 shop cart-API/view SSR tests, schema guard updated to `schema_version = 3`).
+  `npm run build` — passed (JS **408.70 kB** / gzip 123.21 kB, +12.08 kB raw vs P3-M2;
+  CSS **59.45 kB** / gzip 12.17 kB; no new runtime dependencies). Playwright/Chrome probe
+  against the production build on port **8791** (8788 untouched): **61/61 checks pass** —
+  refresh persistence of the badge across reloads, quantity committed via input and buttons,
+  removal, clear, empty state, out-of-stock disabled Add, two-browser-context isolation,
+  browser-stored cookie attributes (HttpOnly/SameSite=Strict/Path=/Max-Age 7d), both themes
+  × 375/768/1024/1440 for `/cart` and `/shop` with zero overflow and exactly one h1, zero
+  console errors. Screenshots `/tmp/opencode/p3m3-cart-*.png` (not committed). Port 8788's
+  owner process was not modified; my 8791 processes were stopped afterwards.
+- **Docs:** README.md (Phase 3 status, cart endpoints + session model, limitations),
+  `docs/phase-3-commerce-practice-plan.md` (M3 marked implemented), AGENTS.md (state line),
+  PROJECT_STATE.md.
+- **Git:** milestone committed as `feat: implement session-based shopping cart` (hash in the
+  final report). `main` untouched, nothing pushed, P3-M4 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M4 (checkout & orders)** —
+  do not begin without approval.
+
+### 2026-11-15 — Phase 3 P3-M2: storefront catalogue UI
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `0841783` (P3-M1), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in final report).
+- **API extension (justified, in agreed scope):** `GET /api/v1/products` gained an optional
+  `q` parameter — case-insensitive (SQLite ASCII) match on `p.name`, `p.description` and
+  `c.name`, `%q%` pattern with `ESCAPE '\'` and LIKE wildcards (`%`, `_`, `\`) escaped in user
+  input; the value is trimmed to 80 chars after whitespace collapse. Bind-parameter only;
+  out-of-format input simply matches zero rows. 7 new search tests in
+  `tests/server/catalogue.test.ts` (matches on name/description/category, case-insensitivity,
+  wildcard literalness, combination with category/sort/pagination, no-match empty page).
+  Without this, the storefront's required search would have been frontend-only and misleading.
+- **Routes:** `/shop` (catalogue) and `/shop/products/:slug` (detail), both inside `AppShell`.
+  Sidebar Workspace section gained a `Shop` item (new inline `shop` shopping-bag icon added to
+  the existing inline SVG set; no icon package).
+- **Catalogue page:** heading + introduction, honesty mono-line (“Fictional practice
+  storefront · API-backed catalogue · no checkout”), 12-up product grid
+  (`minmax(260px, 1fr)`), each card = one h3 title link (stable
+  `/shop/products/:slug`), 2-line description, price (`Intl.NumberFormat` USD), category meta,
+  stock pill with dot + text label (`In stock` / `Low stock` / `Out of stock`, never colour
+  alone). Controls: labelled search (`#shop-search-input`, icon, ×-clear, Escape clears,
+  200 ms debounce → `replace`), category select fed by `/api/v1/categories`, sort select
+  (Newest / Name A–Z / Price: low→high / high→low), Clear-all (disabled when idle), result
+  count in `aria-live="polite"`, pagination with prev/numbered/next as real links
+  (`aria-current="page"`), out-of-range `?page=` renders an honest “beyond the end of the
+  catalogue” recovery state linking to page 1.
+- **URL-driven state (mirrors `src/lib/catalog.ts`):** `?q=&category=&sort=&page=`; unknown or
+  invalid values fall back to defaults (verified by unit tests, incl. `category=Travel`
+  lower-casing and SQL-ish input falling back to `all`); defaults are omitted from the URL;
+  refresh preserves state; Back/Forward step through facet/sort/page changes; search typing is
+  debounced with `replace`. Detail links are stable slugs.
+- **Product detail page:** breadcrumb (Dashboard → Shop → product), PageHeader h1 = product
+  name, category fact links back to `/shop?category=<slug>`, `FactList` (Category link +
+  catalogue code = slug, shown as a teaching aid for the API), sticky purchase aside with
+  price, currency, stock pill, and a “Practice storefront” Callout stating the catalogue is
+  fictional with cart/checkout explicitly not implemented (no fake cart/CTA anywhere).
+  Loading → `LoadingState` (one h1 kept), unknown/inactive slug → `EmptyState` + “Back to the
+  shop”, fetch/HTTP failure → `ErrorState` (`role="alert"`) + “Try again”.
+- **Fetch layer (`src/features/shop/api.ts`):** `fetchProducts` / `fetchProduct` /
+  `fetchCategories` with `Accept: application/json`, `AbortSignal` support, typed
+  `ShopApiError` carrying `status`; 404 on the detail endpoint maps to `null` (not-found)
+  rather than an exception. Requests are keyed to the URL query string with derived loading
+  state (no synchronous `setState` in effects; continuation-based updates); `categories`
+  fetch is separate, and a categories failure degrades to an inline `role="alert"` note with
+  retry while products still render. No duplicate requests; Back/Forward is handled by the
+  URL being the source of truth.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **98/98 tests**, was 57; +41 new). `npm run build` — passed: JS **396.62 kB** (120.09 kB
+  gzip, +13.30 raw vs P3-M1), CSS **55.45 kB** (11.68 kB gzip, +3.84 raw); no new runtime
+  dependencies. `tsconfig.app.json` now includes `tests/shop/views.test.tsx`;
+  `tsconfig.functions.json` excludes it; vitest include glob widened to `.tsx`. Browser probe
+  (Playwright/`channel: chrome` vs fresh production build on port **8789**, after confirming
+  8788 was untouched): **70/70 checks pass** — deep links, refresh persistence, Back/Forward,
+  debounce, all filters/sort/pagination paths, empty/error/out-of-range/not-found states and
+  their recovery actions, both themes × 375/768/1024/1440 (no overflow, exactly one h1),
+  h1 focus after client-side nav, visible 2 px focus ring on card links, sidebar `Shop` entry
+  with `aria-current="page"`, all 11 pre-existing routes + deep links still 200, no
+  unexpected console errors. Screenshots in `/tmp/opencode/p3m2-*.png` (not committed).
+- **Known limitations:** storefront is read-only — no cart, checkout, auth, bug-hunt mode or
+  persistence (P3-M3+); product cards are text-first (no photography/icon package yet);
+  `sort=newest` remains `id DESC` (seeded `created_at` is a constant); search is LIKE-based
+  and name/description/category only; the API has no `SKU` field so the detail page shows the
+  slug as “Catalogue code” instead; `npm run check` covers render markup via SSR string
+  assertions, not DOM interaction (Playwright probe is not committed, same convention as
+  Phase 2/2.5).
+- **Git:** milestone committed as `feat: implement e-commerce storefront catalogue` (hash
+  recorded in the final report). `main` untouched, nothing pushed.
+- **Next exact action:** STOP. Await instruction to start **P3-M3 (cart)** per the plan; do not
+  begin it without approval.
+
+### 2026-11-15 — Phase 3 kickoff: branch, plan (P3-M1…P3-M9) and P3-M1 domain foundation
+
+- **Branch:** `feat/phase-3-commerce-practice` created from synchronized `main` @ `394691c` (Phase 2.5 merge `c5eca37`/PR #2 and OpenCode workflow docs `394691c`/PR #3 both confirmed present; working tree was clean; `main` untouched; nothing pushed).
+- **Plan doc added:** `docs/phase-3-commerce-practice-plan.md` — full milestone breakdown (P3-M1 domain foundation → P3-M2 storefront catalogue UI → P3-M3 cart → P3-M4 checkout & orders → P3-M5 synthetic auth → P3-M6 inventory depth → P3-M7 bug-hunt engine v1 → P3-M8 defect set & scenario wiring → P3-M9 hardening/exit), bug-hunt engine architecture (server-controlled activation, hunts/defects in code, `practice_sessions` + `mpl_session` cookie isolation, reset flow, M7/M8 implementation), API surface per milestone, scenario sketch, free-tier impact, §12 status summary.
+- **P3-M1 implemented:** migration `db/migrations/0002_commerce_domain.sql` (`categories`, `products`, `inventory`; `schema_version` → `2`; 8 categories, 42 products (40 active), 42 inventory rows; fixed `created_at` in seed for full determinism); `src/shared/commerce.ts` (contracts, `stockStatus` from SQL CASE); `src/server/catalogue.ts` (`GET /api/v1/products` with `page`/`perPage`≤48/`category`/`sort`, `GET /api/v1/products/:slug` active-only with 404 envelope, `GET /api/v1/categories`); `src/server/app.ts` mounts `/api/v1`; `tests/helpers/fake-d1.ts` (node:sqlite-backed, applies real migrations — no SQL mocks); `tests/server/catalogue.test.ts` (16 tests). One design fix during verification: an out-of-format `category` filter is now tolerated and simply matches zero rows (parameter-bound) instead of being silently dropped — least-surprising API contract.
+- **Verification:** `npm run db:migrate:local` applied 0002 (10 commands); local D1 confirms 8/42/40/42 rows and `schema_version=2`. `npm run check` — passed (ESLint clean, all three TS projects clean, **57/57 tests**). `npm run build` — passed (JS 383.32 kB / gzip 116.54 kB; CSS 51.61 kB — unchanged, no frontend changes). End-to-end through `wrangler pages dev` on **port 8789** (production build): `/api/health` returns `schemaVersion: "2"`; list/detail/categories/404 all correct; seeds return real data. **Port 8788 was already in use by an unrelated local `workerd` process, so verification ran on 8789; the existing process and its 5173 neighbour were not modified, and my 8789 processes were stopped afterwards.** Killing stale 8788 remains the user's call.
+- **Docs:** README.md (Phase 3 status, `/api/v1` reference, limitations), PROJECT_STATE.md (§1, §9, §10, §11, new §12, resume prompt → §13), `docs/phase-3-commerce-practice-plan.md`. AGENTS.md updated for Phase 3 in-progress state (still minimal).
+- **Not done / deferred:** no storefront UI (P3-M2, unstarted); no cart/orders/auth/inventory runtime; bug-hunt engine is design-only (§12); no remote Cloudflare resources created; no persistence of learner progress; M9 polish still on request only.
+- **Next exact action:** STOP. Await instruction to start **P3-M2 (storefront catalogue UI)** — the next milestone per the plan. Do not start it without approval.
 
 ### 2026-11-15 — OpenCode token-efficiency configuration (tooling only)
 
@@ -635,8 +1423,251 @@ phase starts.
 - **Blockers:** None. Working name and exact UI design remain open and can be chosen during scaffold/design work.
 - **Next exact action:** Phase 1 — create the repository scaffold and implement a minimal React shell plus Hono `/api/health` endpoint with a local D1 migration.
 
-## 12. Resume prompt
+## 12. Phase 3 — commerce practice application (implementation-complete; exit audit)
+
+Phase 3 is implementation-complete on branch `feat/phase-3-commerce-practice` (base: `main` @
+`394691c`). The full plan — milestone breakdown with scope/dependencies/acceptance/testing/risks,
+the bug-hunt engine architecture, the API surface, scenario sketch and free-tier impact — lives in
+**`docs/phase-3-commerce-practice-plan.md`**. The exit audit is **`docs/phase-3-exit-audit.md`**.
+Status summary:
+
+### Architecture decisions (Phase 3)
+
+- One original fictional store — **Meridian Outfitters**, outdoor & home goods, synthetic data only.
+- Modular services inside the existing Pages Functions/Hono app under `/api/v1/...`; no separate
+  Workers yet. D1 remains an implementation detail; no learner-facing SQL surface ever.
+- Money is integer cents (`price_cents`); currency constant `USD` (`src/shared/commerce.ts`).
+- Integer PKs internally; URL-facing lookups use stable lowercase-hyphen `slug`.
+- Catalogue rows are deactivated (`active = 0`), never deleted.
+- Seed data lives inside migrations with explicit ids → `npm run db:migrate:local` is the single
+  reproducible setup step. Deterministic, no wall-clock in seeds (`created_at` is a fixed constant).
+- Shared contracts in `src/shared/commerce.ts`; API error envelope stays `{ error, message }`.
+- Inventory is its own table (`inventory.product_id` PK/FK, `quantity >= 0`, per-product
+  `low_stock_threshold`); stock status is derived in SQL as `in_stock | low_stock | out_of_stock`.
+- Testing: server tests run against an in-memory SQLite (`node:sqlite`) that applies the **real**
+  migration files — no hand-mocked SQL (`tests/helpers/fake-d1.ts`).
+
+### Bug-hunt engine (implemented in P3-M7; full catalogue in P3-M8)
+
+- **Clean mode** is the default: zero defect branches execute. **Bug-hunt mode** activates a
+  hunt's fixed defect set; never anything else.
+- Hunts and defects are **code, not data** (`src/server/hunts.ts`, `src/server/defects.ts` in M7) —
+  learners cannot inject defects, SQL or expressions. No endpoint accepts defect ids; activation
+  happens only via `POST /api/v1/practice/hunts/:huntId/start` with the server resolving the set.
+- Anonymous `practice_sessions` (`mpl_session` httpOnly SameSite=Strict cookie, 7-day expiry,
+  SHA-256-hashed token) isolate carts/orders/defect-state per learner session; read-path defects
+  apply only to that session's responses; seeded catalogue is identical for everyone.
+- Every defect is a single (minimal) code site branching on an `isDefectActive()` check with
+  unit tests for both branches; deterministic — no randomness, no wall-clock ordering.
+- Reset re-stamps the live session to clean mode non-destructively (cart/orders/customer
+  binding kept; hunt state removed); sessions are swept lazily on contact and by the
+  maintenance sweep (M9); no admin/teacher activation UI in Phase 3. Internal catalogue
+  documents Expected vs Actual, repro and fix in
+  `docs/bug-hunt-catalogue.md`. P3-M8 expanded the registry to **seven hunts, one defect each**
+  (see the milestone table below) and wires each hunt to a runnable scenario.
+- Hunt starts are capped at 20 per IP per UTC day since P3-M8, enforced exactly since P3-M9
+  (atomic guarded increments — no overshoot); only a SHA-256 of the IP is stored
+  (`hunt_start_caps`, one row per address, day-old rows pruned on write and by the sweep);
+  `429 hunt_start_cap_reached` + `Retry-After`; resets and idempotent same-hunt re-starts are not
+  capped; local development without a visible client IP is not capped.
+
+### Milestone status
+
+| Milestone | Title | Status |
+|---|---|---|
+| P3-M1 | Commerce domain foundation (schema, seed, read-only catalogue API) | **Done & verified 2026-11-15** (this branch, `0841783`) |
+| P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | **Done & verified 2026-11-15** (this branch) |
+| P3-M3 | Cart (session-keyed, server-side totals) | **Done & verified 2026-11-15** (this branch) |
+| P3-M4 | Checkout & orders (simulated payments, transactional D1 placement, idempotency) | **Done & verified 2026-11-15** (this branch) |
+| P3-M5 | Synthetic customers & auth simulation (roles, ownership) | **Done & verified 2026-11-15** (this branch) |
+| P3-M6 | Inventory depth (stock re-check in order transaction, restock, cancellation) | **Done & verified 2026-11-15** (this branch) |
+| P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | **Done & verified 2026-11-15** (this branch) |
+| P3-M8 | Bug-hunt defect set & scenario wiring (7 defects, launch panels, `?hunt=available`) | **Done & verified 2026-11-15** (this branch) |
+| P3-M9 | Hardening, reset, Phase 3 exit audit | **Done & verified 2026-11-15** (this branch) |
+
+P3-M1 detail: migration `db/migrations/0002_commerce_domain.sql` (tables `categories`, `products`,
+`inventory`; `app_meta.schema_version` → `2`; 8 categories, 42 products of which 40 active,
+42 inventory rows; 2 out-of-stock, 5 low-stock products); routes `GET /api/v1/products`
+(`page`, `perPage` ≤ 48, `category`, `sort=newest|name|price_asc|price_desc`),
+`GET /api/v1/products/:slug` (active only, 404 envelope otherwise), `GET /api/v1/categories`;
+`/api/v1/*` inherits the global `no-store`/`nosniff` middleware; all parameters are bound, never
+interpolated. 16 new tests in `tests/server/catalogue.test.ts`. Verified end-to-end against the
+production build on a separate local port (8789) because 8788 was in use by another local
+process; the user's servers were not touched.
+
+P3-M2 detail: storefront UI on top of the M1 API — routes `/shop` (catalogue: 12-per-page grid,
+URL-driven `?q=&category=&sort=&page=` with safe fallbacks, refresh/Back/Forward persistence)
+and `/shop/products/:slug` (detail: price, stock status from the API, category deep link back
+to the filtered catalogue, breadcrumb). `GET /api/v1/products` gained an optional `q` parameter
+(case-insensitive match on name/description/category name; LIKE wildcards escaped; bound
+parameters only) — the only API change; 7 new search tests (23/23 in `catalogue.test.ts`).
+Loading/empty/error/out-of-range/not-found states are all implemented and verified in both
+themes at 375/768/1024/1440 via a Playwright/Chrome probe (70/70 checks, production build on
+port 8789). 41 new tests total (98/98 suite green); `npm run check` and `npm run build` clean;
+no new runtime dependencies. One icon added to the inline SVG set (`shop`, shopping bag); no
+icon package. `tsconfig` split adjusted so `tests/shop/views.test.tsx` type-checks under the
+app project (JSX + DOM lib) and is excluded from the functions project; vitest glob widened
+to `.tsx`.
+
+P3-M3 detail: session cart on top of the M1/M2 stack — migration `0003_cart.sql` (`practice_sessions`,
+`carts`, `cart_items`; `schema_version` → `3`; token stored only as a SHA-256 hash; 7-day expiry;
+`CHECK 0 < quantity <= 99`). Server: `src/server/session.ts` (token generation/hash, resolve,
+lazy mint on first mutation, never on reads) and `src/server/cart.ts` (`GET /api/v1/cart`,
+`POST /api/v1/cart/items`, `PATCH`/`DELETE /api/v1/cart/items/:id`, `DELETE /api/v1/cart`).
+Every cart query is session-scoped — there is no code path that reads a cart by anything other
+than the caller's cookie-resolved session; line ids from other sessions return 404. Prices,
+stock and totals are recomputed from `products`/`inventory` on every response (integer cents;
+`totalCents == subtotalCents` until M4 adds shipping); client-supplied price/total fields are
+ignored by construction; stock-guarded upsert/update reject oversells (`422 insufficient_stock`);
+out-of-stock adds get `422 out_of_stock`; unknown/inactive products get the shared `404 not_found`
+envelope; failed adds never mint a session. Lines whose product is deactivated or drops below
+line quantity stay in the cart flagged `available: false` / `exceedsStock: true` and set
+`hasUnavailableItems` — never silently dropped or repriced. Frontend: `CartProvider` context
+(`src/features/cart/`) on top of a fetch client; top-bar cart entry point with item-count badge;
+Add-to-cart on product cards and the detail page (quantity stepper, disabled when out of stock);
+`/cart` route with loading/empty/error/ready states, per-line steppers with Enter-to-commit,
+stock-ceiling +/- disable logic, removal, clear-cart, and honest checkout-not-implemented copy.
+155/155 tests green (`tests/server/cart.test.ts` 35 tests incl. cross-session IDOR probes,
+tampering, expiry, batch-rollback; `tests/shop/cart-api.test.ts`; `tests/shop/cart-views.test.tsx`);
+Playwright/Chrome probe **61/61** against the production build on port 8791 (refresh persistence,
+two-browser-context isolation, cookie attributes in the browser jar, all 4 widths × light/dark
+no overflow, one h1). No new runtime dependencies; one inline icon added (`cart`).
+
+P3-M3 focus (from the brief): cart at `/cart` rather than the plan's sketched `/shop/cart`;
+`practice_sessions` created now (M7 will extend it) rather than deferring all session state to M7.
+Storefront-wide caveats from M2 still apply — no product photography/icon package; `sort=newest`
+is `id DESC` because seeded `created_at` is a constant; the API has no `SKU` field — the detail
+page shows the slug as “Catalogue code”; storefront search is LIKE-based (fine at 42 products);
+SSR string-markup tests assert rendering, browser probes cover interaction and are not committed;
+`npm run check` passes but the Node 26 / `node:sqlite` harness is the only database test path.
+
+Known limitations (recorded at P3-M4; superseded where marked): customer auth/bug-hunt unimplemented at that time
+(P3-M5 has since shipped; bug-hunt is P3-M7+); checkout has no
+shipping/discounts/tax (total == subtotal); ~~expired sessions/carts are not swept yet~~
+(closed in P3-M9 by the maintenance sweep + lazy deletion); stock checks are per-request reads + guarded writes, not a reservation system (M6 owns the
+transactional depth); ~~per-request rate limits are deferred to M9~~ (closed in P3-M9); quantity cap is 99/line;
+interaction-level cart testing beyond the SSR markup tests + Playwright probe is not automated
+(no DOM-test runner installed yet); `practice_sessions` lacks `mode`/`hunt_id` until M7 (shipped).
+
+P3-M4 detail: atomic checkout & orders on top of M1–M3 — migration `0004_orders.sql`
+(`orders`, `order_items` nullable `product_id` with `ON DELETE SET NULL` for snapshot survival;
+`checkout_idempotency` PRIMARY KEY `(session_id, idempotency_key)`; `schema_version` → `4`).
+Server `src/server/checkout.ts`: `GET /api/v1/checkout` (summary + `checkoutable`),
+`POST /api/v1/checkout` (validation + fingerprinted idempotency pre-check before the empty-cart
+rejection, then either a single all-or-nothing D1 `batch()` — order + item snapshots +
+`inventory.quantity >= 0`-CHECK-guarded decrements + cart clear + idempotency record — or a single
+idempotency-record insert for `declined`), `GET /api/v1/orders` (≤50, newest first),
+`GET /api/v1/orders/:reference` (opaque `ORD-` + 16 hex; unknown/foreign → identical 404).
+Client fingerprint = SHA-256 of validated details + payment outcome (excludes cart contents —
+legitimate retry-after-success must replay); same key + different payload → 409; concurrent
+twins resolve via the PRIMARY KEY.
+Frontend: `/checkout` (validated form, error summary with
+field links, Approved/Declined simulation radios, duplicate-submit guard, cart badge refresh
+on success) and `/orders/:reference` (confirmation, snapshot items, honest “not a real payment”
+wording). 212/212 tests green; live probe against the production build incl. a live idempotency
+replay after cart-emptying. Known gaps: no rate limits (M9); no order-history UI (API only);
+orders cascade-delete with expired sessions; no checkout reservation system (M6 owns depth).
+
+Known limitations: bug-hunt engine still unimplemented (P3-M7+); the cart and checkout have no
+shipping/discounts/tax (total == subtotal); expired sessions/carts/orders/customer sessions are
+not swept yet (M9); stock checks are per-request reads + guarded writes in one batch, not a
+reservation system (M6 owns the transactional depth); per-request rate limits deferred to M9;
+quantity cap is 99/line; interaction-level testing beyond SSR markup tests + Playwright probe is
+not automated; `practice_sessions` lacks `mode`/`hunt_id` until M7.
+
+P3-M5 detail: synthetic customer auth & ownership on top of M1–M4 — migration
+`0005_customers.sql` (`customers` with PBKDF2 digests + fixed salts, RFC 2606 example domains;
+`customer_sessions` bound to `practice_sessions`; `orders.customer_id` nullable → explicit,
+transactional adoption at placement only). Server `src/server/customer.ts` (token generation,
+SHA-256 hashing, practice-session binding check, suspended handling, shared guard
+`requireActiveCustomer`) and `src/server/auth.ts` (`/api/v1/auth/accounts|login|logout|me`,
+`/api/v1/account`, `/api/v1/account/orders[/:reference]`). Frontend: `AuthProvider` + top-bar
+account indicator + `/login` (fictional demo-account directory), `/account` (profile / guest /
+suspended states), `/account/orders` (history), `/account/orders/:reference` (reuses
+`OrderConfirmationView`). Anti-enumeration login (identical 401, dummy-digest verify), token
+rotation on sign-in, HttpOnly `mpl_customer` cookie (8 h). 239/239 tests green; live probe
+**51/51** against the production build (port 8791). Known gaps: no login rate limit (M9); no
+account registration/recovery/MFA (out of scope); staff role seeded but unused by endpoints (M6);
+no checkout prefill from profile; credentials documented in README only (never in the UI); the
+plan's sketched 403-for-wrong-owner was refined to 404 (existence concealed) — documented in
+README and the plan.
+
+P3-M6 detail: inventory depth on top of M1–M5 — migration `0006_inventory_depth.sql`
+(`inventory_adjustments` immutable audit rows + `order_cancellations` exactly-once marker,
+additive only; `schema_version` → `6`; nothing rewrites `orders.status`). Server:
+`src/server/staff.ts` (`requireStaff`, shared 401/403 guard), `src/server/inventory.ts`
+(`GET /api/v1/admin/inventory` staff view; `PATCH /api/v1/admin/inventory/:productId` guarded
+UPDATE + `changes() = 1` audit insert in one batch), `src/server/checkout.ts` gained
+`POST /api/v1/orders/:reference/cancel` (PK marker → exactly-once stock restore + audit rows;
+401/403/404 policy identical to order reads) and read-time derived `status: 'cancelled'` +
+`cancelledAt` on detail/history/account history. Checkout decrement unchanged: placement-time
+approval, all-or-nothing batch, CHECK-guarded — a race for the last unit yields one 201 + one
+422 (test-proven). NO reservation framework (documented). Frontend: `/admin/inventory` (staff
+view + restock tool), staff-only nav entries, inline cancel panel on both confirmation pages.
+263/263 tests green (+24); production build clean; Playwright/Chrome probe **30/30** on the
+production build (port 8791). Known gaps: no rate limits (M9); restock-only adjustments (no
+removal path); `order_cancellations` not swept (M9); staff list unpaginated (~42 rows).
+
+P3-M7 detail: additive migration `db/migrations/0007_bug_hunt.sql` (`practice_sessions.mode`
+CHECK clean|bug_hunt default 'clean', `hunt_id` nullable, `schema_version` → `7`); registries are
+code (`src/server/hunts.ts` — one hunt `hunt-catalogue-001`; `src/server/defects.ts` — defect
+`CATALOGUE-001` + `isDefectActive(c, defectId)` resolved per request from the caller's session
+row; clean/expired/unknown-hunt sessions resolve to false). Endpoints
+`GET /api/v1/practice/session`, `POST /api/v1/practice/hunts/:huntId/start` (no body; live session
+re-stamps in place, cart/orders kept; unknown hunt → 404 `hunt_not_found`), `POST
+/api/v1/practice/session/reset` (non-destructive re-stamp; cart/orders/sign-in kept). One code
+site: the `q` predicate in `GET /api/v1/products` (description facet dropped for hunt sessions).
+Frontend: `ModeBanner` in the app shell (role=status, Clean green / Bug-hunt amber + reset) and a
+Bug-hunt mode section on `/practice` (`HuntPanel`; start/reset with loading/success/error states).
+294/294 tests green (+24 server, +7 client; schema_version assertions 6→7); production build clean;
+Playwright/Chrome probe **40/40** against the production build on port 8791 (two isolated contexts:
+hunt-vs-clean search results, isolation, reload persistence, cart in hunt mode, reset round-trips,
+themes × 375/768/1024/1440, reduced-motion). Local D1 migrated to 0007.
+
+P3-M8 detail: additive migration `db/migrations/0008_hunt_start_caps.sql` (`hunt_start_caps`: one
+SHA-256-hashed row per IP, UTC day counter, `schema_version` → `8`); hunt registry carries a
+learner-safe `scenarioId` and now lists **seven hunts, one defect each** — `hunt-catalogue-001` →
+`CATALOGUE-001` (description facet, shipped in M7), `hunt-catalogue-002` → `CATALOGUE-002` (category
+filter dropped; clean 5 vs hunt 40 climbing), `hunt-cart-001` → `CART-001` (upsert replaces instead
+of accumulating; both branches stock-guarded), `hunt-inventory-001` → `INVENTORY-001`
+(`blockingProblems` boundary off-by-one; exact-stock orders 422'd), `hunt-pricing-001` →
+`PRICING-001` (stored `order_items.line_total_cents` = unit price, not × quantity; summary/order
+totals stay correct), `hunt-checkout-001` → `CHECKOUT-001` (`NAME_PATTERN` check skipped; other
+fields enforced), `hunt-authz-001` → `AUTHZ-001` (ownership predicate dropped from the account
+order-detail lookup; unknown references still 404). One code site per defect; activation resolved
+per request from the caller's session row. New `GET /api/v1/practice/hunts` (learner-safe list,
+`{ data: [{ id, title, summary, scenarioId }] }`, no cookie required); hunt starts softly capped
+at **20/IP/UTC day** (resets and idempotent same-hunt re-starts exempt; `429 hunt_start_cap_reached`
++ `Retry-After`; hashed IP only; skipped locally when no client IP is visible). Seven scenarios
+wired (three promoted/rewritten, four new): `manual-shop-search`, `api-catalogue-filters`,
+`manual-cart-add-quantity`, `api-checkout-exact-stock`, `manual-cart-totals`,
+`manual-address-edge-cases`, `security-object-access` — all `ready`/`runnable`, bidirectional
+`huntId ↔ scenarioId` verified by `tests/data/content.test.ts`. Scenario pages carry a
+`HuntLaunchPanel` (start/reset in place); `/practice` lists all seven hunts (`HuntPanel` rebuilt to
+the registry, start/switch/reset, links to the wired scenarios) with a local markdown bug-report
+export (`BugReportExport`, browser-only download, no server storage/scoring). Catalogue: wired
+cards show a **Bug-hunt exercise** badge, `/scenarios?hunt=available` deep-links the seven, status
+filter includes `Ready`, the `PracticeSessionResponse.hunt` now carries optional `scenarioId`.
+Content: `tests/data/content.test.ts` rewritten for the two-tier catalogue rule (unwired stay
+non-runnable; wired must be ready/bug-hunt/resolvable in the registry). Tests: `hunt-set.test.ts`
+(+28: per-defect both branches, envelope shapes, two-learner-different-hunts isolation, reset
+restores clean for every defect, forged client input ignored for every hunt, per-IP cap
+behaviour incl. idempotent-restart exemption, day rollover, no-IP skip; schema_version assertions
+bumped 7→8); `tests/practice/api.test.ts` (+3), `tests/lib/catalog.test.ts` (+3 hunt filter).
+**329/329 tests green** (was 294). `npm run build` clean (JS **477.54 kB** / gzip 139.01 kB vs
+466.40/136.42 at M7; CSS **76.55 kB** / gzip 14.36 kB; no new runtime dependencies). Browser probe
+(Playwright/Chrome vs production build, port 8791): **60/60 checks pass** — two isolated contexts:
+all seven defects verified defective-in-hunt/clean-outside, reset restores per defect, catalogue
+discovery (7 wired cards, badge, `?hunt=available`, `Ready` filter), scenario launch panel and
+banner flips, themes × 375/768/1024/1440 (zero overflow, one h1), reduced-motion, Tab reachability,
+bug-report markdown download, zero unexpected console errors. Local D1 migrated to 0008.
+
+Next recommended milestone: **none — Phase 3 is implementation-complete and exit-audited**
+(`docs/phase-3-exit-audit.md`). Deployment (Cloudflare) and merging to `main` are user
+decisions; Phase 4 requires explicit instruction.
+
+## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Do not start Phase 3 (commerce app) until the user explicitly instructs it. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`) are done and verified**; `schema_version` 9; nothing is pushed, merged or deployed. Phase 4 has **not** started — do not begin it without explicit instruction. Deployment (Cloudflare D1 create + remote migrations + Pages deploy) and merging to `main` are user decisions. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

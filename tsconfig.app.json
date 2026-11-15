@@ -19,6 +19,6 @@
     "noUncheckedSideEffectImports": true,
     "types": ["vite/client"]
   },
-  "include": ["src"],
+  "include": ["src", "tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx"],
   "exclude": ["src/server"]
 }

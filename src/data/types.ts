@@ -72,6 +72,12 @@ export type IconName =
   | 'grid'
   | 'panel-left'
   | 'reset'
+  | 'shop'
+  | 'cart'
+  | 'minus'
+  | 'plus'
+  | 'user'
+  | 'logout'
 
 export interface GettingStarted {
   summary: string
@@ -114,8 +120,14 @@ export interface Scenario {
   estimatedMinutes: number
   objectives: string[]
   prerequisites: string[]
-  /** Phase 2 ships placeholders only; every scenario is false until Phase 3+. */
+  /** Phase 2 shipped placeholders only; runnable scenarios arrive in Phase 3. */
   runnable: boolean
+  /**
+   * The bug-hunt exercise wired to this scenario (a learner-safe hunt id
+   * from the server registry). Present only on the Phase 3 hunt scenarios;
+   * the hunt summary itself is fetched from the server.
+   */
+  huntId?: string
   relatedGuideIds: string[]
 }
 

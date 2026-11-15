@@ -46,6 +46,18 @@ export const primaryNav: NavItem[] = [
     icon: 'progress',
     description: 'Demo progress and learning goals',
   },
+  {
+    label: 'Shop',
+    to: '/shop',
+    icon: 'shop',
+    description: 'Meridian Outfitters practice storefront',
+  },
+  {
+    label: 'Account',
+    to: '/account',
+    icon: 'user',
+    description: 'Demo sign-in, profile and order history',
+  },
 ]
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
@@ -54,4 +66,12 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
   }
 
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
+}
+
+/** Staff-only navigation entry — rendered only when the signed-in account has the staff role. */
+export const staffNavItem: NavItem = {
+  label: 'Inventory',
+  to: '/admin/inventory',
+  icon: 'grid',
+  description: 'Staff-only stock controls',
 }

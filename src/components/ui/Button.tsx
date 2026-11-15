@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type ButtonSize = 'md' | 'sm'
@@ -13,6 +13,7 @@ const variantClass: Record<ButtonVariant, string | null> = {
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
+  ref?: Ref<HTMLButtonElement>
   /** Shows a spinner, sets `aria-busy`, and disables interaction while true. */
   loading?: boolean
   children: ReactNode
@@ -26,6 +27,7 @@ export function Button({
   children,
   className,
   type = 'button',
+  ref,
   ...rest
 }: ButtonProps) {
   const classes = [
@@ -39,6 +41,7 @@ export function Button({
 
   return (
     <button
+      ref={ref}
       type={type}
       className={classes}
       disabled={disabled || loading}

@@ -206,6 +206,34 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M3 3v5h5" />
     </>
   ),
+  shop: (
+    <>
+      <path d="M6 8h12l1.2 11.2a2 2 0 0 1-2 2.3H6.8a2 2 0 0 1-2-2.3L6 8Z" />
+      <path d="M9 11V6a3 3 0 0 1 6 0v5" />
+    </>
+  ),
+  cart: (
+    <>
+      <circle cx="9" cy="20" r="1.2" />
+      <circle cx="17" cy="20" r="1.2" />
+      <path d="M3 4h2.4l2.2 12.4a1.7 1.7 0 0 0 1.7 1.4h8.2a1.7 1.7 0 0 0 1.7-1.3L20.6 8H6.2" />
+    </>
+  ),
+  minus: <path d="M6 12h12" />,
+  plus: <path d="M6 12h12M12 6v12" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" />
+      <path d="M15 16l4-4-4-4" />
+      <path d="M19 12H10" />
+    </>
+  ),
 }
 
 interface IconProps {

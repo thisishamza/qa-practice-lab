@@ -1,6 +1,17 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { CartProvider } from '../features/cart/CartContext'
+import { AuthProvider } from '../features/auth/AuthContext'
+import { PracticeSessionProvider } from '../features/practice/PracticeSessionProvider'
 import { AppShell } from '../components/layout/AppShell'
+import { CartPage } from '../pages/CartPage'
+import { CheckoutPage } from '../pages/CheckoutPage'
+import { OrderConfirmationPage } from '../pages/OrderConfirmationPage'
+import { LoginPage } from '../pages/LoginPage'
+import { AccountPage } from '../pages/AccountPage'
+import { AccountOrdersPage } from '../pages/AccountOrdersPage'
+import { AccountOrderDetailPage } from '../pages/AccountOrderDetailPage'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
+import { AdminInventoryPage } from '../pages/AdminInventoryPage'
 import { AboutPage } from '../pages/AboutPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { GuidesPage } from '../pages/GuidesPage'
@@ -10,6 +21,8 @@ import { PracticePage } from '../pages/PracticePage'
 import { ProgressPage } from '../pages/ProgressPage'
 import { ScenarioDetailPage } from '../pages/ScenarioDetailPage'
 import { ScenariosPage } from '../pages/ScenariosPage'
+import { ShopPage } from '../pages/ShopPage'
+import { ShopProductPage } from '../pages/ShopProductPage'
 import { TracksPage } from '../pages/TracksPage'
 import { TrackDetailPage } from '../pages/TrackDetailPage'
 
@@ -17,21 +30,37 @@ export function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="tracks" element={<TracksPage />} />
-            <Route path="tracks/:trackId" element={<TrackDetailPage />} />
-            <Route path="scenarios" element={<ScenariosPage />} />
-            <Route path="scenarios/:scenarioId" element={<ScenarioDetailPage />} />
-            <Route path="guides" element={<GuidesPage />} />
-            <Route path="guides/:guideId" element={<GuideDetailPage />} />
-            <Route path="progress" element={<ProgressPage />} />
-            <Route path="practice" element={<PracticePage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Route>
-        </Routes>
+        <CartProvider>
+          <AuthProvider>
+            <PracticeSessionProvider>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route index element={<DashboardPage />} />
+                <Route path="tracks" element={<TracksPage />} />
+                <Route path="tracks/:trackId" element={<TrackDetailPage />} />
+                <Route path="scenarios" element={<ScenariosPage />} />
+                <Route path="scenarios/:scenarioId" element={<ScenarioDetailPage />} />
+                <Route path="guides" element={<GuidesPage />} />
+                <Route path="guides/:guideId" element={<GuideDetailPage />} />
+                <Route path="progress" element={<ProgressPage />} />
+                <Route path="practice" element={<PracticePage />} />
+                <Route path="shop" element={<ShopPage />} />
+                <Route path="shop/products/:slug" element={<ShopProductPage />} />
+                <Route path="cart" element={<CartPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="orders/:reference" element={<OrderConfirmationPage />} />
+                <Route path="login" element={<LoginPage />} />
+                <Route path="account" element={<AccountPage />} />
+                <Route path="account/orders" element={<AccountOrdersPage />} />
+                <Route path="admin/inventory" element={<AdminInventoryPage />} />
+                <Route path="account/orders/:reference" element={<AccountOrderDetailPage />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+            </PracticeSessionProvider>
+          </AuthProvider>
+        </CartProvider>
       </BrowserRouter>
     </ThemeProvider>
   )

@@ -3,7 +3,7 @@ import type { Scenario } from '../../data/types'
 import { getTrack } from '../../data/tracks'
 import { testingCategoriesById } from '../../data/categories'
 import { difficultyLabels, formatMinutes, scenarioModeLabels } from '../../lib/labels'
-import { StatusTag } from '../../components/ui/Tag'
+import { StatusTag, Tag } from '../../components/ui/Tag'
 import { Meta } from '../../components/ui/Meta'
 import { Icon } from '../../components/ui/Icon'
 
@@ -32,6 +32,13 @@ export function ScenarioCard({ scenario }: { scenario: Scenario }) {
           {formatMinutes(scenario.estimatedMinutes)}
         </span>
         {category ? <span className="meta-item">{category.name}</span> : null}
+        {scenario.huntId ? (
+          <span className="meta-item scenario-hunt-badge">
+            <Tag tone="warn" icon="bug">
+              Bug-hunt exercise
+            </Tag>
+          </span>
+        ) : null}
       </Meta>
     </article>
   )

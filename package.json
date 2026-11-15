@@ -20,7 +20,9 @@
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm run test",
     "db:migrate:local": "wrangler d1 migrations apply qa-practice-lab-db --local",
-    "db:migrations:list": "wrangler d1 migrations list qa-practice-lab-db --local"
+    "db:migrations:list": "wrangler d1 migrations list qa-practice-lab-db --local",
+    "db:cleanup:local": "wrangler d1 execute qa-practice-lab-db --local --file=db/maintenance/cleanup.sql",
+    "db:reset:local": "wrangler d1 execute qa-practice-lab-db --local --file=db/maintenance/reset-local.sql"
   },
   "dependencies": {
     "hono": "^4.13.18",

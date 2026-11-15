@@ -8,6 +8,7 @@ import {
   demoProgress,
   recommendedScenarioIds,
 } from '../../src/data/demo'
+import { HUNTS, findHunt } from '../../src/server/hunts'
 import type { TrackId } from '../../src/data/types'
 
 const trackIds = new Set<TrackId>(learningTracks.map((track) => track.id))
@@ -70,10 +71,25 @@ describe('scenarios', () => {
     }
   })
 
-  it('is never presented as runnable in Phase 2', () => {
+  it('keeps unwired scenarios non-runnable (Phase 3 wired hunts excepted)', () => {
     for (const scenario of scenarios) {
-      expect(scenario.runnable).toBe(false)
-      expect(scenario.status).not.toBe('ready')
+      if (!scenario.huntId) {
+        expect(scenario.runnable).toBe(false)
+        expect(scenario.status).not.toBe('ready')
+      }
+    }
+  })
+
+  it('wires the implemented Phase 3 hunt scenarios end to end', () => {
+    const wired = scenarios.filter((scenario) => scenario.huntId)
+    expect(wired.length).toBe(HUNTS.length)
+    for (const scenario of wired) {
+      expect(scenario.runnable).toBe(true)
+      expect(scenario.status).toBe('ready')
+      expect(scenario.mode).toBe('bug-hunt')
+      const hunt = findHunt(scenario.huntId as string)
+      expect(hunt, `${scenario.id} references missing hunt ${scenario.huntId}`).not.toBeNull()
+      expect(hunt?.scenarioId).toBe(scenario.id)
     }
   })
 

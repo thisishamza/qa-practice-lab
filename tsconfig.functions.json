@@ -15,5 +15,6 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["functions", "src/server", "tests"]
+  "include": ["functions", "src/server", "tests"],
+  "exclude": ["tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx"]
 }
