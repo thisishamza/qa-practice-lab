@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { HealthResponse } from '../shared/health'
+import { catalogueRoutes } from './catalogue'
 
 export interface Bindings {
   DB: D1Database
@@ -58,6 +59,8 @@ app.get('/health', async (c) => {
     return c.json(body, 503)
   }
 })
+
+app.route('/v1', catalogueRoutes)
 
 app.notFound((c) =>
   c.json({ error: 'not_found', message: 'API route not found' }, 404),

@@ -1,8 +1,8 @@
 # QA Practice Lab
 
 A safe, phased practice environment for software testing. The project is being built one
-verifiable slice at a time; **Phases 1 and 2 are implemented, and the Phase 2.5 UI redesign
-(M1–M8) is complete**.
+verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
+(M1–M8) is complete and merged, and Phase 3 (commerce practice application) is in progress**.
 
 Phase 1 proves the full local stack: a React + TypeScript shell, a Hono API running on Cloudflare
 Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
@@ -12,8 +12,16 @@ searchable scenario catalog, six full guides, progress and practice pages, and l
 The redesign makes the interface a precise, consistent "test bench": self-hosted IBM Plex Sans and
 JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
+Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
+the single commerce practice domain. **P3-M1 (domain foundation) is implemented on the
+`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema (categories, products, inventory)
+with deterministic synthetic seed data, a `schema_version` of 2, and a read-only `/api/v1`
+catalogue API. The storefront UI, cart, checkout, synthetic auth, inventory depth, and the
+clean/bug-hunt modes are planned milestones (see `docs/phase-3-commerce-practice-plan.md`) and do
+not exist yet.
+
 The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
-No commerce application, authentication, bug-hunt mode, SQL playground, performance runner, or
+No storefront, cart, authentication, bug-hunt mode, SQL playground, performance runner, or
 security challenge exists yet.
 
 ## What you can do now
@@ -91,6 +99,8 @@ src/lib/                   Catalog filtering, labels, navigation, theme hooks
 src/pages/                 Route-level pages
 src/styles/                Design tokens and layered CSS
 src/server/app.ts          Hono app exported for tests (also under src/)
+src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
+src/shared/commerce.ts     Shared catalogue contracts (types, currency constant)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
 db/migrations/             D1 SQL migrations
 tests/                     Vitest tests (Node environment)
@@ -130,8 +140,20 @@ wrangler.jsonc             Pages config + D1 binding + compatibility date
 - `200` with `status: "ok"` when the migrated schema is readable
 - `503` with `status: "degraded"` when D1 is unavailable or the migration has not been applied
 
-API responses send `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. Unknown API
-routes return a JSON `404` envelope.
+The Meridian Outfitters catalogue API is mounted under `/api/v1`:
+
+- `GET /api/v1/products` — paginated active products. Query params: `page` (≥1, default 1),
+  `perPage` (1–48, default 12; larger values are capped, not rejected), `category` (category
+  slug; unknown slugs match zero rows), `sort` (`newest` default | `name` | `price_asc` |
+  `price_desc`). Response: `{ data, page, perPage, total, totalPages }`.
+- `GET /api/v1/products/:slug` — a single active product, or a `404` `{ error: "not_found" }`
+  envelope.
+- `GET /api/v1/categories` — all eight categories ordered by `sortOrder`.
+
+Products carry `priceCents` (integer cents, formatted only at the edge), a `categorySlug`, a
+`categoryName`, and a `stockStatus` derived from inventory (`in_stock` | `low_stock` |
+`out_of_stock`). Responses are `Cache-Control: no-store` with `X-Content-Type-Options: nosniff`.
+Unknown API routes return a JSON `404` envelope.
 
 ### SPA routing
 
@@ -170,6 +192,9 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 - All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
   progress; the progress page shows labelled sample data and says so.
+- The commerce practice application exists only as its P3-M1 foundation. The catalogue API and
+  seed data are real, but there is no storefront, no cart, checkout, authentication, bug-hunt
+  mode, or persistence of learner progress.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

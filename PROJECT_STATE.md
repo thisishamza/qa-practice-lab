@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2).** M9 (optional polish) is not started and only on request. **Phase 3 (commerce practice app) is next on the roadmap and has not been started.**
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation) is implemented and verified; P3-M2 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -144,6 +144,10 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 2.5. UI/UX audit & redesign planning | Evaluate the Phase 2 interface, choose a visual direction, and plan a component/page redesign | `docs/phase-2.5-ui-ux-audit.md` exists with evidence, tokens, page plans, accessibility plan, and milestones; implementation approved by the user |
 | 2.6. UI/UX redesign implementation | Execute the approved milestones M1–M8 in order (M9 optional) | Every approved milestone is implemented, verified, and recorded; Phase 3 resumes only on explicit instruction |
 | 3. Commerce practice app | Synthetic catalog/cart/checkout, clean mode, bug-hunt mode, reset | UI scenarios can be completed and known defects are reproducible |
+
+Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
+sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
+P3-M1 (domain foundation) is implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -167,7 +171,8 @@ qa-practice-lab/
 ├── PROJECT_STATE.md
 ├── README.md
 ├── docs/
-│   └── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
+│   ├── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
+│   └── phase-3-commerce-practice-plan.md  # Phase 3 plan: milestones P3-M1..P3-M9, bug-hunt engine design
 ├── package.json / package-lock.json   # v0.2.0
 ├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
@@ -194,16 +199,20 @@ qa-practice-lab/
 │   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
 │   ├── pages/                         # 11 route-level pages (dashboard … about, not found)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
+│   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1)
 │   ├── shared/health.ts               # shared response type
+│   ├── shared/commerce.ts             # shared catalogue contracts (Phase 3)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
-│   └── migrations/0001_initial_schema.sql
+│   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
     ├── data/content.test.ts           # content integrity and non-runnable guarantees
     ├── lib/catalog.test.ts            # filtering, search, counts, URL-param state, sorting
+    ├── helpers/fake-d1.ts             # node:sqlite-backed D1 harness (applies real migrations)
+    ├── server/catalogue.test.ts       # /api/v1 catalogue API against the seeded schema
     └── server/health.test.ts
 ```
 
@@ -244,6 +253,16 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 kickoff: branch, plan (P3-M1…P3-M9) and P3-M1 domain foundation
+
+- **Branch:** `feat/phase-3-commerce-practice` created from synchronized `main` @ `394691c` (Phase 2.5 merge `c5eca37`/PR #2 and OpenCode workflow docs `394691c`/PR #3 both confirmed present; working tree was clean; `main` untouched; nothing pushed).
+- **Plan doc added:** `docs/phase-3-commerce-practice-plan.md` — full milestone breakdown (P3-M1 domain foundation → P3-M2 storefront catalogue UI → P3-M3 cart → P3-M4 checkout & orders → P3-M5 synthetic auth → P3-M6 inventory depth → P3-M7 bug-hunt engine v1 → P3-M8 defect set & scenario wiring → P3-M9 hardening/exit), bug-hunt engine architecture (server-controlled activation, hunts/defects in code, `practice_sessions` + `mpl_session` cookie isolation, reset flow, M7/M8 implementation), API surface per milestone, scenario sketch, free-tier impact, §12 status summary.
+- **P3-M1 implemented:** migration `db/migrations/0002_commerce_domain.sql` (`categories`, `products`, `inventory`; `schema_version` → `2`; 8 categories, 42 products (40 active), 42 inventory rows; fixed `created_at` in seed for full determinism); `src/shared/commerce.ts` (contracts, `stockStatus` from SQL CASE); `src/server/catalogue.ts` (`GET /api/v1/products` with `page`/`perPage`≤48/`category`/`sort`, `GET /api/v1/products/:slug` active-only with 404 envelope, `GET /api/v1/categories`); `src/server/app.ts` mounts `/api/v1`; `tests/helpers/fake-d1.ts` (node:sqlite-backed, applies real migrations — no SQL mocks); `tests/server/catalogue.test.ts` (16 tests). One design fix during verification: an out-of-format `category` filter is now tolerated and simply matches zero rows (parameter-bound) instead of being silently dropped — least-surprising API contract.
+- **Verification:** `npm run db:migrate:local` applied 0002 (10 commands); local D1 confirms 8/42/40/42 rows and `schema_version=2`. `npm run check` — passed (ESLint clean, all three TS projects clean, **57/57 tests**). `npm run build` — passed (JS 383.32 kB / gzip 116.54 kB; CSS 51.61 kB — unchanged, no frontend changes). End-to-end through `wrangler pages dev` on **port 8789** (production build): `/api/health` returns `schemaVersion: "2"`; list/detail/categories/404 all correct; seeds return real data. **Port 8788 was already in use by an unrelated local `workerd` process, so verification ran on 8789; the existing process and its 5173 neighbour were not modified, and my 8789 processes were stopped afterwards.** Killing stale 8788 remains the user's call.
+- **Docs:** README.md (Phase 3 status, `/api/v1` reference, limitations), PROJECT_STATE.md (§1, §9, §10, §11, new §12, resume prompt → §13), `docs/phase-3-commerce-practice-plan.md`. AGENTS.md updated for Phase 3 in-progress state (still minimal).
+- **Not done / deferred:** no storefront UI (P3-M2, unstarted); no cart/orders/auth/inventory runtime; bug-hunt engine is design-only (§12); no remote Cloudflare resources created; no persistence of learner progress; M9 polish still on request only.
+- **Next exact action:** STOP. Await instruction to start **P3-M2 (storefront catalogue UI)** — the next milestone per the plan. Do not start it without approval.
 
 ### 2026-11-15 — OpenCode token-efficiency configuration (tooling only)
 
@@ -635,8 +654,78 @@ phase starts.
 - **Blockers:** None. Working name and exact UI design remain open and can be chosen during scaffold/design work.
 - **Next exact action:** Phase 1 — create the repository scaffold and implement a minimal React shell plus Hono `/api/health` endpoint with a local D1 migration.
 
-## 12. Resume prompt
+## 12. Phase 3 — commerce practice application (in progress)
+
+Phase 3 is approved and in progress on branch `feat/phase-3-commerce-practice` (base: `main` @
+`394691c`). The full plan — milestone breakdown with scope/dependencies/acceptance/testing/risks,
+the bug-hunt engine architecture, the API surface, scenario sketch and free-tier impact — lives in
+**`docs/phase-3-commerce-practice-plan.md`**. Status summary:
+
+### Architecture decisions (Phase 3)
+
+- One original fictional store — **Meridian Outfitters**, outdoor & home goods, synthetic data only.
+- Modular services inside the existing Pages Functions/Hono app under `/api/v1/...`; no separate
+  Workers yet. D1 remains an implementation detail; no learner-facing SQL surface ever.
+- Money is integer cents (`price_cents`); currency constant `USD` (`src/shared/commerce.ts`).
+- Integer PKs internally; URL-facing lookups use stable lowercase-hyphen `slug`.
+- Catalogue rows are deactivated (`active = 0`), never deleted.
+- Seed data lives inside migrations with explicit ids → `npm run db:migrate:local` is the single
+  reproducible setup step. Deterministic, no wall-clock in seeds (`created_at` is a fixed constant).
+- Shared contracts in `src/shared/commerce.ts`; API error envelope stays `{ error, message }`.
+- Inventory is its own table (`inventory.product_id` PK/FK, `quantity >= 0`, per-product
+  `low_stock_threshold`); stock status is derived in SQL as `in_stock | low_stock | out_of_stock`.
+- Testing: server tests run against an in-memory SQLite (`node:sqlite`) that applies the **real**
+  migration files — no hand-mocked SQL (`tests/helpers/fake-d1.ts`).
+
+### Bug-hunt engine (designed, NOT implemented — lands in P3-M7/P3-M8)
+
+- **Clean mode** is the default: zero defect branches execute. **Bug-hunt mode** activates a
+  hunt's fixed defect set; never anything else.
+- Hunts and defects are **code, not data** (`src/server/hunts.ts`, `src/server/defects.ts` in M7) —
+  learners cannot inject defects, SQL or expressions. No endpoint accepts defect ids; activation
+  happens only via `POST /api/v1/practice/hunts/:huntId/start` with the server resolving the set.
+- Anonymous `practice_sessions` (`mpl_session` httpOnly SameSite=Strict cookie, 7-day expiry,
+  SHA-256-hashed token) isolate carts/orders/defect-state per learner session; read-path defects
+  apply only to that session's responses; seeded catalogue is identical for everyone.
+- Every defect is a single (minimal) code site branching on an `isDefectActive()` check with
+  unit tests for both branches; deterministic — no randomness, no wall-clock ordering.
+- Reset issues a fresh clean session; sessions swept on expiry (M9); per-IP hunt-start caps;
+  no admin/teacher activation UI in Phase 3. Internal catalogue documents Expected vs Actual,
+  repro and fix in `docs/bug-hunt-catalogue.md`.
+
+### Milestone status
+
+| Milestone | Title | Status |
+|---|---|---|
+| P3-M1 | Commerce domain foundation (schema, seed, read-only catalogue API) | **Done & verified 2026-11-15** (this branch) |
+| P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | Planned |
+| P3-M3 | Cart (session-keyed, server-side totals) | Planned |
+| P3-M4 | Checkout & orders (fake payments, transactional stock decrement) | Planned |
+| P3-M5 | Synthetic customers & auth simulation (roles, ownership) | Planned |
+| P3-M6 | Inventory depth (stock re-check in order transaction, restock) | Planned |
+| P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | Planned |
+| P3-M8 | Bug-hunt defect set & scenario wiring (5–7 defects) | Planned |
+| P3-M9 | Hardening, reset, Phase 3 exit audit | Planned |
+
+P3-M1 detail: migration `db/migrations/0002_commerce_domain.sql` (tables `categories`, `products`,
+`inventory`; `app_meta.schema_version` → `2`; 8 categories, 42 products of which 40 active,
+42 inventory rows; 2 out-of-stock, 5 low-stock products); routes `GET /api/v1/products`
+(`page`, `perPage` ≤ 48, `category`, `sort=newest|name|price_asc|price_desc`),
+`GET /api/v1/products/:slug` (active only, 404 envelope otherwise), `GET /api/v1/categories`;
+`/api/v1/*` inherits the global `no-store`/`nosniff` middleware; all parameters are bound, never
+interpolated. 16 new tests in `tests/server/catalogue.test.ts` (57/57 suite green). Verified
+end-to-end against the production build on a separate local port (8789) because 8788 was in use
+by another local process; the user's servers were not touched.
+
+Known limitations: no storefront UI yet (M2); no images (text-first cards planned); catalogue
+`LIKE`-free — no search endpoint until M2 decides it needs one; `sort=newest` is `id DESC`
+because seeded `created_at` is a constant.
+
+Next recommended milestone: **P3-M2 — storefront catalogue UI** (requires explicit instruction;
+do not start without approval).
+
+## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Do not start Phase 3 (commerce app) until the user explicitly instructs it. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation) is done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M2 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
