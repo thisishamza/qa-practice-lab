@@ -24,9 +24,10 @@ inventory depth, and the clean/bug-hunt modes are planned milestones (see
 `docs/phase-3-commerce-practice-plan.md`) and do not exist yet.
 
 The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
-The storefront is the first real practice surface: the catalogue, cart and checkout are fully
-functional, but there is **no authentication, no bug-hunt mode, and no learner account
-persistence** yet. No SQL playground, performance runner, or security challenge exists yet.
+The storefront is the first real practice surface: the catalogue, cart, checkout and synthetic
+customer sign-in are fully functional, with staff-only inventory management. There is **no
+bug-hunt mode and no learner account persistence** yet. No SQL playground, performance runner, or
+security challenge exists yet.
 
 ## What you can do now
 
@@ -45,11 +46,12 @@ persistence** yet. No SQL playground, performance runner, or security challenge 
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
 | `/checkout` | Practice checkout: synthetic details, simulated payment outcome, order placement |
-| `/orders/:reference` | Order confirmation: reference, statuses, item snapshot, session-scoped |
+| `/orders/:reference` | Order confirmation: reference, statuses, item snapshot, session-scoped; placed orders can be cancelled here |
 | `/login` | Training sign-in: fictional demo accounts, accessible form, suspended-account case |
 | `/account` | Synthetic customer profile (guest state, sign-out, protected resource) |
 | `/account/orders` | Order history owned by the signed-in synthetic customer |
-| `/account/orders/:reference` | Order details, readable only by the owning synthetic customer |
+| `/account/orders/:reference` | Order details, readable only by the owning synthetic customer; placed orders can be cancelled here |
+| `/admin/inventory` | Staff-only inventory view and restock tool (staff account only) |
 
 Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
 saved; the progress page shows labelled sample data and says so. The cart and orders are the real
@@ -95,6 +97,9 @@ orders, and URL/id tampering is refused with a concealed `404 not_found`.
   `customer_id NULL` and are **never** silently adopted by a later login — they stay
   session-scoped exactly as before. Guest checkout is unchanged and remains available without an
   account.
+- Rowan Ellison is the synthetic **staff** account: signing in with it additionally reveals the
+  `Inventory` workspace entry (`/admin/inventory`) — a staff-only stock view and restock tool.
+  Every other account sees honest "staff required" or sign-in states instead.
 
 ## Requirements
 
@@ -158,6 +163,8 @@ src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
 src/server/cart.ts         Session cart routes (/api/v1/cart) with server-side totals
 src/server/checkout.ts     Checkout & orders routes (/api/v1/checkout, /api/v1/orders)
 src/server/auth.ts         Synthetic customer auth & account routes (/api/v1/auth/*, /api/v1/account/*)
+src/server/inventory.ts    Staff-only inventory routes (/api/v1/admin/inventory*, P3-M6)
+src/server/staff.ts        Staff authorization guard (requireStaff; server-side role check)
 src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
@@ -295,6 +302,68 @@ Synthetic customer authentication and the account area (P3-M5):
   consistent with the session-scoped confirmation endpoint). Out-of-format references answer
   `400 invalid_request`.
 
+Inventory depth and order cancellation (P3-M6):
+
+- `POST /api/v1/orders/:reference/cancel` — cancel a placed order. The practice session that
+  placed the order, or (when signed in as an active account) the customer that owns it, may
+  cancel; unknown, foreign and unauthorised references answer the identical `404 not_found`.
+  Cancellation is exactly-once: the marker row in `order_cancellations` (primary key) aborts the
+  cancelling batch on any retry, so stock is restored and the audit rows are written exactly
+  once. The response is the order detail with `status: "cancelled"` and a `cancelledAt`
+  timestamp; repeating the call answers `200` with the unchanged cancelled order. Items whose
+  product was deleted cannot restock (their `product_id` is `NULL`).
+- `GET /api/v1/admin/inventory` — staff-only view of every product with live quantity, low-stock
+  threshold, stock status and active/discontinued flag. `401` for guests, `403 staff_required`
+  for customer accounts.
+- `PATCH /api/v1/admin/inventory/:productId` — staff-only restock. Body:
+  `{ "quantity": <integer 1..10000>, "note?": <≤200 chars> }`. Adds units; never sets them
+  absolutely. The write is atomic: a guarded `UPDATE … WHERE quantity + ? <= 1000000` plus an
+  `INSERT INTO inventory_adjustments` guarded by `changes() = 1`, in one all-or-nothing D1 batch —
+  an adjustment rejected by the 1,000,000-unit ceiling records nothing and answers
+  `422 stock_limit_exceeded` (with `maxQuantity` and `currentQuantity`). Validation failures
+  (zero, negative, fractional, non-numeric, `> 10000`, oversized or control-character notes)
+  answer `400 invalid_request` with per-field messages. Success answers `200` with the
+  authoritative `{ inventory, adjustment }` (adjustment id, delta, note, actor, timestamp) — the
+  UI never shows new figures before this response arrives. Discontinued (inactive) products may
+  be restocked; unknown ids answer `404`.
+
+**Inventory accounting (read this before testing stock):**
+
+- **There is no reservation model.** Available stock is `inventory.quantity`; a cart line never
+  holds stock, and cart quantity caps (99 per line) are upper bounds, not allocations. The phase
+  plan explicitly prefers guarded writes over a reservation framework; nothing reservable exists.
+- Cart lines whose stock disappears while they sit in the cart stay in the cart flagged
+  (`exceedsStock: true` / `available: false`) and block checkout with `422 cart_unavailable`
+  until adjusted. Failed checkout never consumes the cart or stock.
+- Inventory is decremented **only at order placement**, inside the all-or-nothing D1 batch, with
+  the `inventory.quantity >= 0` CHECK as the backstop: losing a race for the last unit rolls the
+  whole batch back and yields `422 cart_unavailable`. Placement also re-checks stock before the
+  batch, so the learner always gets the honest 422 rather than a 5xx. Two concurrent checkouts
+  for the last unit produce exactly one `201` and one `422` — verified by test.
+- `declined` payments change nothing. Successful checkout decrements exactly once; retries
+  replay the recorded outcome via the idempotency key without touching stock again.
+- `placed → cancelled` is implemented as an append-only event table (`order_cancellations`)
+  rather than by mutating `orders.status`; the public status is derived at read time. This keeps
+  the order row immutable and makes cancel idempotent by primary key. `orders.status` in D1
+  therefore only ever holds `placed`.
+- Every non-checkout stock movement is recorded in `inventory_adjustments`: product, positive
+  `quantity_delta`, `reason` (`restock` | `order_cancellation`), optional `note`, acting customer
+  (`NULL` for guest-initiated cancellations), acting practice session, optional `order_id`, and
+  `created_at`. Rows are never updated or deleted by the application.
+- Stock status (`in_stock` / `low_stock` / `out_of_stock`) is derived live from
+  `inventory.quantity` vs `low_stock_threshold` (SQL `CASE`) on every catalogue, cart, checkout,
+  admin and order read — it can never be stale.
+- Staff authorization is enforced server-side only: `401 unauthorized` (guest), `403
+  account_suspended` (suspended, including mid-session), `403 staff_required` (active customer),
+  else allowed. Role and customer id are never read from the client. A staff customer session
+  replayed against a different practice session is rejected like any other.
+- Quantity ceilings: 99 per cart line (existing), 10,000 per restock adjustment, 1,000,000 units
+  absolute per product. All integer units; no floats anywhere.
+- **Staff functionality** uses the same synthetic sign-in; Rowan Ellison
+  (`rowan.ellison@example.com` / `demo-rowan-9001`) is the active staff fixture and can open
+  `/admin/inventory`. Customer accounts see a clear staff-required state; guests see a sign-in
+  call to action; neither can call the admin endpoints (server answers `401`/`403`).
+
 **Authorization policy (consistent across the account area):** `401 unauthorized` = not
 authenticated (or the cookie failed validation/binding); `403 account_suspended` = authenticated
 but the synthetic account is suspended; `404 not_found` = the resource is unknown **or** not owned
@@ -360,6 +429,11 @@ build limits, D1 daily reads/writes and per-invocation query limits).
   no order history (orders cascade with the session); customer sessions expire after 8 hours;
   sessions are not swept automatically until P3-M9. Unavailable lines stay in the cart flagged as
   such and block checkout with a `422` envelope until adjusted.
+- There is **no reservation system**. Inventory is decremented only at order placement and
+  restored only on cancellation, both exactly-once; a staff restock is the only adjustment path.
+  `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
+  yet. Cancelling an order whose product was deleted returns nothing to stock (the snapshot
+  outlives the catalogue).
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

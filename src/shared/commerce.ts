@@ -54,8 +54,8 @@ export const MAX_LINE_QUANTITY = 99
 export const PAYMENT_SIMULATIONS = ['approved', 'declined'] as const
 export type PaymentSimulation = (typeof PAYMENT_SIMULATIONS)[number]
 
-/** Order lifecycle. Only 'placed' exists today; M6 may add more. */
-export type OrderStatus = 'placed'
+/** Order lifecycle. 'placed' on write; 'cancelled' is derived at read time from order_cancellations. */
+export type OrderStatus = 'placed' | 'cancelled'
 export type OrderPaymentStatus = 'approved' | 'declined'
 
 export interface CheckoutSummary extends CartResponse {
@@ -90,6 +90,13 @@ export interface OrderSummary {
 /** Safe projection of a customer — never any password material. */
 export type CustomerRole = 'customer' | 'staff'
 export type CustomerStatus = 'active' | 'suspended'
+
+/** Hard cap on units added by a single staff restock (validated server-side). */
+export const MAX_RESTOCK_QUANTITY = 10_000
+/** Hard ceiling on total inventory quantity per product (never exceeded). */
+export const MAX_INVENTORY_QUANTITY = 1_000_000
+/** Maximum length of a staff restock note. */
+export const MAX_ADJUSTMENT_NOTE_LENGTH = 200
 
 export interface CustomerProfile {
   name: string
@@ -131,10 +138,45 @@ export interface OrderDetail extends OrderSummary {
   shippingPostcode: string
   subtotalCents: number
   items: OrderItemSnapshot[]
+  /** ISO timestamp of cancellation, or null when the order is still placed. */
+  cancelledAt: string | null
 }
 
 export interface OrderListResponse {
   data: OrderSummary[]
+}
+
+/** One row of the staff-only inventory view. */
+export interface AdminInventoryItem {
+  productId: number
+  slug: string
+  name: string
+  categoryName: string
+  priceCents: number
+  currency: typeof COMMERCE_CURRENCY
+  /** False for deactivated (discontinued) products — restocking them is allowed. */
+  active: boolean
+  quantity: number
+  lowStockThreshold: number
+  stockStatus: StockStatus
+}
+
+export interface AdminInventoryListResponse {
+  data: AdminInventoryItem[]
+  total: number
+}
+
+/** Authoritative result of a staff restock, plus the recorded adjustment. */
+export interface AdminRestockResponse {
+  inventory: AdminInventoryItem
+  adjustment: {
+    id: number
+    quantityDelta: number
+    reason: 'restock'
+    note: string | null
+    actorCustomerId: number
+    createdAt: string
+  }
 }
 
 /**

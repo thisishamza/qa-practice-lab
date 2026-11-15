@@ -57,7 +57,7 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M3 (done) | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` · `DELETE /api/v1/cart` | Session cart |
 | M4 (done) | `GET /api/v1/checkout` · `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:reference` | Orders |
 | M5 (done) | `GET /api/v1/auth/accounts` · `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` · `GET /api/v1/account` · `GET /api/v1/account/orders` · `GET /api/v1/account/orders/:reference` | Synthetic auth + protected account |
-| M6 | `PATCH /api/v1/admin/inventory/:productId` (staff role) · stock force-check inside checkout | Inventory |
+| M6 (implemented) | `GET /api/v1/admin/inventory` · `PATCH /api/v1/admin/inventory/:productId` (staff role) · `POST /api/v1/orders/:reference/cancel` (stock re-check inside checkout) | Inventory |
 | M7 | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
 
 All mutating endpoints require an anonymous practice session cookie; M5 adds synthetic
@@ -223,19 +223,37 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
   rotation, expiry, malformed cookies, practice-session binding, ownership and compatibility
   (212 → 239 tests). ✅ verified 2026-11-15.
 
-### P3-M6 — Inventory depth
+### P3-M6 — Inventory depth *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** make stock real — low/out-of-stock UX, reservation correctness.
-- **Scope:** checkout-time stock re-check inside the transaction (fail cleanly if insufficient);
-  out-of-stock add-to-cart rejection; low-stock badge in storefront; staff restock endpoint
-  (`PATCH /api/v1/admin/inventory/:productId`, staff role); order status transitions
-  (`placed → cancelled` restores stock once).
-- **Database:** none new (uses M1/M4 tables); possibly `inventory.reserved` if reservations
-  are wanted — prefer conditional `UPDATE … WHERE quantity >= ?` to avoid a reservation
-  framework.
-- **Acceptance:** race simulation test (two checkouts, stock 1) yields exactly one success;
-  cancel restock is idempotent. **Risks:** transaction semantics on D1 — verify with the
-  fake-D1 harness and local D1; document D1's consistency model.
+- **Scope (as built):** checkout-time stock re-check inside the transaction (fail cleanly if
+  insufficient; the pre-batch read-check plus the `inventory.quantity >= 0` CHECK and the
+  post-batch honest `422 cart_unavailable` re-read — see the M4 transaction design); out-of-stock
+  add-to-cart rejection (shipped in M3); low-stock badge in storefront (shipped in M2 —
+  `stock-tag low_stock` on cards and the detail page); staff restock endpoint
+  (`PATCH /api/v1/admin/inventory/:productId`, staff role, with a staff-only list endpoint
+  `GET /api/v1/admin/inventory` and the `/admin/inventory` UI); order status transitions
+  (`placed → cancelled` restores stock once) via `POST /api/v1/orders/:reference/cancel`.
+- **Database:** migration `0006_inventory_depth.sql` (additive only): `inventory_adjustments`
+  (immutable audit rows: product, positive delta, reason `restock|order_cancellation`, note,
+  acting customer/session, `order_id`, timestamp) and `order_cancellations` (PK `order_id` — the
+  exactly-once / idempotency marker; cancellation is an append-only event, the public status is
+  derived at read time and `orders.status` is never rewritten — D1 cannot alter a CHECK without
+  an unsupported table rebuild). `schema_version` → `6`. No reservations; the plan's preference
+  for conditional writes over a reservation framework was confirmed.
+- **Acceptance:** race simulation test (two checkouts, stock 1) yields exactly one success
+  (verified in `tests/server/inventory.test.ts`); cancel restock is idempotent (retry answers
+  200, stock restored once, no duplicate marker or audit rows). ✅ verified 2026-11-15.
+- **Deviations / notes:** the plan's sketch allowed `PATCH` on `:productId` — implemented exactly;
+  added read endpoint because staff must *see* current stock (the plan's "at minimum, evaluate a
+  safe stock-restock operation"); cancellation marker replaces rewriting `orders.status`
+  (documented above); audit-trail scope kept minimal (no reporting UI). Rate caps remain deferred
+  to M9 (consistent with the rest of the app).
+- **Testing:** `tests/server/inventory.test.ts` — staff authorization matrix (guest 401, customer
+  403 `staff_required`, suspended staff 403 `account_suspended`, cross-practice-session replay
+  401), restock validation (zero/negative/fractional/textual/missing/>10,000/cap-exceeded → no
+  write, audit row only on success), catalogue staleness after restock, cancel exactly-once,
+  idempotency across sessions/customers, race for the last unit, CHECK-constraint rollback.
 
 ### P3-M7 — Bug-hunt engine v1
 

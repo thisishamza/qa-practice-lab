@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
 import { fetchAccountOrder, AuthApiError } from '../features/auth/api'
 import type { OrderDetail } from '../shared/commerce'
 import { OrderConfirmationView } from '../features/checkout/OrderConfirmationView'
+import { useCancelOrder } from '../features/checkout/useCancelOrder'
 import { Breadcrumbs } from '../components/ui/PageChrome'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, LoadingState } from '../components/ui/States'
@@ -24,6 +25,13 @@ export function AccountOrderDetailPage() {
 
   const signedIn = loadState.status === 'ready' && customer !== null
   const wellFormed = ORDER_REFERENCE_PATTERN.test(reference)
+
+  // Hooks must run unconditionally on every render — this cancel flow is
+  // only wired to the UI when the loaded order is yours to cancel.
+  const cancelFlow = useCancelOrder(
+    reference,
+    useCallback((cancelled: OrderDetail) => setOrder(cancelled), []),
+  )
 
   useEffect(() => {
     if (!signedIn || !wellFormed) {
@@ -112,6 +120,11 @@ export function AccountOrderDetailPage() {
         setStatus('loading')
         setAttempt((value) => value + 1)
       }}
+      onCancel={effectiveStatus === 'ready' ? cancelFlow.requestCancel : undefined}
+      cancelState={cancelFlow.status}
+      cancelError={cancelFlow.errorMessage}
+      onCancelConfirm={() => void cancelFlow.confirmCancel()}
+      onCancelDismiss={cancelFlow.dismiss}
       crumbs={[
         { label: 'Dashboard', to: '/' },
         { label: 'Account', to: '/account' },

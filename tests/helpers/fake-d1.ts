@@ -44,7 +44,10 @@ function adapt(sqlite: DatabaseSync) {
       params,
       all: async <T = unknown>() => ({ results: allWith<T>(params) }),
       first: async <T = unknown>() => getWith<T>(params),
-      run: async () => ({ meta: { changes: runWith(params).changes } }),
+      run: async () => {
+        const info = runWith(params)
+        return { meta: { changes: Number(info.changes), last_row_id: Number(info.lastInsertRowid) } }
+      }
     })
 
     return {
@@ -70,8 +73,12 @@ function adapt(sqlite: DatabaseSync) {
             const rows = sqlite.prepare(stmt.sql).all(...(stmt.params as never[])) as unknown[]
             return { results: rows, success: true, meta: { changes: 0 } }
           }
-          const changes = sqlite.prepare(stmt.sql).run(...(stmt.params as never[])).changes
-          return { results: [], success: true, meta: { changes } }
+          const info = sqlite.prepare(stmt.sql).run(...(stmt.params as never[]))
+          return {
+            results: [],
+            success: true,
+            meta: { changes: info.changes, last_row_id: Number(info.lastInsertRowid) },
+          }
         })
         sqlite.exec('COMMIT')
         return results

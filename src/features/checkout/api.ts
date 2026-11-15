@@ -139,3 +139,16 @@ export async function fetchOrders(signal?: AbortSignal): Promise<OrderListRespon
 
   return readJson<OrderListResponse>(response)
 }
+
+export async function cancelOrder(reference: string): Promise<OrderDetail> {
+  const response = await fetch(`/api/v1/orders/${encodeURIComponent(reference)}/cancel`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  })
+
+  if (!response.ok) {
+    throw await errorFrom(response, 'The order could not be cancelled. Please try again.')
+  }
+
+  return readJson<OrderDetail>(response)
+}

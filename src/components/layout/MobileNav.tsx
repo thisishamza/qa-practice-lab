@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { isNavItemActive, primaryNav } from '../../lib/navigation'
+import { isNavItemActive, primaryNav, staffNavItem } from '../../lib/navigation'
+import { useAuth } from '../../features/auth/useAuth'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
 
@@ -20,6 +21,8 @@ const focusableSelector = [
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
   const { pathname } = useLocation()
+  const { customer } = useAuth()
+  const isStaff = customer?.role === 'staff' && customer.status === 'active'
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -119,7 +122,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         </div>
 
         <nav className="mobile-nav-list" aria-label="Primary">
-          {primaryNav.map((item) => {
+          {[...primaryNav, ...(isStaff ? [staffNavItem] : [])].map((item) => {
             const active = isNavItemActive(item, pathname)
 
             return (

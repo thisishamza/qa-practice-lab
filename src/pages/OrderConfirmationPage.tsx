@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { OrderConfirmationView } from '../features/checkout/OrderConfirmationView'
 import { CheckoutApiError, fetchOrder } from '../features/checkout/api'
+import { useCancelOrder } from '../features/checkout/useCancelOrder'
 import type { OrderDetail } from '../shared/commerce'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
@@ -63,12 +64,29 @@ export function OrderConfirmationPage() {
       ? result.state
       : { status: 'loading' }
 
+  // The server re-reads the order after cancellation; hand it back to state.
+  const cancelFlow = useCancelOrder(
+    reference ?? '',
+    useCallback((order: OrderDetail) => {
+      setResult((previous) =>
+        previous && previous.state.status === 'ready'
+          ? { ...previous, state: { status: 'ready', order } }
+          : previous,
+      )
+    }, []),
+  )
+
   return (
     <OrderConfirmationView
       status={state.status}
       errorMessage={state.status === 'error' ? state.message : null}
       order={state.status === 'ready' ? state.order : null}
       onRetry={() => setAttempt((value) => value + 1)}
+      onCancel={state.status === 'ready' ? cancelFlow.requestCancel : undefined}
+      cancelState={cancelFlow.status}
+      cancelError={cancelFlow.errorMessage}
+      onCancelConfirm={() => void cancelFlow.confirmCancel()}
+      onCancelDismiss={cancelFlow.dismiss}
     />
   )
 }

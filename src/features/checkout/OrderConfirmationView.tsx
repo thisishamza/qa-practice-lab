@@ -19,6 +19,12 @@ export interface OrderConfirmationViewProps {
   onRetry: () => void
   /** Overrides the default breadcrumb trail (e.g. for the account area). */
   crumbs?: Crumb[]
+  /** Shows the inline cancel panel (placed orders only). */
+  onCancel?: () => void
+  cancelState?: 'idle' | 'confirming' | 'busy' | 'error'
+  cancelError?: string | null
+  onCancelConfirm?: () => void
+  onCancelDismiss?: () => void
 }
 
 export function OrderConfirmationView({
@@ -27,6 +33,11 @@ export function OrderConfirmationView({
   order,
   onRetry,
   crumbs,
+  onCancel,
+  cancelState = 'idle',
+  cancelError = null,
+  onCancelConfirm,
+  onCancelDismiss,
 }: OrderConfirmationViewProps) {
   return (
     <div className="stack">
@@ -86,10 +97,22 @@ export function OrderConfirmationView({
 
       {status === 'ready' && order ? (
         <>
-          <Callout tone="success" title="Practice order placed">
-            The simulated payment was accepted and this practice order was recorded. No real
-            payment was processed and nothing will be shipped.
-          </Callout>
+          {order.status === 'cancelled' ? (
+            <Callout tone="info" title="Order cancelled — stock restored">
+              This practice order was cancelled. Its items went straight back into inventory;
+              nothing was refunded because nothing was charged.
+              {order.cancelledAt ? (
+                <span className="catalogue-availability">
+                  Cancelled {new Date(order.cancelledAt).toLocaleString()}
+                </span>
+              ) : null}
+            </Callout>
+          ) : (
+            <Callout tone="success" title="Practice order placed">
+              The simulated payment was accepted and this practice order was recorded. No real
+              payment was processed and nothing will be shipped.
+            </Callout>
+          )}
 
           <div className="confirm-reference">
             <div className="confirm-reference-main">
@@ -105,7 +128,7 @@ export function OrderConfirmationView({
             <div className="confirm-reference-tags">
               <span className="confirm-tag confirm-tag-neutral">
                 <Icon name="check" size={14} />
-                Status: {order.status === 'placed' ? 'Placed' : order.status}
+                Status: {order.status === 'placed' ? 'Placed' : 'Cancelled'}
               </span>
               <span className="confirm-tag confirm-tag-success">
                 <Icon name="check" size={14} />
@@ -180,6 +203,60 @@ export function OrderConfirmationView({
               <Link className="button button-ghost button-small" to="/">
                 Back to the dashboard
               </Link>
+
+              {order.status === 'placed' && onCancel ? (
+                <div className="confirm-cancel">
+                  {cancelState === 'idle' ? (
+                    <>
+                      <p className="cart-summary-note">
+                        Changed your mind? Cancelling this practice order returns its items to
+                        stock. Cancellation is permanent and cannot be undone.
+                      </p>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={onCancel}
+                      >
+                        <Icon name="reset" size={15} />
+                        Cancel this order
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="confirm-cancel-confirm" role="alert">
+                      <p>
+                        <strong>Cancel this order?</strong>
+                        <br />
+                        All {order.itemCount} unit{order.itemCount === 1 ? '' : 's'} from this
+                        order go back into inventory exactly once. This cannot be undone.
+                      </p>
+                      <div className="button-row">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          loading={cancelState === 'busy'}
+                          onClick={onCancelConfirm}
+                        >
+                          {cancelState === 'busy' ? 'Cancelling…' : 'Confirm cancellation'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={onCancelDismiss}
+                          disabled={cancelState === 'busy'}
+                        >
+                          Keep this order
+                        </Button>
+                      </div>
+                      {cancelState === 'error' && cancelError ? (
+                        <p className="cart-line-note" role="alert">
+                          <Icon name="alert" size={15} />
+                          <span>{cancelError}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </aside>
           </div>
         </>

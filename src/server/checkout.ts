@@ -5,12 +5,15 @@
 //   POST /api/v1/checkout           — place a simulated order (atomic, idempotent)
 //   GET  /api/v1/orders             — the current session's order history (newest first, ≤50)
 //   GET  /api/v1/orders/:reference  — an immutable order confirmation (session-scoped)
+//   POST /api/v1/orders/:reference/cancel — cancel a placed order (P3-M6):
+//        exactly-once, restores stock once, idempotent on retry
 //
 // Security model:
 // - Everything is resolved from the `mpl_session` cookie (see session.ts); only
 //   a SHA-256 hash of the opaque token is stored. Order references are opaque
 //   (`ORD-` + 16 uppercase hex chars); sequential database ids never leave
-//   the server. An order is readable only by the session that placed it.
+//   the server. An order is readable only by the session that placed it, or
+//   (when signed in) by the customer account that owns it (P3-M5 policy).
 // - The client never dictates prices, stock or totals. Authoritative figures
 //   are recomputed from the catalogue/inventory tables at placement time.
 // - Only the minimum synthetic checkout details are stored (name, email,
@@ -446,8 +449,11 @@ export async function orderDetailById(
     .prepare(
       `SELECT o.reference, o.status, o.payment_status, o.customer_name, o.customer_email,
               o.shipping_line, o.shipping_city, o.shipping_postcode,
-              o.subtotal_cents, o.total_cents, o.created_at
-       FROM orders o WHERE o.id = ?`,
+              o.subtotal_cents, o.total_cents, o.created_at,
+              oc.created_at AS cancelled_at
+       FROM orders o
+       LEFT JOIN order_cancellations oc ON oc.order_id = o.id
+       WHERE o.id = ?`,
     )
     .bind(orderId)
     .first<{
@@ -462,6 +468,7 @@ export async function orderDetailById(
       subtotal_cents: number
       total_cents: number
       created_at: string
+      cancelled_at: string | null
     }>()
 
   if (!order) {
@@ -499,12 +506,15 @@ export async function orderDetailById(
 
   return {
     reference: order.reference,
-    status: order.status,
+    // 'placed' is all the orders table ever stores; cancellation lives in
+    // order_cancellations (append-only) and is derived here.
+    status: order.cancelled_at ? 'cancelled' : 'placed',
     paymentStatus: order.payment_status,
     itemCount,
     totalCents: order.total_cents,
     currency: COMMERCE_CURRENCY,
     createdAt: order.created_at,
+    cancelledAt: order.cancelled_at,
     customerName: order.customer_name,
     customerEmail: order.customer_email,
     shippingLine: order.shipping_line,
@@ -768,8 +778,10 @@ checkoutRoutes.get('/orders', async (c) => {
 
   const rows = await c.env.DB.prepare(
     `SELECT o.reference, o.status, o.payment_status, o.total_cents, o.created_at,
-            (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = o.id) AS item_count
+            (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = o.id) AS item_count,
+            oc.created_at AS cancelled_at
      FROM orders o
+     LEFT JOIN order_cancellations oc ON oc.order_id = o.id
      WHERE o.session_id = ?
      ORDER BY o.created_at DESC, o.id DESC
      LIMIT ${MAX_LIST_LIMIT}`,
@@ -782,11 +794,12 @@ checkoutRoutes.get('/orders', async (c) => {
       total_cents: number
       created_at: string
       item_count: number
+      cancelled_at: string | null
     }>()
 
   const data: OrderSummary[] = rows.results.map((row) => ({
     reference: row.reference,
-    status: row.status,
+    status: row.cancelled_at ? 'cancelled' : 'placed',
     paymentStatus: row.payment_status,
     itemCount: row.item_count,
     totalCents: row.total_cents,
@@ -829,4 +842,122 @@ checkoutRoutes.get('/orders/:reference', async (c) => {
     return errorJson(c, 500, 'internal_error', 'The order could not be read.')
   }
   return c.json(detail)
+})
+
+/**
+ * Cancel a placed order: `placed → cancelled`, exactly once, restoring stock.
+ *
+ * Cancellation is recorded as an append-only row in `order_cancellations`
+ * (PK on order_id) rather than by mutating `orders.status`, so the order
+ * snapshot stays immutable. The cancelling batch inserts the marker row
+ * FIRST: any retry or concurrent cancel violates the primary key, the whole
+ * batch rolls back, and the handler replays the already-cancelled order
+ * verbatim (HTTP 200, no second stock restore). Stock restore and the
+ * audit trail (inventory_adjustments, reason 'order_cancellation') commit
+ * in the same all-or-nothing batch — a partial cancel is impossible.
+ *
+ * Authorization mirrors the read policy and is deliberately identical to a
+ * read plus an ownership check: the practice session that placed the order,
+ * or (when signed in as an active account) the customer that owns it.
+ * Unknown, foreign and unauthorised references alike answer 404 — existence
+ * is never revealed.
+ */
+checkoutRoutes.post('/orders/:reference/cancel', async (c) => {
+  const reference = c.req.param('reference') ?? ''
+  if (!ORDER_REFERENCE_PATTERN.test(reference)) {
+    return errorJson(
+      c,
+      400,
+      'invalid_request',
+      'An order reference looks like ORD- followed by 16 hexadecimal characters.',
+    )
+  }
+
+  const session = await resolveCheckoutSession(c)
+  const customerResolution = await resolveCustomerContext(c)
+  const signedInActiveCustomer =
+    customerResolution.kind === 'ok' && customerResolution.customer.status === 'active'
+      ? customerResolution.customer
+      : null
+
+  const row = await c.env.DB.prepare(
+    'SELECT id, session_id, customer_id FROM orders WHERE reference = ?',
+  )
+    .bind(reference)
+    .first<{ id: number; session_id: number; customer_id: number | null }>()
+
+  const sessionOwns = session !== null && row !== null && row.session_id === session.sessionId
+  const customerOwns =
+    row !== null &&
+    signedInActiveCustomer !== null &&
+    row.customer_id !== null &&
+    row.customer_id === signedInActiveCustomer.id
+
+  if (!row || (!sessionOwns && !customerOwns)) {
+    // Unknown reference, foreign session and foreign customer alike.
+    return errorJson(c, 404, 'not_found', 'Order not found.')
+  }
+
+  const items = await c.env.DB.prepare(
+    'SELECT product_id, quantity FROM order_items WHERE order_id = ? ORDER BY id ASC',
+  )
+    .bind(row.id)
+    .all<{ product_id: number | null; quantity: number }>()
+
+  // Items whose product row is gone (product_id SET NULL) cannot restock —
+  // there is no inventory row to restore. Everything else restores exactly.
+  const restockable = items.results.filter(
+    (item): item is { product_id: number; quantity: number } => item.product_id !== null,
+  )
+
+  const actorCustomerId = signedInActiveCustomer?.id ?? null
+  const actorSessionId = session?.sessionId ?? null
+
+  const statements = [
+    {
+      sql: `INSERT INTO order_cancellations (order_id, session_id, actor_customer_id)
+            VALUES (?, ?, ?)`,
+      params: [row.id, actorSessionId, actorCustomerId],
+    },
+    ...restockable.map((item) => ({
+      sql: 'UPDATE inventory SET quantity = quantity + ? WHERE product_id = ?',
+      params: [item.quantity, item.product_id],
+    })),
+    ...restockable.map((item) => ({
+      sql: `INSERT INTO inventory_adjustments
+              (product_id, quantity_delta, reason, note, actor_customer_id, actor_session_id, order_id)
+            VALUES (?, ?, 'order_cancellation', NULL, ?, ?, ?)`,
+      params: [item.product_id, item.quantity, actorCustomerId, actorSessionId, row.id],
+    })),
+  ]
+
+  try {
+    await c.env.DB.batch(
+      statements.map((stmt) => c.env.DB.prepare(stmt.sql).bind(...stmt.params)),
+    )
+  } catch (error) {
+    // The whole batch rolled back. If the marker row exists now, this cancel
+    // is a retry (or lost the race against a twin) — replay it idempotently.
+    const cancellation = await c.env.DB.prepare(
+      'SELECT created_at FROM order_cancellations WHERE order_id = ?',
+    )
+      .bind(row.id)
+      .first<{ created_at: string }>()
+    if (cancellation) {
+      const detail = await orderDetailById(c.env.DB, row.id)
+      if (!detail) {
+        return errorJson(c, 500, 'internal_error', 'The order could not be read back.')
+      }
+      return c.json(detail, 200)
+    }
+    console.error('[api] Cancellation batch failed', error)
+    return errorJson(c, 500, 'internal_error', 'The order could not be cancelled. Please try again.')
+  }
+
+  const detail = await orderDetailById(c.env.DB, row.id)
+  if (!detail) {
+    console.error('[api] Order missing immediately after cancellation', reference)
+    return errorJson(c, 500, 'internal_error', 'The order could not be read back.')
+  }
+  return c.json(detail, 200)
 })

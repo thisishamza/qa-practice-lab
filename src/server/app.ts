@@ -4,6 +4,7 @@ import { catalogueRoutes } from './catalogue'
 import { cartRoutes } from './cart'
 import { checkoutRoutes } from './checkout'
 import { authRoutes } from './auth'
+import { inventoryRoutes } from './inventory'
 
 export interface Bindings {
   DB: D1Database
@@ -67,6 +68,7 @@ app.route('/v1', catalogueRoutes)
 app.route('/v1', cartRoutes)
 app.route('/v1', checkoutRoutes)
 app.route('/v1', authRoutes)
+app.route('/v1', inventoryRoutes)
 
 app.notFound((c) =>
   c.json({ error: 'not_found', message: 'API route not found' }, 404),

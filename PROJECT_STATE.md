@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders) and P3-M5 (synthetic customers & auth simulation) are implemented and verified; P3-M6 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders), P3-M5 (synthetic customers & auth simulation) and P3-M6 (inventory depth, staff restock, order cancellation) are implemented and verified; P3-M7 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -148,8 +148,8 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
 P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart), P3-M4
-(checkout & orders) and P3-M5 (synthetic customers & auth simulation) are implemented and
-verified on that branch.
+(checkout & orders), P3-M5 (synthetic customers & auth simulation) and P3-M6 (inventory depth)
+are implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -199,7 +199,8 @@ qa-practice-lab/
 │   │   │                              # CartView, api (cart client)
 │   │   ├── auth/                      # AuthContext (provider), auth-context, useAuth,
 │   │   │                              # api (account/auth client)
-│   │   ├── checkout/                  # CheckoutView, OrderConfirmationView, api
+│   │   ├── checkout/                  # CheckoutView, OrderConfirmationView, useCancelOrder, api
+│   │   ├── inventory/                 # InventoryManager (staff-only restock UI) + api client
 │   │   ├── guides/                    # GuideCard
 │   │   ├── shop/                      # ProductCard, ProductDetail, ProductStates,
 │   │   │                              # ShopFilterBar, Pagination, api (catalogue client)
@@ -208,14 +209,17 @@ qa-practice-lab/
 │   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
 │   ├── pages/                         # route-level pages (dashboard … about, shop, shop product,
 │   │                                  # cart, checkout, orders confirmation, login, account,
-│   │                                  # account orders, account order detail, 404)
+│   │                                  # account orders, account order detail, admin inventory (staff), 404)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
 │   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search)
 │   ├── server/cart.ts                 # Phase 3 session cart routes (/api/v1/cart)
 │   ├── server/checkout.ts             # Phase 3 checkout & order routes (/api/v1/checkout, /api/v1/orders)
+│   │                                  # + P3-M6 cancellation (/api/v1/orders/:reference/cancel)
 │   ├── server/session.ts              # anonymous practice sessions (SHA-256-hashed tokens)
 │   ├── server/auth.ts                 # P3-M5 auth + protected account routes (/api/v1/auth/*,
 │   │                                  # /api/v1/account/*); PBKDF2 verify, token rotation, 401/403/404
+│   ├── server/inventory.ts            # P3-M6 staff-only inventory routes (/api/v1/admin/inventory*)
+│   ├── server/staff.ts                # P3-M6 requireStaff guard (401/403 staff_required; role from DB only)
 │   ├── server/customer.ts             # P3-M5 customer sessions (mpl_customer cookie, hashed tokens,
 │   │                                  # practice-session binding, suspended handling)
 │   ├── shared/health.ts               # shared response type
@@ -224,7 +228,8 @@ qa-practice-lab/
 │   └── main.tsx
 ├── db/
 │   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
-│                                      # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql
+│                                      # 0003_cart.sql, 0004_orders.sql, 0005_customers.sql,
+│                                      # 0006_inventory_depth.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
@@ -238,6 +243,8 @@ qa-practice-lab/
     ├── server/checkout.test.ts        # checkout & orders: transaction, rollback, idempotency
     ├── server/auth.test.ts            # auth & authorization: login/logout/me, rotation, expiry,
     │                                  # practice-session binding, ownership, compatibility
+    ├── server/inventory.test.ts       # staff authz matrix, restock validation/cap, exactly-once
+    │                                  # cancel, race for the last unit, audit-trail assertions
     ├── server/health.test.ts
     ├── lib/checkout.test.ts           # checkout form validation
     └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
@@ -256,6 +263,10 @@ Phase 3 (P3-M5) added `/login`, `/account`, `/account/orders` and `/account/orde
 all render inside `AppShell`; `/account` shows the synthetic customer profile (or an honest guest
 state), order history and detail are protected resources owned by the signed-in customer. The
 top bar carries an account indicator and the sidebar/mobile nav an Account entry.
+Phase 3 (P3-M6) added `/admin/inventory` — staff-only inventory view and restock tool (server
+enforces authorization; the page renders honest guest/customer/staff states; the sidebar and
+mobile nav carry an Inventory entry for staff only). Both confirmation pages gained an inline
+cancel panel (`placed → cancelled`, stock restored exactly once).
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -289,6 +300,23 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M6: inventory depth and stock management
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `fb68c78` (P3-M5), tree clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end of this turn (hash in the final report).
+- **UI direction:** `ui-ux-pro-max` invoked before frontend work. The `--design-system` output (industrial slate/green palette, Fira fonts) was rejected as off-direction — the Test Bench token system is authoritative — while its applicable guidance was applied: flat design, dense dashboard, 4.5:1 contrast, visible focus, keyboard access, reduced motion, and a restock form using the same inline-error + `role="alert"` pattern as checkout/login (confirmed via `--domain ux` "focusable error summary"/"inline validation"). The staff list is a dense grid of rows with mono tabular numerals; it degrades to stacked cards ≤1024px.
+- **Migration `db/migrations/0006_inventory_depth.sql` (additive only, applied locally, `schema_version` → `6`):** `inventory_adjustments` (id, product_id → products CASCADE, quantity_delta INTEGER CHECK > 0, reason CHECK IN ('restock','order_cancellation'), note NULL, actor_customer_id NULL → customers SET NULL, actor_session_id NULL → practice_sessions SET NULL, order_id NULL → orders SET NULL, created_at default now()) — immutable audit trail; indexes on product and order. `order_cancellations` (order_id PK → orders CASCADE, session_id NULL SET NULL, actor_customer_id NULL SET NULL, created_at) — the exactly-once/idempotency marker for `placed → cancelled`. No existing table altered; orders remain append-only snapshots.
+- **Stock accounting decisions (documented in README.md + code comments):** NO reservations and no `inventory.reserved` — available stock is `inventory.quantity`; a cart line never holds stock; the plan's preference for conditional writes over a reservation framework was confirmed, not overridden. Inventory decrements ONLY at order placement (all-or-nothing D1 batch + `inventory.quantity >= 0` CHECK backstop + honest `422 cart_unavailable` re-read on failure), exactly once; declined payments change nothing; retries replay the idempotency record without touching stock. `placed → cancelled` restores stock exactly once: the cancelling batch INSERTs into `order_cancellations` first; a retry/concurrent cancel hits the primary key, rolls the whole batch back, and the handler replays the already-cancelled order with 200. The public order status is DERIVED at read time (`order_cancellations` LEFT JOIN) because D1 cannot alter a CHECK constraint without a table rebuild; `orders.status` therefore only ever stores `placed` (deliberate, documented deviation from the "CHECK may add cancelled" sketch — the transition exists as first-class behavior).
+- **Staff restock (`PATCH /api/v1/admin/inventory/:productId`, `src/server/inventory.ts`):** adds units (never absolute set); validated positive integer 1..10,000 per adjustment; absolute ceiling 1,000,000 units per product; atomic guarded `UPDATE … WHERE quantity + ? <= 1000000` + audit INSERT guarded by `changes() = 1` in ONE batch (a rejected adjustment records nothing — `422 stock_limit_exceeded`); immutable `inventory_adjustments` row records product, delta, reason, note (optional, ≤200 chars, no control chars), acting staff customer, acting practice session, timestamp; restocks allowed on discontinued products; unknown id → 404; malformed → 400; response returns the authoritative `{ inventory, adjustment }`. Companion `GET /api/v1/admin/inventory` returns the full staff view (bounded catalogue; quantity, threshold, derived status, active flag). Client-supplied roles/customer ids/body `role` are never consulted — role comes from the stored customer row only.
+- **Authorization (`src/server/staff.ts`, reusable `requireStaff`):** guest/invalid/expired/cross-practice-session cookie → 401 `unauthorized`; suspended (incl. mid-session) → 403 `account_suspended`; active customer → 403 `staff_required`; active staff → allowed. Replays a staff session bound to another practice session → 401 (same binding rule as customer protection). Customers see the honest staff-required page; guests a sign-in CTA; neither can call the admin endpoints.
+- **Cancellation endpoint (`POST /api/v1/orders/:reference/cancel`):** callable by the placing practice session or (when signed in as an active account) the owning customer; unknown/foreign/unauthorised references → identical 404 `not_found`. Multi-item restores run in the same batch with per-line audit rows (`order_cancellation`). Items whose product was deleted (product_id NULL) cannot restock — by design. Confirmation pages (`/orders/:reference`, `/account/orders/:reference`) gained an inline cancel panel (request → confirm → busy/error; `role="alert"`, keyboard accessible) with the server's answer replacing the displayed order; the Callout/status tag switch to the cancelled state, and `cancelledAt` renders.
+- **Frontend:** `/admin/inventory` (guest CTA / staff-required / staff manager), staff-only `Inventory` sidebar + mobile-nav entry (`staffNavItem`, icon `grid`); low-stock badge already existed (M2) and now has a staff management surface.
+- **Tests:** `tests/server/inventory.test.ts` (+24): staff authz matrix (incl. body-role forgery ignored, suspended Rowan mid-session 403, cross-session replay 401), catalogue staleness after restock, restock validation matrix, cap with zero-write proof, cancel exactly-once + idempotency (stock, marker, audit rows), ownership matrix (foreign session/customer 404; owning customer from a fresh practice session 200), two-checkout race for the last unit (one 201 one 422, inventory 0, one order), CHECK-constraint rollback proof, `node:sqlite` harness gained `last_row_id` in `meta` (mirrors D1). Existing schema_version assertions bumped 5→6 in catalogue/cart/checkout tests; `checkout-views.test.tsx` OrderDetail fixture gained `cancelledAt: null`.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean; **263/263 tests**, was 239). `npm run build` — passed (JS **459.35 kB** / gzip 134.76 kB vs 448.08/131.88 at M5; CSS **72.61 kB** / gzip 13.82 kB; no new runtime dependencies). Local D1 migration applied (`0006` — additive; pre-existing local orders remain valid, `order_cancellations` empty); schema_version reads `6` (verified via wrangler). Playwright/Chrome probe against the production build on port **8791**: **30/30 checks pass** — guest guard on `/admin/inventory`, staff sign-in + nav entry + 42 rows, restock round-trip with audit-adjustment success copy (local D1 only), inline rejection of 0 / 10,001 units, filter narrowing, both themes × 375/768/1024/1440 (zero overflow, one h1), customer-denied state with hidden nav entry, guest checkout → confirmation → cancel → refresh persistence of cancelled state, zero unexpected console errors. Port 8791 confirmed closed afterwards.
+- **Docs:** README.md (admin endpoints + full inventory accounting section + staff fixture note + known constraints: no reservations, no removal adjustments, orders.status stays 'placed'), `docs/phase-3-commerce-practice-plan.md` (M6 marked implemented with as-built deviations), AGENTS.md state lines, PROJECT_STATE.md.
+- **Known limitations / open items:** no rate limits (M9); no removal/negative adjustments (restock only); `order_cancellations` and `inventory_adjustments` accumulate forever and are not swept (M9); the staff list returns all rows (bounded by the ~42-row catalogue; paginate if it grows); cancellation of an order whose product was deleted restores nothing; the `changes() = 1` guarded audit insert relies on sequential statement execution on one connection (SQLite semantics; documented; verified in the node:sqlite harness which mirrors D1's batch).
+- **Git:** single milestone commit `feat: implement inventory management and stock controls` (hash in the final report). `main` untouched, nothing pushed, P3-M7 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M7 (bug-hunt engine v1)** — do not begin without approval.
 
 ### 2026-11-15 — Phase 3 P3-M5: synthetic customers and authentication simulation
 
@@ -1106,7 +1134,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 | P3-M3 | Cart (session-keyed, server-side totals) | **Done & verified 2026-11-15** (this branch) |
 | P3-M4 | Checkout & orders (simulated payments, transactional D1 placement, idempotency) | **Done & verified 2026-11-15** (this branch) |
 | P3-M5 | Synthetic customers & auth simulation (roles, ownership) | **Done & verified 2026-11-15** (this branch) |
-| P3-M6 | Inventory depth (stock re-check in order transaction, restock) | Planned |
+| P3-M6 | Inventory depth (stock re-check in order transaction, restock, cancellation) | **Done & verified 2026-11-15** (this branch) |
 | P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | Planned |
 | P3-M8 | Bug-hunt defect set & scenario wiring (5–7 defects) | Planned |
 | P3-M9 | Hardening, reset, Phase 3 exit audit | Planned |
@@ -1218,11 +1246,27 @@ no checkout prefill from profile; credentials documented in README only (never i
 plan's sketched 403-for-wrong-owner was refined to 404 (existence concealed) — documented in
 README and the plan.
 
-Next recommended milestone: **P3-M6 — inventory depth** (requires explicit instruction; do not
+P3-M6 detail: inventory depth on top of M1–M5 — migration `0006_inventory_depth.sql`
+(`inventory_adjustments` immutable audit rows + `order_cancellations` exactly-once marker,
+additive only; `schema_version` → `6`; nothing rewrites `orders.status`). Server:
+`src/server/staff.ts` (`requireStaff`, shared 401/403 guard), `src/server/inventory.ts`
+(`GET /api/v1/admin/inventory` staff view; `PATCH /api/v1/admin/inventory/:productId` guarded
+UPDATE + `changes() = 1` audit insert in one batch), `src/server/checkout.ts` gained
+`POST /api/v1/orders/:reference/cancel` (PK marker → exactly-once stock restore + audit rows;
+401/403/404 policy identical to order reads) and read-time derived `status: 'cancelled'` +
+`cancelledAt` on detail/history/account history. Checkout decrement unchanged: placement-time
+approval, all-or-nothing batch, CHECK-guarded — a race for the last unit yields one 201 + one
+422 (test-proven). NO reservation framework (documented). Frontend: `/admin/inventory` (staff
+view + restock tool), staff-only nav entries, inline cancel panel on both confirmation pages.
+263/263 tests green (+24); production build clean; Playwright/Chrome probe **30/30** on the
+production build (port 8791). Known gaps: no rate limits (M9); restock-only adjustments (no
+removal path); `order_cancellations` not swept (M9); staff list unpaginated (~42 rows).
+
+Next recommended milestone: **P3-M7 — bug-hunt engine v1** (requires explicit instruction; do not
 start without approval).
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency) and P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M6 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation — PBKDF2-hashed fictional demo accounts, `/login` + `/account*`, practice-session-bound customer tokens, documented 401/403/404 authorization policy) and P3-M6 (inventory depth — staff-only `/admin/inventory` with restock tool, `placed → cancelled` order cancellation restoring stock exactly once, immutable `inventory_adjustments` audit trail, NO reservations) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M7 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

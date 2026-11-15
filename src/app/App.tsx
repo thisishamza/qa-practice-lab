@@ -10,6 +10,7 @@ import { AccountPage } from '../pages/AccountPage'
 import { AccountOrdersPage } from '../pages/AccountOrdersPage'
 import { AccountOrderDetailPage } from '../pages/AccountOrderDetailPage'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
+import { AdminInventoryPage } from '../pages/AdminInventoryPage'
 import { AboutPage } from '../pages/AboutPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { GuidesPage } from '../pages/GuidesPage'
@@ -49,6 +50,7 @@ export function App() {
                 <Route path="login" element={<LoginPage />} />
                 <Route path="account" element={<AccountPage />} />
                 <Route path="account/orders" element={<AccountOrdersPage />} />
+                <Route path="admin/inventory" element={<AdminInventoryPage />} />
                 <Route path="account/orders/:reference" element={<AccountOrderDetailPage />} />
                 <Route path="about" element={<AboutPage />} />
                 <Route path="*" element={<NotFoundPage />} />

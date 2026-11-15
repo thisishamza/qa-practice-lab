@@ -229,8 +229,10 @@ authRoutes.get('/account/orders', async (c) => {
   }
   const rows = await c.env.DB.prepare(
     `SELECT o.reference, o.status, o.payment_status, o.total_cents, o.created_at,
-            (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = o.id) AS item_count
+            (SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = o.id) AS item_count,
+            oc.created_at AS cancelled_at
      FROM orders o
+     LEFT JOIN order_cancellations oc ON oc.order_id = o.id
      WHERE o.customer_id = ?
      ORDER BY o.created_at DESC, o.id DESC
      LIMIT ${MAX_LIST_LIMIT}`,
@@ -243,11 +245,12 @@ authRoutes.get('/account/orders', async (c) => {
       total_cents: number
       created_at: string
       item_count: number
+      cancelled_at: string | null
     }>()
 
   const data: OrderSummary[] = rows.results.map((row) => ({
     reference: row.reference,
-    status: row.status,
+    status: row.cancelled_at ? 'cancelled' : 'placed',
     paymentStatus: row.payment_status,
     itemCount: row.item_count,
     totalCents: row.total_cents,
