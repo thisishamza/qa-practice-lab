@@ -50,6 +50,58 @@ export const PRODUCT_SORTS: ReadonlySet<string> = new Set([
 /** Hard cap on a single cart line's quantity (also a CHECK constraint). */
 export const MAX_LINE_QUANTITY = 99
 
+/** Deterministic simulated payment outcomes. No real gateway is involved. */
+export const PAYMENT_SIMULATIONS = ['approved', 'declined'] as const
+export type PaymentSimulation = (typeof PAYMENT_SIMULATIONS)[number]
+
+/** Order lifecycle. Only 'placed' exists today; M6 may add more. */
+export type OrderStatus = 'placed'
+export type OrderPaymentStatus = 'approved' | 'declined'
+
+export interface CheckoutSummary extends CartResponse {
+  /** False when the cart is empty or any line cannot be fulfilled. */
+  checkoutable: boolean
+}
+
+/** One immutable order-item snapshot taken at placement time. */
+export interface OrderItemSnapshot {
+  id: number
+  /** Null if the product row was later deleted — the snapshot survives. */
+  productId: number | null
+  productSlug: string
+  productName: string
+  unitPriceCents: number
+  currency: typeof COMMERCE_CURRENCY
+  quantity: number
+  lineTotalCents: number
+}
+
+/** Order summary for the session's order history. */
+export interface OrderSummary {
+  reference: string
+  status: OrderStatus
+  paymentStatus: OrderPaymentStatus
+  itemCount: number
+  totalCents: number
+  currency: typeof COMMERCE_CURRENCY
+  createdAt: string
+}
+
+/** Full order confirmation payload (immutable snapshot). */
+export interface OrderDetail extends OrderSummary {
+  customerName: string
+  customerEmail: string
+  shippingLine: string
+  shippingCity: string
+  shippingPostcode: string
+  subtotalCents: number
+  items: OrderItemSnapshot[]
+}
+
+export interface OrderListResponse {
+  data: OrderSummary[]
+}
+
 /**
  * A cart line as recomputed server-side from the current catalogue. The
  * client never dictates prices or totals; every figure here is derived from
@@ -57,7 +109,8 @@ export const MAX_LINE_QUANTITY = 99
  *
  * `available` is false when the product was deactivated or does not have
  * enough stock to cover the line. Such lines stay in the cart (honestly
- * flagged) and are expected to block checkout once M4 lands.
+ * flagged) and block checkout with a `422 cart_unavailable` envelope until
+ * they are adjusted.
  */
 export interface CartLine {
   id: number
@@ -77,8 +130,8 @@ export interface CartLine {
 
 /**
  * Cart payload. `subtotalCents` and `totalCents` are equal in P3-M3 (no
- * shipping, discounts or tax exist yet); `totalCents` is kept so M4 can add
- * shipping without breaking the contract. Money is always integer cents.
+ * shipping, discounts or tax exist yet); `totalCents` is kept so shipping
+ * can be added later without breaking the contract. Money is integer cents.
  */
 export interface CartResponse {
   items: CartLine[]

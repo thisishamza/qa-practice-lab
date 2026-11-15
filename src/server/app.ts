@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import type { HealthResponse } from '../shared/health'
 import { catalogueRoutes } from './catalogue'
 import { cartRoutes } from './cart'
+import { checkoutRoutes } from './checkout'
 
 export interface Bindings {
   DB: D1Database
@@ -63,6 +64,7 @@ app.get('/health', async (c) => {
 
 app.route('/v1', catalogueRoutes)
 app.route('/v1', cartRoutes)
+app.route('/v1', checkoutRoutes)
 
 app.notFound((c) =>
   c.json({ error: 'not_found', message: 'API route not found' }, 404),

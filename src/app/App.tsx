@@ -2,6 +2,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { CartProvider } from '../features/cart/CartContext'
 import { AppShell } from '../components/layout/AppShell'
 import { CartPage } from '../pages/CartPage'
+import { CheckoutPage } from '../pages/CheckoutPage'
+import { OrderConfirmationPage } from '../pages/OrderConfirmationPage'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
 import { AboutPage } from '../pages/AboutPage'
 import { DashboardPage } from '../pages/DashboardPage'
@@ -36,6 +38,8 @@ export function App() {
               <Route path="shop" element={<ShopPage />} />
               <Route path="shop/products/:slug" element={<ShopProductPage />} />
               <Route path="cart" element={<CartPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
+              <Route path="orders/:reference" element={<OrderConfirmationPage />} />
               <Route path="about" element={<AboutPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>

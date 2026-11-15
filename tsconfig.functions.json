@@ -16,5 +16,5 @@
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["functions", "src/server", "tests"],
-  "exclude": ["tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx"]
+  "exclude": ["tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx"]
 }

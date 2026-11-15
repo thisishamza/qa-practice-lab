@@ -20,7 +20,8 @@
 //   WHERE clause so a lost race rejects instead of overselling.
 // - Money is always integer cents; totals equal the sum of line totals.
 //
-// No checkout exists yet (M4). Unavailable lines (deactivated product or
+// Checkout (M4, src/server/checkout.ts) rejects carts containing unavailable
+// lines. Unavailable lines (deactivated product or
 // stock below the line quantity) are kept and flagged — `available: false`
 // per line, `hasUnavailableItems: true` per cart — never silently dropped
 // or silently repriced.

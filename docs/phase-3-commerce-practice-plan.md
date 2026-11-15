@@ -55,7 +55,7 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M1 (done) | `GET /api/v1/products` (page, perPage≤48, category, sort, `q` since M2) · `GET /api/v1/products/:slug` · `GET /api/v1/categories` | Read-only |
 | M2 (done) | No new endpoints (read-only); `q` search added to `/api/v1/products` | Read-only |
 | M3 (done) | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` · `DELETE /api/v1/cart` | Session cart |
-| M4 | `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:id` | Orders |
+| M4 (done) | `GET /api/v1/checkout` · `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:reference` | Orders |
 | M5 | `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` | Synthetic auth |
 | M6 | `PATCH /api/v1/admin/inventory/:productId` (staff role) · stock force-check inside checkout | Inventory |
 | M7 | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
@@ -163,20 +163,30 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
   cart; idempotent add-to-cart semantics (one line per product, quantities accumulate);
   session isolation (two browser contexts never see each other's carts). ✅ verified 2026-11-15.
 
-### P3-M4 — Checkout & orders
+### P3-M4 — Checkout & orders *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** order lifecycle — the richest API/DB test target.
-- **Scope:** `POST /api/v1/checkout` (validate cart → create order + items in one transaction,
-  decrement inventory, fake payment outcome `approved|declined`), `GET /api/v1/orders`,
-  `GET /api/v1/orders/:id` (session-scoped — a learner sees only own orders), `/shop/checkout`
-  and `/shop/orders` pages, confirmation screen.
-- **Database:** `orders(id, session_id, status, total_cents, shipping_*, created_at)`,
-  `order_items(order_id, product_id, quantity, unit_price_cents)`. Status enum as CHECK
-  (`placed`, later `cancelled`/`fulfilled` in M6).
+- **Scope (as built):** `GET /api/v1/checkout` (summary + `checkoutable`),
+  `POST /api/v1/checkout` (validate cart → create order + items in one all-or-nothing D1 batch
+  — order, immutable item snapshots, `inventory.quantity >= 0`-guarded decrements, cart clear,
+  idempotency record; fake payment outcome `approved|declined`), `GET /api/v1/orders` (history,
+  ≤50, newest first), `GET /api/v1/orders/:reference` (session-scoped confirmation; the plan's
+  `:id` became the opaque `ORD-…` reference). Pages: `/checkout` and `/orders/:reference`
+  (the plan's `/shop/checkout` and `/shop/orders` sketch became top-level `/checkout` and the
+  `/orders/:reference` confirmation route, matching the `/cart` precedent).
+- **Database:** `orders(id, session_id, reference UNIQUE, status CHECK('placed'),
+  payment_status CHECK('approved','declined'), customer_*, shipping_*, subtotal_cents,
+  total_cents, created_at)`, `order_items(order_id, product_id NULL ON DELETE SET NULL,
+  product_slug, product_name, unit_price_cents, line_total_cents, quantity)`,
+  `checkout_idempotency(session_id, idempotency_key, request_hash, outcome, order_id,
+  PRIMARY KEY(session_id, idempotency_key))`. Status enum as CHECK (`placed`; M6 may add
+  `cancelled`/`fulfilled`). `schema_version` → `4`.
 - **Acceptance:** declined payment creates no order; approved order decrements stock exactly
-  once (transaction); order totals match cart; empty cart → 409/422 envelope.
-- **Risks/free tier:** order bursts from curious learners — cap checkout requests per session
-  per minute. **Testing:** transaction rollback cases in the fake-D1 harness.
+  once (single D1 batch; CHECK-guarded); order totals match cart; empty cart → 422 envelope.
+  ✅ verified 2026-11-15. Rate caps remain deferred to M9 (the plan's per-session/minute
+  checkout cap was not implemented in M4; noted in PROJECT_STATE limitations).
+- **Testing:** transaction rollback cases in the fake-D1 harness; concurrent-submission and
+  idempotency replay/drift cases; SQLite-backed through real migrations.
 
 ### P3-M5 — Synthetic customers & auth simulation
 

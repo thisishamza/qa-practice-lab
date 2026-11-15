@@ -1,0 +1,184 @@
+// Presentational order-confirmation experience — refreshing this route
+// re-reads the owned order from the server (scoped by the session cookie).
+// The confirmation never implies a real payment or shipment took place.
+
+import { Link } from 'react-router-dom'
+import type { OrderDetail } from '../../shared/commerce'
+import { formatPriceCents } from '../../lib/shop'
+import { Breadcrumbs } from '../../components/ui/PageChrome'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { LoadingState, EmptyState, ErrorState } from '../../components/ui/States'
+import { Callout } from '../../components/ui/Callout'
+import { Button } from '../../components/ui/Button'
+import { Icon } from '../../components/ui/Icon'
+
+export interface OrderConfirmationViewProps {
+  status: 'loading' | 'ready' | 'notfound' | 'error'
+  errorMessage?: string | null
+  order: OrderDetail | null
+  onRetry: () => void
+}
+
+export function OrderConfirmationView({
+  status,
+  errorMessage,
+  order,
+  onRetry,
+}: OrderConfirmationViewProps) {
+  return (
+    <div className="stack">
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', to: '/' },
+          { label: 'Shop', to: '/shop' },
+          { label: 'Order confirmation' },
+        ]}
+      />
+
+      <PageHeader
+        eyebrow="Meridian Outfitters"
+        title="Order confirmation"
+        description="Your practice order reference and receipt. Refreshing this page re-reads the order from the server while your session lasts."
+      />
+
+      <p className="catalogue-availability">
+        Practice confirmation · simulated payment · nothing is paid for or shipped
+      </p>
+
+      {status === 'loading' ? <LoadingState label="Loading your order…" /> : null}
+
+      {status === 'error' ? (
+        <ErrorState
+          title="The order could not be loaded"
+          description={
+            <>
+              {errorMessage ?? 'The practice API could not be reached.'} Check that the practice API
+              is running, then try again.
+            </>
+          }
+          action={
+            <Button size="sm" onClick={onRetry}>
+              <Icon name="reset" size={15} />
+              Try again
+            </Button>
+          }
+        />
+      ) : null}
+
+      {status === 'notfound' ? (
+        <EmptyState
+          title="We can’t find that order"
+          description="This reference is unknown, mistyped, or belongs to a different practice session. Order references only work inside the session that placed them."
+          icon="search"
+          action={
+            <Link className="button button-small" to="/shop">
+              <Icon name="shop" size={15} />
+              Back to the shop
+            </Link>
+          }
+        />
+      ) : null}
+
+      {status === 'ready' && order ? (
+        <>
+          <Callout tone="success" title="Practice order placed">
+            The simulated payment was accepted and this practice order was recorded. No real
+            payment was processed and nothing will be shipped.
+          </Callout>
+
+          <div className="confirm-reference">
+            <div className="confirm-reference-main">
+              <p className="cart-summary-title">Order reference</p>
+              <p className="confirm-reference-value" aria-label={`Order reference ${order.reference}`}>
+                {order.reference}
+              </p>
+              <p className="cart-summary-note">
+                Keep this reference to look the order up. It is opaque — no sequential ids are
+                exposed.
+              </p>
+            </div>
+            <div className="confirm-reference-tags">
+              <span className="confirm-tag confirm-tag-neutral">
+                <Icon name="check" size={14} />
+                Status: {order.status === 'placed' ? 'Placed' : order.status}
+              </span>
+              <span className="confirm-tag confirm-tag-success">
+                <Icon name="check" size={14} />
+                Payment (simulated): {order.paymentStatus === 'approved' ? 'Approved' : order.paymentStatus}
+              </span>
+            </div>
+          </div>
+
+          <div className="cart-layout">
+            <section className="confirm-items" aria-label="Items in this order">
+              <p className="cart-summary-title">Items</p>
+              <ul className="confirm-item-list">
+                {order.items.map((item) => (
+                  <li className="confirm-item" key={item.id}>
+                    <div>
+                      <p className="confirm-item-name">{item.productName}</p>
+                      <p className="confirm-item-meta">
+                        {item.productSlug} · {formatPriceCents(item.unitPriceCents)} each · qty{' '}
+                        {item.quantity}
+                      </p>
+                    </div>
+                    <p className="confirm-item-total">{formatPriceCents(item.lineTotalCents)}</p>
+                  </li>
+                ))}
+              </ul>
+              <div className="cart-summary-row">
+                <span>Subtotal ({order.itemCount} items)</span>
+                <strong>{formatPriceCents(order.subtotalCents)}</strong>
+              </div>
+              <div className="cart-summary-total">
+                <span>Total</span>
+                <strong>{formatPriceCents(order.totalCents)}</strong>
+              </div>
+              <p className="cart-summary-note">
+                Prices and totals are the snapshot taken when the order was placed; later catalogue
+                changes never rewrite them.
+              </p>
+            </section>
+
+            <aside className="cart-summary" aria-label="Delivery details">
+              <p className="cart-summary-title">Delivery (synthetic)</p>
+              <dl className="confirm-delivery">
+                <div>
+                  <dt>Name</dt>
+                  <dd>{order.customerName}</dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd>{order.customerEmail}</dd>
+                </div>
+                <div>
+                  <dt>Address</dt>
+                  <dd>
+                    {order.shippingLine}
+                    <br />
+                    {order.shippingCity} {order.shippingPostcode}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Placed</dt>
+                  <dd>{new Date(order.createdAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+              <p className="cart-summary-note">
+                These details are synthetic practice data, shown only to the session that placed the
+                order. Nothing was emailed or delivered.
+              </p>
+              <Link className="button button-small" to="/shop">
+                <Icon name="shop" size={15} />
+                Continue shopping
+              </Link>
+              <Link className="button button-ghost button-small" to="/">
+                Back to the dashboard
+              </Link>
+            </aside>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}

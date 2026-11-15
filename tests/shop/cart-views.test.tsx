@@ -165,7 +165,7 @@ describe('CartView ready state', () => {
     expect(html).toContain('aria-label="Remove Sequoia Sleeping Bag from the cart"')
     expect(html).toContain('Items (2)')
     expect(html).toContain('Cart total')
-    expect(html).toContain('Checkout is not implemented yet')
+    expect(html).toContain('Proceed to checkout')
   })
 
   it('renders the server figures even when they disagree with a client-side sum', () => {

@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI) and P3-M3 (session-keyed shopping cart) are implemented and verified; P3-M4 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders, simulated payments, atomic D1 placement) are implemented and verified; P3-M5 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -147,8 +147,8 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
-P3-M1 (domain foundation), P3-M2 (storefront catalogue UI) and P3-M3 (session cart) are
-implemented and verified on that branch.
+P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session cart) and P3-M4
+(checkout & orders) are implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -196,6 +196,7 @@ qa-practice-lab/
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
 │   │   ├── cart/                      # CartContext (provider), cart-context, useCart,
 │   │   │                              # CartView, api (cart client)
+│   │   ├── checkout/                  # CheckoutView, OrderConfirmationView, api
 │   │   ├── guides/                    # GuideCard
 │   │   ├── shop/                      # ProductCard, ProductDetail, ProductStates,
 │   │   │                              # ShopFilterBar, Pagination, api (catalogue client)
@@ -206,14 +207,15 @@ qa-practice-lab/
 │   ├── server/app.ts                  # testable Hono app, basePath /api
 │   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search)
 │   ├── server/cart.ts                 # Phase 3 session cart routes (/api/v1/cart)
+│   ├── server/checkout.ts             # Phase 3 checkout & order routes (/api/v1/checkout, /api/v1/orders)
 │   ├── server/session.ts              # anonymous practice sessions (SHA-256-hashed tokens)
 │   ├── shared/health.ts               # shared response type
-│   ├── shared/commerce.ts             # shared catalogue + cart contracts (Phase 3)
+│   ├── shared/commerce.ts             # shared catalogue + cart + order contracts (Phase 3)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
 │   └── main.tsx
 ├── db/
 │   └── migrations/                    # 0001_initial_schema.sql, 0002_commerce_domain.sql,
-│                                      # 0003_cart.sql
+│                                      # 0003_cart.sql, 0004_orders.sql
 ├── public/
 │   └── favicon.svg
 └── tests/
@@ -226,7 +228,9 @@ qa-practice-lab/
     ├── server/cart.test.ts            # session cart API: isolation, validation, totals, transactions
     ├── server/health.test.ts
     └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
-                                       # (+ cart views/API client tests since P3-M3)
+                                       # (+ cart/checkout views & API client tests since P3-M3/M4)
+│   ├── server/checkout.test.ts        # checkout & orders: transaction, rollback, idempotency
+│   ├── lib/checkout.test.ts           # checkout form validation
 ```
 
 Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
@@ -234,7 +238,9 @@ Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
 catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"). Phase 3
 (P3-M2) added `/shop` and `/shop/products/:slug` — both render inside `AppShell` and fetch
 the real `/api/v1` catalogue. Phase 3 (P3-M3) added `/cart`, which reads/writes the
-session cart through `/api/v1/cart`.
+session cart through `/api/v1/cart`. Phase 3 (P3-M4) added `/checkout` and
+`/orders/:reference` — both render inside `AppShell`; `/checkout` reads the same cart and
+places a simulated order, `/orders/:reference` renders the session-scoped confirmation.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -268,6 +274,108 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M4: checkout & order workflow
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `58f119d` (P3-M3), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in the final report).
+- **Migration `db/migrations/0004_orders.sql` (applied locally, `schema_version` → `4`):**
+  `orders(id PK, session_id → practice_sessions ON DELETE CASCADE, reference TEXT UNIQUE NOT NULL
+  /* opaque ORD- + 16 uppercase hex chars — sequential ids never exposed */,
+  status CHECK IN ('placed'), payment_status CHECK IN ('approved','declined'),
+  customer_name, customer_email, shipping_line, shipping_city, shipping_postcode,
+  subtotal_cents, total_cents /* integer cents, >= 0 */, created_at)`,
+  `order_items(id PK, order_id → orders ON DELETE CASCADE, product_id nullable → products
+  ON DELETE SET NULL /* snapshots survive product deletion */, product_slug, product_name,
+  unit_price_cents, quantity CHECK 1..99, line_total_cents)`,
+  `checkout_idempotency(session_id → practice_sessions ON DELETE CASCADE, idempotency_key,
+  request_hash, outcome CHECK IN ('approved','declined'), order_id NULLABLE → orders
+  ON DELETE SET NULL, created_at, PRIMARY KEY (session_id, idempotency_key))`. Orders cascade
+  with the anonymous session (same semantics as carts; 7-day expiry). Indexes:
+  orders(session_id, created_at DESC), order_items(order_id), checkout_idempotency(order_id).
+  Only synthetic name/email/address are stored; no card or banking fields exist anywhere.
+- **Simulated payments (documented approach):** `paymentSimulation ∈ {approved, declined}`,
+  deterministic, chosen on the checkout form behind an explicit “not a real payment” wording.
+  `declined` ⇒ NO order row is created, no stock is touched, cart stays intact; the attempt is
+  recorded in `checkout_idempotency` so a retry replays the decline verbatim. `approved` ⇒ the
+  practice order is placed. `orders.payment_status` can therefore only ever hold `approved` in
+  P3-M4 (the CHECK also allows `declined` for M6 flexibility); `status` and `payment_status`
+  are stored separately as the plan required.
+- **Transaction design (D1 has no interactive transactions; `batch()` is all-or-nothing):**
+  read-only validation first (resolve session → read lines joined to products/inventory →
+  verify every line active + stock sufficient → compute totals from DB rows). Approved
+  payments then run as ONE `batch()`: INSERT order, INSERT item snapshots (order resolved via
+  `(SELECT id FROM orders WHERE reference = ?)` inside the batch), unguarded-but-CHECK-protected
+  `UPDATE inventory SET quantity = quantity - ?` (the existing `inventory.quantity >= 0` CHECK
+  turns an oversell into a statement failure that aborts the whole batch), DELETE cart lines,
+  INSERT idempotency record. Any failure rolls back everything — no partial order, no stock
+  decrement without an order, never a cleared cart after failure. Verified against the real
+  migration SQL in the node:sqlite harness and live via the API.
+- **Idempotency (request-scoped, details fingerprint):** client may send an `Idempotency-Key`
+  header (8–128 chars of `[A-Za-z0-9_-]`; an `idempotencyKey` body field is also accepted;
+  generated when absent). The fingerprint is SHA-256 over the validated checkout details +
+  payment outcome — deliberately NOT the cart contents, because a legitimate retry after the
+  first placement finds an empty cart. Behaviour: same key + same payload → the recorded outcome
+  replayed verbatim (`201` + original order, or the recorded decline) with header
+  `Idempotent-Replay: true`; same key + materially different payload → `409
+  idempotency_conflict`; concurrent twins resolve through the PRIMARY KEY — loser’s batch rolls
+  back and its response becomes a replay of the winner’s outcome. The idempotency lookup happens
+  BEFORE the empty-cart rejection so retry-after-success works. Frontend generates a UUID key per
+  form session, rotates it after every settled server response, and keeps it across network
+  failures — a double-click can never place two orders.
+- **API (`src/server/checkout.ts`):** `GET /api/v1/checkout` (summary + `checkoutable`, never
+  mints a session), `POST /api/v1/checkout` (validate → idempotency pre-check → eligibility
+  check → batch; envelopes: 400 `invalid_request` + per-field `fields` map, 422 `empty_cart`,
+  422 `cart_unavailable` + per-line reasons, 422 `payment_declined`, 409
+  `idempotency_conflict`), `GET /api/v1/orders` (session history, ≤50, newest first), `GET
+  /api/v1/orders/:reference` (format 400; unknown OR foreign session → identical 404 envelope;
+  reference regex `^ORD-[0-9A-F]{16}$`).
+- **Frontend:** routes `/checkout` and `/orders/:reference` inside `AppShell`. Checkout page:
+  breadcrumb + PageHeader, honest “practice checkout” availability line, two-column layout
+  (form + sticky summary with Item lines, subtotal, total), HTML5/`noValidate` form with
+  server-mirroring client validation (`src/lib/checkout.ts`, unit-tested), mono-uppercase field
+  labels, blur validation, accessible error summary (`role="alert" tabIndex=-1`) whose items
+  link to the offending fields, inline field errors (`aria-describedby`/`aria-invalid`),
+  explicit Approved/Declined radio cards with practice-only wording, submit disabled while busy,
+  success → `refresh()` cart (badge clears) → navigate to `/orders/:reference`. Confirmation
+  page: status/payment tags (text, not colour), reference in mono, immutable item snapshots,
+  delivery block (synthetic), “No real payment was processed” Callout, links to shop and
+  dashboard; unknown/foreign reference renders an honest EmptyState; refresh persists within the
+  owning session only. `/cart` summary now has a **Proceed to checkout** button (disabled when
+  any line is unavailable) and updated honest copy; ShopPage/ProductDetail copy updated; no new
+  dependencies; two icons reused (`lock`, `check`).
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **212/212 tests**, was 155; +30 server checkout tests incl. full-rollback batch proof,
+  concurrent same-key/different-key placement, declined replay, payload-drift 409, snapshot
+  survival of rename/reprice/deactivation/deletion; +8 views/api tests; +5 lib validation
+  tests). `npm run build` — passed (JS **429.38 kB** / gzip 127.83 kB vs 408.70 / 123.21 at M3;
+  CSS **64.89 kB** / gzip 12.88 kB; no new runtime dependencies). Playwright/Chrome probe against
+  the production build on port **8791** (8788/5173 untouched; curl liveness confirmed 8791 closed
+  after): **live flow** — add to cart → checkout → place approved order (redirect, reference,
+  tags, snapshot, refresh persistence, foreign-session 404, unknown reference, malformed
+  reference) and declined order (notice shown, cart intact); **422/400 by-design API responses**;
+  **idempotency replay verified live against the production build** (same key+payload after the
+  cart was emptied → `201` + original reference + `Idempotent-Replay: true`; payload drift →
+  `409`); **both themes × 375/768/1024/1440** for `/checkout` and `/orders/:reference` (zero
+  overflow, exactly one h1), reduced-motion render; client-side validation blocks empty submit
+  with linked error summary; zero unexpected console errors. Port 8788/5173 appear down at end of
+  session; this turn never started or stopped them (only a pattern-scoped pkill for 8791, which
+  also terminated the probe harness shell; nothing owned by the user was touched).
+- **Docs:** README.md (M4 functionality, endpoint reference, explicit simulated-payment
+  behaviour section, limitations), `docs/phase-3-commerce-practice-plan.md` (M4 marked
+  implemented with as-built deviations), AGENTS.md (state lines), PROJECT_STATE.md.
+- **Known limitations / open items:** no rate limits yet (deferred to M9); order history UI not
+  exposed (API-only; `/orders/:reference` is the only orders UI); expired sessions cascade-delete
+  their orders (by design, documented); `react-dom/server` SSR markup tests assert rendering,
+  browser probes cover interaction and are not committed (same convention as before); local dev
+  D1 accumulates practice orders from probes/tests (throwaway local state; `rm -rf .wrangler` +
+  `db:migrate:local` resets); `npm run check` is green but the `node:sqlite` harness remains the
+  only database test path.
+- **Git:** single milestone commit `feat: implement checkout and order workflow` (hash in the
+  final report). `main` untouched, nothing pushed, P3-M5 not started.
+- **Next exact action:** STOP. Await instruction to start **P3-M5 (synthetic customers &
+  auth simulation)** — do not begin without approval.
 
 ### 2026-11-15 — Phase 3 P3-M3: session-keyed shopping cart
 
@@ -855,7 +963,7 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 | P3-M1 | Commerce domain foundation (schema, seed, read-only catalogue API) | **Done & verified 2026-11-15** (this branch, `0841783`) |
 | P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | **Done & verified 2026-11-15** (this branch) |
 | P3-M3 | Cart (session-keyed, server-side totals) | **Done & verified 2026-11-15** (this branch) |
-| P3-M4 | Checkout & orders (fake payments, transactional stock decrement) | Planned |
+| P3-M4 | Checkout & orders (simulated payments, transactional D1 placement, idempotency) | **Done & verified 2026-11-15** (this branch) |
 | P3-M5 | Synthetic customers & auth simulation (roles, ownership) | Planned |
 | P3-M6 | Inventory depth (stock re-check in order transaction, restock) | Planned |
 | P3-M7 | Bug-hunt engine v1 (sessions, registry, one proof defect) | Planned |
@@ -918,18 +1026,44 @@ page shows the slug as “Catalogue code”; storefront search is LIKE-based (fi
 SSR string-markup tests assert rendering, browser probes cover interaction and are not committed;
 `npm run check` passes but the Node 26 / `node:sqlite` harness is the only database test path.
 
-Known limitations: checkout/orders/auth/bug-hunt still unimplemented (P3-M4+); the cart has no
-shipping/discounts/tax (total == subtotal until M4); expired sessions/carts are not swept yet
+Known limitations: auth/bug-hunt still unimplemented (P3-M5+); checkout has no
+shipping/discounts/tax (total == subtotal); expired sessions/carts are not swept yet
 (M9); stock checks are per-request reads + guarded writes, not a reservation system (M6 owns the
 transactional depth); per-request rate limits are deferred to M9; quantity cap is 99/line;
 interaction-level cart testing beyond the SSR markup tests + Playwright probe is not automated
 (no DOM-test runner installed yet); `practice_sessions` lacks `mode`/`hunt_id` until M7.
 
-Next recommended milestone: **P3-M4 — checkout & orders** (requires explicit instruction; do not
-start without approval).
+P3-M4 detail: atomic checkout & orders on top of M1–M3 — migration `0004_orders.sql`
+(`orders`, `order_items` nullable `product_id` with `ON DELETE SET NULL` for snapshot survival;
+`checkout_idempotency` PRIMARY KEY `(session_id, idempotency_key)`; `schema_version` → `4`).
+Server `src/server/checkout.ts`: `GET /api/v1/checkout` (summary + `checkoutable`),
+`POST /api/v1/checkout` (validation + fingerprinted idempotency pre-check before the empty-cart
+rejection, then either a single all-or-nothing D1 `batch()` — order + item snapshots +
+`inventory.quantity >= 0`-CHECK-guarded decrements + cart clear + idempotency record — or a single
+idempotency-record insert for `declined`), `GET /api/v1/orders` (≤50, newest first),
+`GET /api/v1/orders/:reference` (opaque `ORD-` + 16 hex; unknown/foreign → identical 404).
+Client fingerprint = SHA-256 of validated details + payment outcome (excludes cart contents —
+legitimate retry-after-success must replay); same key + different payload → 409; concurrent
+twins resolve via the PRIMARY KEY.
+Frontend: `/checkout` (validated form, error summary with
+field links, Approved/Declined simulation radios, duplicate-submit guard, cart badge refresh
+on success) and `/orders/:reference` (confirmation, snapshot items, honest “not a real payment”
+wording). 212/212 tests green; live probe against the production build incl. a live idempotency
+replay after cart-emptying. Known gaps: no rate limits (M9); no order-history UI (API only);
+orders cascade-delete with expired sessions; no checkout reservation system (M6 owns depth).
+
+Known limitations: auth/orders ownership/bug-hunt still unimplemented (P3-M5+); the cart and
+checkout have no shipping/discounts/tax (total == subtotal); expired sessions/carts/orders are
+not swept yet (M9); stock checks are per-request reads + guarded writes in one batch, not a
+reservation system (M6 owns the transactional depth); per-request rate limits deferred to M9;
+quantity cap is 99/line; interaction-level checkout testing beyond SSR markup tests + Playwright
+probe is not automated; `practice_sessions` lacks `mode`/`hunt_id` until M7.
+
+Next recommended milestone: **P3-M5 — synthetic customers & auth simulation** (requires explicit
+instruction; do not start without approval).
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI) and P3-M3 (session-keyed shopping cart) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M4 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M5 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

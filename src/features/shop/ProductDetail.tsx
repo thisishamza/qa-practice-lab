@@ -160,8 +160,8 @@ export function ProductDetail({ product }: { product: Product }) {
         </div>
 
         <Callout tone="neutral" title="Practice storefront">
-          Meridian Outfitters is a fictional catalogue. Prices, stock and the session cart are
-          synthetic — checkout is not implemented yet.
+          Meridian Outfitters is a fictional catalogue. Prices, stock, the session cart and
+          simulated checkout are synthetic — nothing is really paid for or shipped.
         </Callout>
       </aside>
     </div>

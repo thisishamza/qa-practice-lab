@@ -222,7 +222,7 @@ export function CartView({
       />
 
       <p className="catalogue-availability">
-        Session cart · server-calculated totals · checkout not implemented
+        Session cart · server-calculated totals · simulated payment at checkout
       </p>
 
       {status === 'loading' ? <LoadingState label="Loading your cart…" /> : null}
@@ -264,7 +264,7 @@ export function CartView({
           {cart.hasUnavailableItems ? (
             <Callout tone="warning" title="Some lines can’t be fulfilled">
               One or more lines reference a product that is out of stock or no longer available.
-              Checkout — when it exists — will not accept them. Adjust or remove the affected
+              Checkout will not accept them. Adjust or remove the affected
               lines.
             </Callout>
           ) : null}
@@ -295,9 +295,9 @@ export function CartView({
               </div>
 
               <p className="cart-summary-note">
-                Checkout is not implemented yet — Meridian Outfitters is a fictional practice
-                storefront. This cart is scoped to your browser session and disappears when the
-                session expires or cookies are cleared.
+                This cart is scoped to your browser session and disappears when the session expires
+                or cookies are cleared. Checkout is simulated — you choose whether the fictional
+                payment is approved or declined.
               </p>
 
               {clearError ? (
@@ -316,6 +316,17 @@ export function CartView({
                 <Icon name="reset" size={15} />
                 Clear cart
               </Button>
+              {cart.hasUnavailableItems ? (
+                <p className="cart-line-note">
+                  <Icon name="alert" size={15} />
+                  <span>Adjust the highlighted lines to unlock checkout.</span>
+                </p>
+              ) : (
+                <Link className="button button-small" to="/checkout">
+                  <Icon name="lock" size={15} />
+                  Proceed to checkout
+                </Link>
+              )}
               <Link className="button button-secondary button-small" to="/shop">
                 <Icon name="arrow-right" size={15} />
                 Continue shopping

@@ -14,17 +14,18 @@ JetBrains Mono, a tile of design tokens, honest status labels, and no demo data 
 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
 the single commerce practice domain. **P3-M1 (domain foundation), P3-M2 (storefront catalogue
-UI) and P3-M3 (session-keyed shopping cart) are implemented on the `feat/phase-3-commerce-practice`
-branch:** a D1 catalogue schema (categories, products, inventory) with deterministic synthetic
-seed data, a `schema_version` of 3, a `/api/v1` catalogue API with search, a working `/shop`
-storefront with URL-driven search, filtering, sorting and pagination, and a session-based cart
-with server-calculated totals, quantity controls and refresh persistence. Checkout, synthetic
-auth, inventory depth, and the clean/bug-hunt modes are planned milestones (see
+UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders) are implemented on the
+`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema (categories, products, inventory)
+with deterministic synthetic seed data, a `schema_version` of 4, a `/api/v1` catalogue API with
+search, a working `/shop` storefront with URL-driven search, filtering, sorting and pagination,
+a session-based cart with server-calculated totals, and a practice checkout that places a
+simulated order in one atomic database transaction with idempotency protection. Synthetic auth,
+inventory depth, and the clean/bug-hunt modes are planned milestones (see
 `docs/phase-3-commerce-practice-plan.md`) and do not exist yet.
 
 The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
-The storefront is the first real practice surface: the catalogue and cart are fully functional,
-but there is **no checkout, no authentication, no bug-hunt mode, and no learner account
+The storefront is the first real practice surface: the catalogue, cart and checkout are fully
+functional, but there is **no authentication, no bug-hunt mode, and no learner account
 persistence** yet. No SQL playground, performance runner, or security challenge exists yet.
 
 ## What you can do now
@@ -43,11 +44,13 @@ persistence** yet. No SQL playground, performance runner, or security challenge 
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
+| `/checkout` | Practice checkout: synthetic details, simulated payment outcome, order placement |
+| `/orders/:reference` | Order confirmation: reference, statuses, item snapshot, session-scoped |
 
 Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
-saved; the progress page shows labelled sample data and says so. The cart is the one real piece
-of server-side practice state: it persists in D1 under an opaque `mpl_session` cookie
-(HttpOnly, `SameSite=Strict`, 7-day expiry) and is never shared between browser sessions.
+saved; the progress page shows labelled sample data and says so. The cart and orders are the real
+pieces of server-side practice state: they persist in D1 under an opaque `mpl_session` cookie
+(HttpOnly, `SameSite=Strict`, 7-day expiry) and are never shared between browser sessions.
 
 ## Requirements
 
@@ -109,8 +112,9 @@ src/styles/                Design tokens and layered CSS
 src/server/app.ts          Hono app exported for tests (also under src/)
 src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
 src/server/cart.ts         Session cart routes (/api/v1/cart) with server-side totals
+src/server/checkout.ts     Checkout & orders routes (/api/v1/checkout, /api/v1/orders)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
-src/shared/commerce.ts     Shared catalogue and cart contracts (types, currency constant)
+src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
 db/migrations/             D1 SQL migrations
 tests/                     Vitest tests (Node environment)
@@ -192,6 +196,41 @@ inventory. Monetary values are integer cents. Cross-session access to another ca
 impossible: every cart query is scoped to the session resolved from the cookie, and line ids
 from other sessions return `404`. Client-supplied price/total fields are ignored by construction.
 
+Checkout and orders:
+
+- `GET /api/v1/checkout` — the checkout summary for the caller's cart (same figures as the
+  cart plus `checkoutable`, false when the cart is empty or a line cannot be fulfilled).
+- `POST /api/v1/checkout` — place an order. Body: `{ customerName, customerEmail,
+  shippingLine, shippingCity, shippingPostcode, paymentSimulation }`;
+  `paymentSimulation` is `approved` or `declined` and nothing else. Every field is validated
+  server-side (400 `invalid_request` with per-field messages otherwise). The client may pass an
+  `Idempotency-Key` header (8–128 chars of letters, digits, `-`, `_`); one is generated when
+  absent. Placement is atomic: the order row, immutable order-item snapshots, inventory
+  decrements (guarded by `inventory.quantity >= 0`), cart clearing and the idempotency record
+  all happen in ONE D1 batch — any failure rolls back everything, so there is never a partial
+  order, never stock decremented without an order, and never a cart cleared after a failed
+  checkout. The summary of what happened to a retried request: same key + same payload returns
+  the original outcome verbatim (`201` + the original order, or the recorded decline) with an
+  `Idempotent-Replay: true` header; same key + materially different payload returns
+  `409` `idempotency_conflict`. `declined` is a deterministic simulated decline: no order is
+  placed, stock and cart are untouched, and the attempt is recorded so a retry replays it.
+  Out-of-stock/under-stocked/deactivated lines → `422` `cart_unavailable` (with per-line
+  reasons; the cart is left intact); empty cart → `422` `empty_cart`.
+- `GET /api/v1/orders` — the current session's order history (newest first, ≤50).
+- `GET /api/v1/orders/:reference` — an immutable order confirmation scoped to the session that
+  placed it; unknown or foreign references return the same `404` `not_found` envelope.
+  References are opaque (`ORD-` + 16 uppercase hex chars); sequential database ids are never
+  exposed. The items are snapshots taken at placement time — product name, slug, unit price
+  (integer cents), quantity and line total are rewritten by no later catalogue change.
+
+**Simulated payment behaviour (read this before relying on it):** `paymentSimulation` chooses
+a deterministic outcome from the fictional practice gateway. `approved` places the practice
+order; `declined` places nothing and changes nothing. There is no payment processor, card
+collection, merchant account, shipping carrier or email service anywhere in this project; no
+money moves; every "delivery" is synthetic. The only personal-ish data stored is the synthetic
+name/email/address typed into the checkout form, visible only to the session that typed it
+(7-day session expiry; cascade deletes the orders with the session).
+
 ### SPA routing
 
 Cloudflare Pages serves the app as a single-page application automatically **as long as the build
@@ -229,13 +268,13 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 - All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
   progress; the progress page shows labelled sample data and says so.
-- The storefront catalogue and cart are real and backed by the API and D1. Checkout, orders,
-  authentication, bug-hunt mode and learner accounts do **not** exist yet — product pages are
-  labelled as a practice storefront; the cart page states checkout is not implemented. Prices,
-  stock and carts are synthetic practice data. Deleting cookies or letting the 7-day session
-  expire starts with a fresh empty cart; sessions are not swept automatically until P3-M9.
-  Unavailable lines stay in the cart flagged as such and are expected to block checkout once
-  P3-M4 lands.
+- The storefront catalogue, cart and checkout are real and backed by the API and D1.
+  Authentication, bug-hunt mode and learner accounts do **not** exist yet — everything is
+  synthetic practice data; the checkout's payment outcome is a simulation and nothing is really
+  paid for or shipped. Deleting cookies or letting the 7-day session expire starts with a
+  fresh empty cart and no order history (orders cascade with the session); sessions are not
+  swept automatically until P3-M9. Unavailable lines stay in the cart flagged as such and
+  block checkout with a `422` envelope until adjusted.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

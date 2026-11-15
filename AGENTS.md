@@ -2,11 +2,11 @@
 
 ## Current repo state
 
-- **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented. Phase 3 is in progress on `feat/phase-3-commerce-practice`: P3-M1 (commerce domain foundation), P3-M2 (storefront catalogue UI, `/shop`) and P3-M3 (session-based shopping cart, `/cart` + `/api/v1/cart`) are implemented and verified; P3-M4+ are planned, not started.**
+- **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented. Phase 3 is in progress on `feat/phase-3-commerce-practice`: P3-M1 (commerce domain foundation), P3-M2 (storefront catalogue UI, `/shop`), P3-M3 (session-based shopping cart, `/cart` + `/api/v1/cart`) and P3-M4 (checkout & orders, `/checkout` + `/orders/:reference` + `/api/v1/checkout|orders`) are implemented and verified; P3-M5+ are planned, not started.**
 - **The Phase 2.5 redesign is COMPLETE: M1–M8 are all complete and verified.** The audit lives in `docs/phase-2.5-ui-ux-audit.md`. M1 delivered the token system and self-hosted fonts; M2 the shell/navigation/search/route-management pass; M3 the primitives/cards system; M4 the dashboard and tracks pass; M5 the scenario catalogue (URL-driven state, chips, drawer); M6 the guides experience (index rows, scrollspy TOC); M7 practice and progress (honest no-persistence UI + workspace runtime panel); **M8 the remaining consistency work — track-detail redesign (related tracks by shared category, catalogue deep link), the Test Bench 404, removal of all compatibility aliases, zero ambiguous link names app-wide, runtime contrast/focus/overflow audit across both themes × 4 widths.** M9 (optional polish) is not started and only on request. The Phase 3 plan and milestone sequence (P3-M1…P3-M9) is in `docs/phase-3-commerce-practice-plan.md`.
 - Stack: React 19 + TypeScript + Vite 7, React Router, Hono on Cloudflare Pages Functions, Cloudflare D1, Wrangler.
 - The interface is real; the exercises are not. All 24 catalog scenarios are non-runnable placeholders, and progress/activity data on the dashboard and progress page is labelled demo data.
-- No checkout, synthetic auth, bug-hunt mode, SQL playground, performance runner, or security lab exists yet — the commerce app is being built one milestone per session on `feat/phase-3-commerce-practice` per `docs/phase-3-commerce-practice-plan.md` (P3-M1 foundation, P3-M2 catalogue, P3-M3 cart done only). Do not infer the rest from the roadmap.
+- No synthetic auth (M5), inventory depth (M6), bug-hunt mode, SQL playground, performance runner, or security lab exists yet — the commerce app is being built one milestone per session on `feat/phase-3-commerce-practice` per `docs/phase-3-commerce-practice-plan.md` (P3-M1…P3-M4 done only). Checkout is simulated: deterministic `approved|declined` outcomes, no real payment processor, nothing really paid for or shipped. Do not infer the rest from the roadmap.
 - `PROJECT_STATE.md` is the authoritative plan and progress log. Read it first, then reconcile it with the repo.
 
 ## Commands (verified on Node 26)
@@ -84,6 +84,6 @@ For designing, building, reviewing, or fixing interfaces — starting with Phase
 
 ## Workflow
 
-- Work on one phase/vertical slice at a time. **Phase 3 (commerce practice app) is approved and in progress on the `feat/phase-3-commerce-practice` branch: P3-M1, P3-M2 and P3-M3 are done; P3-M4+ require explicit instruction.** Follow `docs/phase-3-commerce-practice-plan.md` and `PROJECT_STATE.md` §12. Phase 2.5 is complete (M1–M8); optional M9 polish only on request.
+- Work on one phase/vertical slice at a time. **Phase 3 (commerce practice app) is approved and in progress on the `feat/phase-3-commerce-practice` branch: P3-M1, P3-M2, P3-M3 and P3-M4 are done; P3-M5+ require explicit instruction.** Follow `docs/phase-3-commerce-practice-plan.md` and `PROJECT_STATE.md` §12. Phase 2.5 is complete (M1–M8); optional M9 polish only on request.
 - For any UI/design/review work, first invoke the `ui-ux-pro-max` skill via the `skill` tool — see "UI/UX Pro Max skill" above. Do not start Phase 3 interface work without it.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.

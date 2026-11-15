@@ -118,11 +118,11 @@ async function addAndExtract(
 describe('cart migration and schema', () => {
   const { sqlite } = createMigratedD1()
 
-  it('records schema version 3 and creates the cart tables', () => {
+  it('records schema version 4 and creates the cart tables', () => {
     const row = sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('3')
+    expect(row.value).toBe('4')
 
     const tables = sqlite
       .prepare(

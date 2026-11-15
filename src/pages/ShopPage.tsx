@@ -163,7 +163,7 @@ export function ShopPage() {
       />
 
       <p className="catalogue-availability">
-        Fictional practice storefront · API-backed catalogue · no checkout
+        Fictional practice storefront · API-backed catalogue · simulated payment at checkout
       </p>
 
       <ShopFilterBar

@@ -71,7 +71,7 @@ describe('ProductDetail', () => {
   it('is honest about the practice storefront and missing checkout', () => {
     const html = render(<ProductDetail product={product} />)
     expect(html).toContain('fictional catalogue')
-    expect(html).toContain('checkout is not implemented yet')
+    expect(html).toContain('simulated checkout')
   })
 })
 
