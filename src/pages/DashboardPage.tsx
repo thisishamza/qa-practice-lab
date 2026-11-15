@@ -1,152 +1,109 @@
 import { Link } from 'react-router-dom'
-import { learningTracks } from '../data/tracks'
+import { learningTracks, getTrack } from '../data/tracks'
 import { scenarios, getScenario } from '../data/scenarios'
 import { guides } from '../data/guides'
-import { testingCategories } from '../data/categories'
 import {
-  demoActivities,
-  demoDisclaimer,
-  demoProgress,
   recommendedScenarioIds,
 } from '../data/demo'
-import { countScenariosByCategory, countScenariosByTrack } from '../lib/catalog'
+import { countScenariosByTrack } from '../lib/catalog'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
-import { pluralize } from '../lib/labels'
-import { Callout } from '../components/ui/Callout'
-import { Icon } from '../components/ui/Icon'
-import { StatCard } from '../components/ui/StatCard'
-import { ProgressBar } from '../components/ui/ProgressBar'
+import { difficultyLabels, formatMinutes, pluralize } from '../lib/labels'
+import { PageHeader } from '../components/ui/PageHeader'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
-import { TrackCard } from '../features/tracks/TrackCard'
-import { ScenarioCard } from '../features/catalog/ScenarioCard'
+import { StatusTag } from '../components/ui/Tag'
+import { Meta } from '../components/ui/Meta'
+import { Icon } from '../components/ui/Icon'
+
+const startSteps: {
+  kicker: string
+  title: string
+  detail: string
+  to: string
+}[] = [
+  {
+    kicker: 'Guide',
+    title: 'Read the manual-testing guide',
+    detail: 'Test design, oracles, and evidence — the foundation every track builds on.',
+    to: '/guides/guide-manual-test-design',
+  },
+  {
+    kicker: 'Scenario',
+    title: 'Inspect the cart-totals scenario',
+    detail: 'Objectives, prerequisites, and its real availability status — exercises are labelled, never faked.',
+    to: '/scenarios/manual-cart-totals',
+  },
+  {
+    kicker: 'Track',
+    title: 'Review the API testing track',
+    detail: 'What the track covers, what is usable today, and where it goes next.',
+    to: '/tracks/api-testing',
+  },
+]
 
 export function DashboardPage() {
   useDocumentTitle('Dashboard')
 
   const scenariosPerTrack = countScenariosByTrack(scenarios)
-  const scenariosPerCategory = countScenariosByCategory(scenarios)
 
+  const featured = learningTracks.slice(0, 6)
   const recommended = recommendedScenarioIds.flatMap((id) => {
     const scenario = getScenario(id)
     return scenario ? [scenario] : []
   })
 
-  const recent = demoActivities.flatMap((activity) => {
-    const scenario = getScenario(activity.scenarioId)
-    return scenario ? [{ activity, scenario }] : []
-  })
-
   return (
     <div className="stack">
-      <section className="hero-panel" aria-labelledby="dashboard-title">
-        <div className="hero-copy">
-          <p className="eyebrow">QA learning environment</p>
-          <h1 id="dashboard-title">
-            Learn testing across the
-            <span className="hero-accent"> whole stack.</span>
-          </h1>
-          <p className="page-lede">
-            Twelve structured tracks, a catalogue of reusable scenarios, and practical
-            guides. This phase builds the learning interface; the practice targets
-            themselves arrive later.
-          </p>
-          <div className="hero-actions">
+      <PageHeader
+        eyebrow="QA learning environment"
+        title="Practise testing across the whole stack."
+        description="Twelve learning tracks, twenty-four catalogued scenarios, and six practical guides. Start with the path below — every page is labelled with exactly what is usable today."
+        actions={
+          <div className="button-row">
             <Link className="button" to="/scenarios">
-              Explore scenarios
+              Find a scenario
               <Icon name="arrow-right" size={16} />
             </Link>
             <Link className="button button-secondary" to="/tracks">
-              Browse learning tracks
+              Browse tracks
             </Link>
           </div>
-          <ul className="hero-points">
-            <li>
-              <Icon name="check" size={15} />
-              Typed, reusable scenario and guide content
-            </li>
-            <li>
-              <Icon name="check" size={15} />
-              Search and filters across every track
-            </li>
-            <li>
-              <Icon name="check" size={15} />
-              Keyboard-friendly, theme-aware interface
-            </li>
-          </ul>
-        </div>
+        }
+      />
 
-        <div className="hero-aside" aria-label="What is available now">
-          <p className="hero-aside-label">Available now</p>
-          <div className="hero-aside-row">
-            <span>Learning tracks</span>
-            <strong>{learningTracks.length}</strong>
-          </div>
-          <div className="hero-aside-row">
-            <span>Scenario placeholders</span>
-            <strong>{scenarios.length}</strong>
-          </div>
-          <div className="hero-aside-row">
-            <span>Introductory guides</span>
-            <strong>{guides.length}</strong>
-          </div>
-          <p className="hero-aside-note">
-            No exercise is runnable yet. Every scenario is labelled with its real status.
-          </p>
-        </div>
-      </section>
-
-      <Callout tone="info" title="Phase 2 · learning structure preview">
-        The dashboard, catalogue, tracks, and guides are complete as an interface. Progress
-        and recent activity are sample data, and the practice environment is not connected
-        to a runnable commerce app.
-      </Callout>
-
-      <section className="content-section" aria-labelledby="snapshot-title">
+      <section className="content-section" aria-labelledby="start-path-title">
         <SectionHeader
-          id="snapshot-title"
-          title="Your learning snapshot"
-          description="A quick view of the lab. The progress figure is clearly labelled demo data."
-          action={
-            <Link className="text-link" to="/progress">
-              View progress
-              <Icon name="arrow-right" size={14} />
-            </Link>
-          }
+          id="start-path-title"
+          title="Your start path"
+          description="Three steps, in order. Guides and tracks are readable now."
         />
-        <div className="stats-grid">
-          <StatCard
-            label="Learning tracks"
-            value={learningTracks.length}
-            hint="Manual through accessibility"
-            icon="tracks"
-          />
-          <StatCard
-            label="Scenario placeholders"
-            value={scenarios.length}
-            hint="Structured, not runnable yet"
-            icon="scenarios"
-          />
-          <StatCard
-            label="Guides"
-            value={guides.length}
-            hint="Concepts, examples, and steps"
-            icon="guides"
-          />
-          <StatCard
-            label="Completed (demo)"
-            value={demoProgress.completedExercises}
-            hint={`${demoProgress.inProgressExercises} in progress · sample only`}
-            icon="progress"
-          />
-        </div>
+        <ol className="start-path-list">
+          {startSteps.map((step, index) => (
+            <li key={step.to}>
+              <Link className="start-step" to={step.to}>
+                <span className="start-step-number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="start-step-copy">
+                  <span className="start-step-kicker">{step.kicker}</span>
+                  <span className="start-step-title">{step.title}</span>
+                  <span className="start-step-detail">{step.detail}</span>
+                </span>
+                <Icon name="arrow-right" size={16} />
+              </Link>
+            </li>
+          ))}
+        </ol>
+        <p className="dashboard-note">
+          Scenario exercises are catalogued but are not runnable yet — each scenario
+          page carries its real status.
+        </p>
       </section>
 
-      <section className="content-section" aria-labelledby="tracks-title">
+      <section className="content-section" aria-labelledby="curriculum-title">
         <SectionHeader
-          id="tracks-title"
-          title="Learning tracks"
-          description="Twelve disciplines, each with objectives, a getting-started path, and listed scenarios."
+          id="curriculum-title"
+          title="Curriculum"
+          description="Manual testing through accessibility — objectives, getting-started steps, and listed scenarios per track."
           action={
             <Link className="text-link" to="/tracks">
               All 12 tracks
@@ -154,164 +111,80 @@ export function DashboardPage() {
             </Link>
           }
         />
-        <div className="track-grid">
-          {learningTracks.slice(0, 6).map((track) => (
-            <TrackCard
-              key={track.id}
-              track={track}
-              listedScenarios={scenariosPerTrack[track.id] ?? 0}
-              compact
-            />
+        <ul className="track-row-list">
+          {featured.map((track) => (
+            <li key={track.id}>
+              <Link className="track-row" to={`/tracks/${track.id}`}>
+                <span className="track-icon" aria-hidden="true">
+                  <Icon name={track.icon} size={18} />
+                </span>
+                <span className="track-row-copy">
+                  <strong>{track.name}</strong>
+                  <span className="track-row-tagline">{track.tagline}</span>
+                </span>
+                <span className="track-row-meta">
+                  {difficultyLabels[track.difficulty]}
+                  <span className="meta-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  {pluralize(track.plannedExerciseCount, 'exercise')} planned
+                  <span className="meta-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  {scenariosPerTrack[track.id] ?? 0} listed
+                </span>
+                <Icon name="chevron-right" size={16} />
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
-      <section className="content-section" aria-labelledby="categories-title">
+      <section className="content-section" aria-labelledby="catalogue-title">
         <SectionHeader
-          id="categories-title"
-          title="Testing categories"
-          description="Cross-cutting categories make it easy to choose the kind of testing you want to practise."
+          id="catalogue-title"
+          title="Scenario catalogue"
+          description="Structured placeholders for every planned exercise."
+          action={
+            <Link className="text-link" to="/scenarios">
+              Open the catalogue
+              <Icon name="arrow-right" size={14} />
+            </Link>
+          }
         />
-        <div className="category-grid">
-          {testingCategories.map((category) => {
-            const trackCount = learningTracks.filter((track) =>
-              track.categoryIds.includes(category.id),
-            ).length
+        <p className="catalogue-counts">
+          {pluralize(scenarios.length, 'scenario')}
+          <span className="meta-sep" aria-hidden="true">
+            ·
+          </span>
+          {pluralize(learningTracks.length, 'track')}
+          <span className="meta-sep" aria-hidden="true">
+            ·
+          </span>
+          {pluralize(guides.length, 'guide')}
+        </p>
+        <ul className="scenario-row-list">
+          {recommended.map((scenario) => {
+            const track = getTrack(scenario.trackId)
 
             return (
-              <Link key={category.id} className="category-card" to="/scenarios">
-                <span className="category-icon" aria-hidden="true">
-                  <Icon name={category.icon} size={18} />
-                </span>
-                <span className="category-copy">
-                  <strong>{category.name}</strong>
-                  <span>{category.description}</span>
-                </span>
-                <span className="category-count">
-                  {pluralize(scenariosPerCategory[category.id] ?? 0, 'scenario')}
-                  {' · '}
-                  {pluralize(trackCount, 'track')}
-                </span>
-              </Link>
+              <li key={scenario.id}>
+                <Link className="scenario-row" to={`/scenarios/${scenario.id}`}>
+                  <span className="scenario-row-copy">
+                    <strong>{scenario.title}</strong>
+                    <Meta>
+                      <span>{track?.name ?? scenario.trackId}</span>
+                      <span>{difficultyLabels[scenario.difficulty]}</span>
+                      <span>{formatMinutes(scenario.estimatedMinutes)}</span>
+                    </Meta>
+                  </span>
+                  <StatusTag status={scenario.status} />
+                </Link>
+              </li>
             )
           })}
-        </div>
+        </ul>
       </section>
-
-      <div className="split-grid">
-        <section className="content-section" aria-labelledby="recommended-title">
-          <SectionHeader
-            id="recommended-title"
-            title="Recommended starting points"
-            description="Three broad scenarios that show the range of the catalogue."
-            action={
-              <Link className="text-link" to="/scenarios">
-                Browse all
-                <Icon name="arrow-right" size={14} />
-              </Link>
-            }
-          />
-          <div className="card-stack">
-            {recommended.map((scenario) => (
-              <ScenarioCard key={scenario.id} scenario={scenario} />
-            ))}
-          </div>
-        </section>
-
-        <section className="content-section" aria-labelledby="progress-title">
-          <SectionHeader
-            id="progress-title"
-            title="Learning progress"
-            description="Sample progress used to validate the progress interface."
-            action={<Badge tone="warning">Demo data</Badge>}
-          />
-          <div className="panel">
-            <p className="panel-note">{demoDisclaimer}</p>
-            <div className="demo-stat-row">
-              <div>
-                <span className="demo-stat-value">{demoProgress.completedExercises}</span>
-                <span className="demo-stat-label">completed</span>
-              </div>
-              <div>
-                <span className="demo-stat-value">{demoProgress.inProgressExercises}</span>
-                <span className="demo-stat-label">in progress</span>
-              </div>
-              <div>
-                <span className="demo-stat-value">{demoProgress.streakDays}</span>
-                <span className="demo-stat-label">day streak</span>
-              </div>
-            </div>
-
-            <div className="progress-list">
-              {demoProgress.tracks.map((item) => {
-                const track = learningTracks.find((entry) => entry.id === item.trackId)
-
-                return (
-                  <ProgressBar
-                    key={item.trackId}
-                    label={track?.name ?? item.trackId}
-                    value={item.completed}
-                    max={item.total}
-                  />
-                )
-              })}
-            </div>
-
-            <Link className="card-foot-link" to="/progress">
-              Open progress page
-              <Icon name="arrow-right" size={15} />
-            </Link>
-          </div>
-        </section>
-      </div>
-
-      <div className="split-grid">
-        <section className="content-section" aria-labelledby="recent-title">
-          <SectionHeader
-            id="recent-title"
-            title="Recently visited"
-            description="Latest sample activity."
-            action={<Badge tone="warning">Demo data</Badge>}
-          />
-          <ul className="activity-list">
-            {recent.map(({ activity, scenario }) => (
-              <li key={activity.scenarioId}>
-                <span className="activity-icon" aria-hidden="true">
-                  <Icon name="clock" size={16} />
-                </span>
-                <span className="activity-copy">
-                  <Link to={`/scenarios/${scenario.id}`}>{scenario.title}</Link>
-                  <span>
-                    {activity.note} · {activity.visitedLabel}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="content-section" aria-labelledby="practice-title">
-          <SectionHeader
-            id="practice-title"
-            title="Quick practice access"
-            description="Check the local API and see what the practice environment will include."
-          />
-          <div className="panel quick-practice">
-            <span className="quick-practice-icon" aria-hidden="true">
-              <Icon name="practice" size={22} />
-            </span>
-            <h3>Practice environment</h3>
-            <p>
-              The runtime health check is live. Exercise targets, sandboxes, and scoring
-              are deliberately not built in Phase 2.
-            </p>
-            <Link className="button button-secondary button-small" to="/practice">
-              Open practice status
-              <Icon name="arrow-right" size={15} />
-            </Link>
-          </div>
-        </section>
-      </div>
     </div>
   )
 }

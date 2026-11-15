@@ -1,168 +1,158 @@
 import { Link } from 'react-router-dom'
 import { learningTracks } from '../data/tracks'
-import { getScenario } from '../data/scenarios'
-import { demoActivities, demoDisclaimer, demoProgress } from '../data/demo'
+import { demoDisclaimer, demoProgress } from '../data/demo'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
-import { pluralize } from '../lib/labels'
 import { PageHeader } from '../components/ui/PageHeader'
-import { Callout } from '../components/ui/Callout'
-import { StatCard } from '../components/ui/StatCard'
-import { ProgressBar } from '../components/ui/ProgressBar'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
+import { ProgressBar } from '../components/ui/ProgressBar'
+import { Tag } from '../components/ui/Tag'
 import { Icon } from '../components/ui/Icon'
+
+const trackedFeatures: { title: string; detail: string }[] = [
+  {
+    title: 'Exercise completion',
+    detail: 'Which scenarios you finish, per track, once the exercise runtime exists.',
+  },
+  {
+    title: 'Attempts and scoring',
+    detail: 'Bug-hunt attempts, scores, and debrief answers for each exercise.',
+  },
+  {
+    title: 'Recently visited',
+    detail: 'The last guides and scenarios you opened, with dates, so you can pick up where you left off.',
+  },
+  {
+    title: 'Streaks and rhythm',
+    detail: 'Consecutive days of practice against a weekly goal you set.',
+  },
+]
+
+const startSteps: {
+  kicker: string
+  title: string
+  detail: string
+  to: string
+}[] = [
+  {
+    kicker: 'Guide',
+    title: 'Read the manual-testing guide',
+    detail: 'The best first step in every track — test design, oracles, and evidence.',
+    to: '/guides/guide-manual-test-design',
+  },
+  {
+    kicker: 'Scenario',
+    title: 'Inspect the cart-totals scenario',
+    detail: 'Objectives, prerequisites, and its real availability status.',
+    to: '/scenarios/manual-cart-totals',
+  },
+  {
+    kicker: 'Track',
+    title: 'Browse the API testing track',
+    detail: 'What the track covers and what is usable today.',
+    to: '/tracks/api-testing',
+  },
+]
 
 export function ProgressPage() {
   useDocumentTitle('Progress')
-
-  const recent = demoActivities.flatMap((activity) => {
-    const scenario = getScenario(activity.scenarioId)
-    return scenario ? [{ activity, scenario }] : []
-  })
 
   return (
     <div className="stack">
       <PageHeader
         eyebrow="Learning record"
         title="Progress"
-        description="A preview of how progress will be presented. The numbers on this page are sample data, not a record of real activity."
+        description="Nothing on this page is saved yet. This is what the progress experience will become — and where to go instead today."
       />
 
-      <Callout tone="warning" title="Demo data only">
-        {demoDisclaimer} Progress tracking will be connected to a data store and
-        runnable exercises in a later phase.
-      </Callout>
+      <p className="progress-note">
+        No activity is recorded in this build. Your theme preference is the only thing this
+        browser stores.
+      </p>
 
-      <div className="stats-grid">
-        <StatCard
-          label="Completed (demo)"
-          value={demoProgress.completedExercises}
-          hint="Sample exercise completions"
-          icon="check"
+      <section className="content-section" aria-labelledby="preview-title">
+        <SectionHeader
+          id="preview-title"
+          title="What progress will look like"
+          description="Sample values so the intended view is concrete — demonstration data, not yours."
+          action={<Tag tone="warn">Sample</Tag>}
         />
-        <StatCard
-          label="In progress (demo)"
-          value={demoProgress.inProgressExercises}
-          hint="Sample unfinished exercises"
-          icon="progress"
-        />
-        <StatCard
-          label="Streak (demo)"
-          value={`${demoProgress.streakDays} days`}
-          hint="Sample consecutive activity"
-          icon="sparkles"
-        />
-        <StatCard
-          label="Weekly goal (demo)"
-          value={`${demoProgress.completedExercises}/${demoProgress.weeklyGoal}`}
-          hint="Sample target, not tracked"
-          icon="target"
-        />
-      </div>
+        <div className="panel">
+          <div className="progress-list">
+            {demoProgress.tracks.map((item) => {
+              const track = learningTracks.find((entry) => entry.id === item.trackId)
+
+              return (
+                <div key={item.trackId} className="progress-row">
+                  <ProgressBar
+                    label={track?.name ?? item.trackId}
+                    value={item.completed}
+                    max={item.total}
+                  />
+                  {track ? (
+                    <Link
+                      className="progress-row-link"
+                      to={`/tracks/${track.id}`}
+                      aria-label={`Open ${track.name}`}
+                    >
+                      <Icon name="chevron-right" size={16} />
+                    </Link>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+          <p className="panel-note">{demoDisclaimer}</p>
+        </div>
+      </section>
 
       <div className="split-grid">
-        <section className="content-section" aria-labelledby="track-progress-title">
+        <section className="content-section" aria-labelledby="tracked-title">
           <SectionHeader
-            id="track-progress-title"
-            title="Track progress"
-            description="A four-track sample of the progress view."
-            action={<Badge tone="warning">Demo data</Badge>}
+            id="tracked-title"
+            title="What will be tracked"
+            description="Planned capabilities — none of these save anything yet."
+            action={<Tag tone="planned">Planned</Tag>}
           />
-          <div className="panel">
-            <div className="progress-list">
-              {demoProgress.tracks.map((item) => {
-                const track = learningTracks.find((entry) => entry.id === item.trackId)
-
-                return (
-                  <div key={item.trackId} className="progress-row">
-                    <ProgressBar
-                      label={track?.name ?? item.trackId}
-                      value={item.completed}
-                      max={item.total}
-                    />
-                    {track ? (
-                      <Link
-                        className="progress-row-link"
-                        to={`/tracks/${track.id}`}
-                        aria-label={`Open ${track.name}`}
-                      >
-                        <Icon name="chevron-right" size={16} />
-                      </Link>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
-            <p className="panel-note">
-              {pluralize(demoProgress.completedExercises, 'exercise')} completed across the
-              sample. The totals include planned exercises that do not exist yet, which is
-              exactly why this is labelled as demo data.
-            </p>
-          </div>
+          <ul className="tracked-list">
+            {trackedFeatures.map((feature, index) => (
+              <li key={feature.title}>
+                <span className="tracked-index" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="tracked-copy">
+                  <strong>{feature.title}</strong>
+                  <span>{feature.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section className="content-section" aria-labelledby="reality-title">
-          <SectionHeader id="reality-title" title="What is real right now" />
-          <div className="panel">
-            <ul className="reality-list">
-              <li>
-                <span className="reality-icon reality-real" aria-hidden="true">
-                  <Icon name="check" size={14} />
-                </span>
-                <span>
-                  <strong>Real:</strong> tracks, scenarios, guides, filters, navigation,
-                  and theme preferences.
-                </span>
+        <section className="content-section" aria-labelledby="start-title">
+          <SectionHeader
+            id="start-title"
+            title="While you wait"
+            description="Real content you can work through today."
+          />
+          <ol className="start-path-list">
+            {startSteps.map((step, index) => (
+              <li key={step.to}>
+                <Link className="start-step" to={step.to}>
+                  <span className="start-step-number" aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="start-step-copy">
+                    <span className="start-step-kicker">{step.kicker}</span>
+                    <span className="start-step-title">{step.title}</span>
+                    <span className="start-step-detail">{step.detail}</span>
+                  </span>
+                  <Icon name="arrow-right" size={16} />
+                </Link>
               </li>
-              <li>
-                <span className="reality-icon reality-demo" aria-hidden="true">
-                  <Icon name="sparkles" size={14} />
-                </span>
-                <span>
-                  <strong>Demo:</strong> completed counts, streaks, weekly goals, and
-                  recent activity.
-                </span>
-              </li>
-              <li>
-                <span className="reality-icon reality-missing" aria-hidden="true">
-                  <Icon name="lock" size={14} />
-                </span>
-                <span>
-                  <strong>Not built:</strong> saved progress, scoring, exercise execution,
-                  and accounts.
-                </span>
-              </li>
-            </ul>
-            <Link className="card-foot-link" to="/scenarios">
-              Explore the real catalogue
-              <Icon name="arrow-right" size={15} />
-            </Link>
-          </div>
+            ))}
+          </ol>
         </section>
       </div>
-
-      <section className="content-section" aria-labelledby="activity-title">
-        <SectionHeader
-          id="activity-title"
-          title="Recent activity"
-          description="Sample visits used to validate the activity list."
-          action={<Badge tone="warning">Demo data</Badge>}
-        />
-        <ul className="activity-list activity-list-wide">
-          {recent.map(({ activity, scenario }) => (
-            <li key={activity.scenarioId}>
-              <span className="activity-icon" aria-hidden="true">
-                <Icon name="clock" size={16} />
-              </span>
-              <span className="activity-copy">
-                <Link to={`/scenarios/${scenario.id}`}>{scenario.title}</Link>
-                <span>{activity.note}</span>
-              </span>
-              <span className="activity-time">{activity.visitedLabel}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   )
 }

@@ -2,6 +2,11 @@ export type Theme = 'light' | 'dark'
 
 export const THEME_STORAGE_KEY = 'qa-practice-lab-theme'
 
+export const THEME_COLORS: Record<Theme, string> = {
+  light: '#f6f7f8',
+  dark: '#0b1220',
+}
+
 export function readStoredTheme(): Theme | null {
   try {
     const value = window.localStorage.getItem(THEME_STORAGE_KEY)
@@ -22,6 +27,7 @@ export function resolveInitialTheme(): Theme {
 export function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme
   document.documentElement.style.colorScheme = theme
+  document.getElementById('theme-color')?.setAttribute('content', THEME_COLORS[theme])
 }
 
 export function persistTheme(theme: Theme) {

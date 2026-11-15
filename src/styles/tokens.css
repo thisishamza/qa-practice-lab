@@ -1,88 +1,294 @@
-:root {
-  color-scheme: light;
+/*
+ * Design tokens — three layers
+ * 1. Primitives   raw values: palette, type, space, radius, motion
+ * 2. Semantic     role-based aliases: canvas/surface/ink/border/action/…
+ *
+ * Themes: [data-theme="dark"] flips the semantic layer.
+ * Workspaces: [data-surface="workspace"] applies the dark technical palette
+ * inside either theme, without a second theme.
+ */
 
+:root {
+  /* ---------------------------------------------------------------------
+   * 1. Primitives
+   * ------------------------------------------------------------------ */
+
+  /* Neutral slate */
+  --slate-50: #f6f7f8;
+  --slate-100: #eef0f3;
+  --slate-150: #e8eef9;
+  --slate-200: #e3e7ec;
+  --slate-300: #d5dae1;
+  --slate-400: #7c8697;
+  --slate-500: #5c677a;
+  --slate-600: #4c5768;
+  --slate-700: #3a4657;
+  --slate-800: #1d2e47;
+  --slate-900: #0f1b2d;
+  --slate-950: #050b1a;
+
+  /* Blue (links, focus, selection) */
+  --blue-100: #dbeafd;
+  --blue-500: #1d4ed8;
+  --blue-600: #1e40af;
+  --blue-300: #9db8ff;
+  --blue-200: #c3d4ff;
+
+  /* Run green (ready, success) */
+  --green-50: #e7f5ec;
+  --green-700: #15803d;
+  --green-800: #146c34;
+  --green-300: #86efac;
+  --green-400: #4ade80;
+  --green-950: #10291d;
+
+  /* Amber (in design, warning) */
+  --amber-50: #fdf3e3;
+  --amber-700: #92400e;
+  --amber-300: #fcd34d;
+  --amber-400: #fbbf24;
+  --amber-950: #2c210c;
+
+  /* Red (danger) */
+  --red-50: #fef3f2;
+  --red-700: #b42318;
+  --red-300: #fca5a5;
+  --red-400: #f87171;
+  --red-950: #2d1417;
+
+  /* Dark workspace neutrals */
+  --night-950: #060a15;
+  --night-900: #0b1220;
+  --night-850: #0e1626;
+  --night-800: #111a2b;
+  --night-700: #162236;
+  --night-600: #1b2c46;
+  --night-500: #2c3a55;
+  --night-400: #5a6c8c;
+  --night-300: #8593aa;
+  --night-200: #a7b2c6;
+  --night-100: #e6ebf5;
+  --night-50: #f2f5fb;
+
+  /* Families (Fontsource variable names must match exactly) */
   --font-sans:
-    "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+    "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, "Segoe UI",
     sans-serif;
   --font-mono:
-    "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas,
+    "Liberation Mono", monospace;
 
-  --bg: #f6f7fb;
-  --bg-elevated: #fbfcff;
+  /* Type scale — nine roles */
+  --text-display: 2.5rem;
+  --leading-display: 1.1;
+  --text-h1: 2rem;
+  --leading-h1: 1.15;
+  --text-h2: 1.375rem;
+  --leading-h2: 1.25;
+  --text-h3: 1.0625rem;
+  --leading-h3: 1.4;
+  --text-body: 1rem;
+  --leading-body: 1.65;
+  --text-prose: 1rem;
+  --leading-prose: 1.7;
+  --text-meta: 0.875rem;
+  --leading-meta: 1.5;
+  --text-micro: 0.75rem;
+  --leading-micro: 1.2;
+  --text-code: 0.84375rem;
+  --leading-code: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --prose-measure: 66ch;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Radii — 4 / 8 / 12 / 16 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 16px;
+
+  /* Elevation — overlays only, never resting cards */
+  --shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.06);
+  --shadow-md: 0 10px 24px -18px rgba(15, 27, 45, 0.35);
+  --shadow-lg: 0 24px 60px -36px rgba(15, 27, 45, 0.45);
+  --shadow-overlay: 0 24px 60px -32px rgba(15, 27, 45, 0.5);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur: 160ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --transition: var(--dur) var(--ease);
+
+  /* Focus */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* Z-index */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-drawer: 40;
+  --z-overlay: 50;
+  --z-skip-link: 100;
+
+  /* ---------------------------------------------------------------------
+   * 2. Semantic — light theme (learning surfaces)
+   * ------------------------------------------------------------------ */
+
+  color-scheme: light;
+
+  --canvas: var(--slate-50);
   --surface: #ffffff;
-  --surface-2: #f1f3f9;
-  --surface-3: #e8ebf4;
-  --ink: #101828;
-  --ink-strong: #050b1a;
-  --muted: #5b6580;
-  --muted-strong: #414b66;
-  --line: #dde2ee;
-  --line-strong: #c6cede;
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-soft: #eef0ff;
-  --accent-contrast: #ffffff;
-  --cyan: #0e7490;
-  --success: #15803d;
-  --success-soft: #e8f7ee;
-  --warning: #b45309;
-  --warning-soft: #fdf1e3;
-  --danger: #b91c1c;
-  --danger-soft: #fdeaea;
-  --info: #0e7490;
-  --info-soft: #e6f6fb;
-  --code-bg: #0f172a;
-  --code-ink: #e2e8f0;
+  --surface-raised: #ffffff;
+  --surface-sunken: var(--slate-100);
+  --surface-selected: var(--slate-150);
 
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-md: 0 12px 30px -18px rgba(16, 24, 40, 0.3);
-  --shadow-lg: 0 30px 70px -45px rgba(16, 24, 40, 0.45);
+  --ink: var(--slate-900);
+  --ink-strong: var(--slate-950);
+  --ink-muted: var(--slate-600);
+  --ink-subtle: var(--slate-500);
 
-  --radius-xs: 6px;
-  --radius-sm: 9px;
-  --radius-md: 13px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  --border: var(--slate-300);
+  --border-strong: var(--slate-400);
 
-  --topbar-height: 64px;
-  --sidebar-width: 264px;
-  --sidebar-width-collapsed: 76px;
-  --content-max: 1180px;
+  --action: var(--slate-900);
+  --action-hover: var(--slate-800);
+  --action-ink: #ffffff;
+  --link: var(--blue-500);
+  --link-hover: var(--blue-600);
+  --focus: var(--blue-500);
 
-  --transition: 160ms ease;
+  --run: var(--green-700);
+  --run-soft: var(--green-50);
+  --run-ink: var(--green-800);
+  --warn: var(--amber-700);
+  --warn-soft: var(--amber-50);
+  --warn-ink: var(--amber-700);
+  --danger: var(--red-700);
+  --danger-soft: var(--red-50);
+  --danger-ink: var(--red-700);
+
+  --code-bg: var(--night-900);
+  --code-ink: var(--night-100);
+
+  /* Component tokens */
+  --control-h: 2.75rem;
+  --control-h-sm: 2.25rem;
+  --card-pad: var(--space-5);
+  --panel-gap: var(--space-4);
+  --topbar-h: 60px;
+  --topbar-height: var(--topbar-h);
+  --sidebar-w: 240px;
+  --sidebar-width: var(--sidebar-w);
+  --sidebar-width-collapsed: 64px;
+  --content-max: 1120px;
 }
+
+/* -------------------------------------------------------------------------
+ * Dark theme — the same workspace palette, globally.
+ * ---------------------------------------------------------------------- */
 
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #090e1c;
-  --bg-elevated: #0d1426;
-  --surface: #111a2e;
-  --surface-2: #16203a;
-  --surface-3: #1d2947;
-  --ink: #e7ecf8;
+  --canvas: var(--night-900);
+  --surface: var(--night-800);
+  --surface-raised: var(--night-700);
+  --surface-sunken: var(--night-850);
+  --surface-selected: var(--night-600);
+
+  --ink: var(--night-100);
   --ink-strong: #f8faff;
-  --muted: #9aa7c2;
-  --muted-strong: #b7c2da;
-  --line: #233052;
-  --line-strong: #33426b;
-  --accent: #8b93ff;
-  --accent-strong: #aab0ff;
-  --accent-soft: #1a2050;
-  --accent-contrast: #0b1020;
-  --cyan: #67e8f9;
-  --success: #4ade80;
-  --success-soft: #10291d;
-  --warning: #fbbf24;
-  --warning-soft: #2c210c;
-  --danger: #f87171;
-  --danger-soft: #2d1417;
-  --info: #67e8f9;
-  --info-soft: #0c2833;
-  --code-bg: #060a15;
-  --code-ink: #dbe4f5;
+  --ink-muted: var(--night-200);
+  --ink-subtle: var(--night-300);
+
+  --border: var(--night-500);
+  --border-strong: var(--night-400);
+
+  --action: var(--night-100);
+  --action-hover: var(--night-50);
+  --action-ink: var(--night-900);
+  --link: var(--blue-300);
+  --link-hover: var(--blue-200);
+  --focus: var(--blue-300);
+
+  --run: var(--green-400);
+  --run-soft: var(--green-950);
+  --run-ink: var(--green-300);
+  --warn: var(--amber-400);
+  --warn-soft: var(--amber-950);
+  --warn-ink: var(--amber-300);
+  --danger: var(--red-400);
+  --danger-soft: var(--red-950);
+  --danger-ink: var(--red-300);
+
+  --code-bg: var(--night-950);
+  --code-ink: var(--night-100);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 16px 34px -20px rgba(0, 0, 0, 0.7);
   --shadow-lg: 0 34px 80px -48px rgba(0, 0, 0, 0.85);
+  --shadow-overlay: 0 30px 70px -30px rgba(0, 0, 0, 0.8);
+}
+
+/* -------------------------------------------------------------------------
+ * Workspace scope — dark technical panels inside either theme.
+ * Applies to a container; descendants inherit the technical palette.
+ * ---------------------------------------------------------------------- */
+
+[data-surface="workspace"] {
+  color-scheme: dark;
+
+  --canvas: var(--night-900);
+  --surface: var(--night-800);
+  --surface-raised: var(--night-700);
+  --surface-sunken: var(--night-850);
+  --surface-selected: var(--night-600);
+
+  --ink: var(--night-100);
+  --ink-strong: #f8faff;
+  --ink-muted: var(--night-200);
+  --ink-subtle: var(--night-300);
+
+  --border: var(--night-500);
+  --border-strong: var(--night-400);
+
+  --action: var(--night-100);
+  --action-hover: var(--night-50);
+  --action-ink: var(--night-900);
+  --link: var(--blue-300);
+  --link-hover: var(--blue-200);
+  --focus: var(--blue-300);
+
+  --run: var(--green-400);
+  --run-soft: var(--green-950);
+  --run-ink: var(--green-300);
+  --warn: var(--amber-400);
+  --warn-soft: var(--amber-950);
+  --warn-ink: var(--amber-300);
+  --danger: var(--red-400);
+  --danger-soft: var(--red-950);
+  --danger-ink: var(--red-300);
+
+  --code-bg: var(--night-950);
+  --code-ink: var(--night-100);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 16px 34px -20px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 34px 80px -48px rgba(0, 0, 0, 0.85);
+  --shadow-overlay: 0 30px 70px -30px rgba(0, 0, 0, 0.8);
 }

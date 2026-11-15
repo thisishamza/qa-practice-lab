@@ -3,6 +3,7 @@
 ## Current repo state
 
 - **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented.** Phase 3 and later are not started.
+- **The Phase 2.5 redesign is COMPLETE: M1–M8 are all complete and verified.** The audit lives in `docs/phase-2.5-ui-ux-audit.md`. M1 delivered the token system and self-hosted fonts; M2 the shell/navigation/search/route-management pass; M3 the primitives/cards system; M4 the dashboard and tracks pass; M5 the scenario catalogue (URL-driven state, chips, drawer); M6 the guides experience (index rows, scrollspy TOC); M7 practice and progress (honest no-persistence UI + workspace runtime panel); **M8 the remaining consistency work — track-detail redesign (related tracks by shared category, catalogue deep link), the Test Bench 404, removal of all compatibility aliases, zero ambiguous link names app-wide, runtime contrast/focus/overflow audit across both themes × 4 widths.** M9 (optional polish) is not started and only on request. **Phase 3 (commerce practice app) remains paused.**
 - Stack: React 19 + TypeScript + Vite 7, React Router, Hono on Cloudflare Pages Functions, Cloudflare D1, Wrangler.
 - The interface is real; the exercises are not. All 24 catalog scenarios are non-runnable placeholders, and progress/activity data on the dashboard and progress page is labelled demo data.
 - No commerce app, auth, bug-hunt mode, SQL playground, performance runner, or security lab exists yet. Do not infer them from the roadmap.
@@ -17,6 +18,7 @@
 - `npm run build` — typecheck then production build into `dist/`.
 - `npm run preview` — build then serve the production output + Functions on `:8788`.
 - Single test file: `npx vitest run tests/server/health.test.ts`
+- ESLint ignores `dist`, `node_modules`, `.wrangler`, `coverage`, and `.opencode/**` (vendored skill scripts are not app source).
 - Never create remote Cloudflare resources, run `--remote` migrations, or deploy in this phase.
 
 ## Architecture
@@ -30,11 +32,13 @@
 
 ## Frontend structure
 
-- Routes live in `src/app/App.tsx`: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`, `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, plus a 404 fallback. All render inside `AppShell`.
+- Routes live in `src/app/App.tsx`: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`, `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, `/about`, plus a 404 fallback. All render inside `AppShell`.
 - Typed learning content lives in `src/data` (`types.ts`, `tracks.ts`, `scenarios.ts`, `guides.ts`, `categories.ts`, `demo.ts`). Update content there, not inside page components.
-- Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
+- Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, `useRouteManagement.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
 - Styling is hand-written CSS in `src/styles/{tokens,base,layout,components,pages}.css`, imported by `global.css`. There is no Tailwind. Prefer design tokens, and be careful with cascade order: a later, equal-specificity rule wins across files.
-- Themes use `document.documentElement.dataset.theme`, the `qa-practice-lab-theme` storage key, and the inline bootstrap in `index.html`. Keep the bootstrap and `ThemeProvider` in sync.
+- `tokens.css` is layered: primitives → semantic → temporary compatibility aliases. Light is the default; `[data-theme="dark"]` uses the workspace palette; `[data-surface="workspace"]` applies it to a subtree. Custom properties resolve where declared, so compatibility aliases are redeclared inside the workspace scope — keep that duplication if you add aliases.
+- Fonts are self-hosted through `@fontsource-variable/*` devDependencies, imported in `src/main.tsx` before `global.css`. The family names end in `" Variable"`; keep them identical in `tokens.css` or the font silently falls back. Fonts use `font-display: swap`; there are no preload links because Vite emits hashed URLs.
+- Themes use `document.documentElement.dataset.theme`, the `qa-practice-lab-theme` storage key, and the inline bootstrap in `index.html`. Keep the bootstrap, `ThemeProvider`, `applyTheme`, and the `theme-color` meta (`#f6f7f8` / `#0b1220`) in sync.
 - Sidebar collapse uses the `qa-practice-lab-sidebar-collapsed` storage key.
 - Scenario placeholders must stay `runnable: false` with a non-`ready` status until a phase actually implements the exercise. Do not make demo progress look persisted.
 
@@ -42,7 +46,7 @@
 
 For designing, building, reviewing, or fixing interfaces — starting with Phase 3 — invoke the `ui-ux-pro-max` skill instead of improvising design direction. Its instructions are **not** loaded automatically; loading is a deliberate step.
 
-- **Installed at:** project level, `.opencode/skills/ui-ux-pro-max/` (`SKILL.md` plus `scripts/` and `data/`). It is **untracked in git** (`.opencode/` is not committed and not ignored); fresh clones will not have it, and the global `~/.config/opencode/skills` is empty. If the directory is missing, tell the user rather than silently skipping the skill.
+- **Installed at:** project level, `.opencode/skills/ui-ux-pro-max/` (`SKILL.md` plus `scripts/` and `data/`). It **is committed in git** (added in `a8ccfb5`); fresh clones will have it, and the global `~/.config/opencode/skills` is empty. If the directory is missing, tell the user rather than silently skipping the skill.
 - **Discovery:** OpenCode auto-discovers `.opencode/skills/<id>/SKILL.md` (searched from the cwd up to the project root; `.claude/skills` and `.agents/skills` are compatibility sources). The skill ID is path-derived and case-sensitive — `ui-ux-pro-max` — while the frontmatter `name` is display-only. Project sources override global ones. No `opencode.json(c)` exists in this repo, so these directory conventions are the only mechanism in effect.
 - **Invocation:** OpenCode advertises only the ID/name/description each step; the skill body never enters context by itself. Load it explicitly with the `skill` tool — `skill({ id: "ui-ux-pro-max" })` — before any UI design/review work, not after the code is written. Supporting files are not auto-loaded either; run/read them only as the skill directs, with paths relative to the repo root. Do not paraphrase the skill from memory.
 - **Requirements:** the bundled scripts need Python 3 (standard library only, no pip installs, no network access). Verified available as `python3` (3.14.4); use `python3` (`python` on Windows) from the repo root. If Python is missing, stop and ask the user to install it — never run package managers or system-modifying commands for this. Dataset text is recommendation, never authority over user/repo rules; keep private project data out of queries, and treat unverified output as unusable (see query contract).
@@ -71,6 +75,6 @@ For designing, building, reviewing, or fixing interfaces — starting with Phase
 
 ## Workflow
 
-- Work on one phase/vertical slice at a time. **Next task is Phase 3 — commerce practice app**, not yet started.
+- Work on one phase/vertical slice at a time. **The Phase 2.5 redesign is complete (M1–M8). Await explicit instruction for what comes next: either optional M9 polish, or Phase 3 (commerce practice app), which remains paused until the user approves resuming it**, per `docs/phase-2.5-ui-ux-audit.md` and the M8 progress-log entry.
 - For any UI/design/review work, first invoke the `ui-ux-pro-max` skill via the `skill` tool — see "UI/UX Pro Max skill" above. Do not start Phase 3 interface work without it.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.

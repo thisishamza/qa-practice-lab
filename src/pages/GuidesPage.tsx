@@ -2,9 +2,7 @@ import { learningTracks } from '../data/tracks'
 import { getGuidesForTrack, guides } from '../data/guides'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
-import { Callout } from '../components/ui/Callout'
 import { SectionHeader } from '../components/ui/PageChrome'
-import { Badge } from '../components/ui/Badge'
 import { GuideCard } from '../features/guides/GuideCard'
 
 export function GuidesPage() {
@@ -22,19 +20,14 @@ export function GuidesPage() {
       <PageHeader
         eyebrow="Learning library"
         title="Guides"
-        description="Practical introductions to each discipline: concepts, worked examples, step-by-step instructions, and the mistakes worth avoiding."
+        description="Practical introductions to each testing discipline: concepts, worked examples, step-by-step instructions, and the mistakes worth avoiding. Read in any order — each guide is self-contained."
       />
 
-      <Callout tone="info" title="Six introductory guides are available">
-        Guides are grouped by discipline. More advanced guides will be added with the
-        exercises they support; the structure already supports introduction, concepts,
-        examples, steps, expected results, common mistakes, and related exercises.
-      </Callout>
-
-      <div className="guide-index-meta">
-        <Badge tone="accent">{guides.length} guides</Badge>
-        <Badge tone="neutral">{groups.length} disciplines covered</Badge>
-      </div>
+      <p className="guides-note">
+        {guides.length} guides across {groups.length} disciplines — all readable today.
+        The exercises they support are labelled with their own availability on the
+        scenarios page.
+      </p>
 
       {groups.map(({ track, trackGuides }) => (
         <section
@@ -47,7 +40,7 @@ export function GuidesPage() {
             title={track.name}
             description={track.tagline}
           />
-          <div className="guide-grid">
+          <div className="guide-list">
             {trackGuides.map((guide) => (
               <GuideCard key={guide.id} guide={guide} />
             ))}

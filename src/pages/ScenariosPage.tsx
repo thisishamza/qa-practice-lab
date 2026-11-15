@@ -1,47 +1,80 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
+  buildSearchParams,
+  countScenariosByStatus,
   defaultScenarioFilters,
+  defaultScenarioSort,
   filterScenarios,
+  filtersFromSearchParams,
+  sortFromSearchParams,
+  sortScenarios,
   type ScenarioFilters,
+  type ScenarioSort,
 } from '../lib/catalog'
 import { scenarios } from '../data/scenarios'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
-import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
+import { Button } from '../components/ui/Button'
 import { ScenarioFilterBar } from '../features/catalog/ScenarioFilterBar'
 import { ScenarioCard } from '../features/catalog/ScenarioCard'
 
 export function ScenariosPage() {
   useDocumentTitle('Scenario catalog')
 
-  const [filters, setFilters] = useState<ScenarioFilters>(defaultScenarioFilters)
-  const filtered = filterScenarios(scenarios, filters)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // The URL is the single source of truth for catalogue state.
+  const filters = filtersFromSearchParams(searchParams)
+  const sort = sortFromSearchParams(searchParams)
+
+  function applyState(nextFilters: ScenarioFilters, nextSort: ScenarioSort, replace: boolean) {
+    setSearchParams(buildSearchParams(nextFilters, nextSort), { replace })
+  }
+
+  function handleFiltersChange(nextFilters: ScenarioFilters) {
+    // Text input edits replace the current history entry; facet changes are pushed.
+    const typing = nextFilters.query !== filters.query
+    applyState(nextFilters, sort, typing)
+  }
+
+  function handleSortChange(nextSort: ScenarioSort) {
+    applyState(filters, nextSort, false)
+  }
+
+  function handleClearAll() {
+    applyState(defaultScenarioFilters, defaultScenarioSort, true)
+  }
+
+  const filtered = sortScenarios(filterScenarios(scenarios, filters), sort)
+  const availability = countScenariosByStatus(scenarios)
 
   return (
     <div className="stack">
       <PageHeader
         eyebrow="Catalogue"
-        title="Scenario catalog"
-        description="Every planned exercise in one searchable place. Filter by track, difficulty, mode, or availability status."
+        title="Scenario catalogue"
+        description="Every planned exercise in one place — search by skill or track, then narrow by difficulty, category, mode or status."
       />
 
-      <Callout tone="info" title="All scenarios are placeholders">
-        Search and filtering are fully functional. The scenarios themselves are not
-        runnable yet, so every entry carries a planned or in-design status.
-      </Callout>
+      <p className="catalogue-availability">
+        Not runnable yet — {availability['in-design']} in design · {availability.planned}{' '}
+        planned · {availability.ready} ready
+      </p>
 
       <ScenarioFilterBar
         filters={filters}
-        onChange={setFilters}
-        onReset={() => setFilters(defaultScenarioFilters)}
+        sort={sort}
+        onFiltersChange={handleFiltersChange}
+        onSortChange={handleSortChange}
+        onClearAll={handleClearAll}
         resultCount={filtered.length}
         totalCount={scenarios.length}
       />
 
       {filtered.length > 0 ? (
-        <div className="scenario-grid" aria-live="polite">
+        <div className="scenario-grid">
           {filtered.map((scenario) => (
             <ScenarioCard key={scenario.id} scenario={scenario} />
           ))}
@@ -49,17 +82,17 @@ export function ScenariosPage() {
       ) : (
         <EmptyState
           title="No scenarios match those filters"
-          description="Try a broader search, a different track, or reset the filters to see the full catalogue."
+          description={
+            filters.query
+              ? `Nothing matches “${filters.query}” with the current filters. Try a broader term or clear the filters.`
+              : 'The current filters exclude everything. Try removing some of them to see more of the catalogue.'
+          }
           icon="filter"
           action={
-            <button
-              type="button"
-              className="button button-small"
-              onClick={() => setFilters(defaultScenarioFilters)}
-            >
+            <Button size="sm" onClick={handleClearAll}>
               <Icon name="reset" size={15} />
-              Reset filters
-            </button>
+              Clear all
+            </Button>
           }
         />
       )}

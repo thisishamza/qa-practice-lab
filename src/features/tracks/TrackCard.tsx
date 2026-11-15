@@ -1,23 +1,26 @@
 import { Link } from 'react-router-dom'
 import type { LearningTrack } from '../../data/types'
-import { difficultyLabels, pluralize } from '../../lib/labels'
-import { DifficultyBadge } from '../../components/ui/DomainBadges'
+import { pluralize } from '../../lib/labels'
+import { LevelMeter } from '../../components/ui/LevelMeter'
 import { Icon } from '../../components/ui/Icon'
 
 interface TrackCardProps {
   track: LearningTrack
   listedScenarios: number
-  compact?: boolean
 }
 
-export function TrackCard({ track, listedScenarios, compact = false }: TrackCardProps) {
+/**
+ * Compact, scannable track card: single-tone icon, level meter, name, tagline,
+ * one meta line, and exactly one link (the track name).
+ */
+export function TrackCard({ track, listedScenarios }: TrackCardProps) {
   return (
-    <article className={`track-card${compact ? ' track-card-compact' : ''}`}>
+    <article className="track-card">
       <div className="track-card-top">
-        <span className={`track-icon track-icon-${track.id}`} aria-hidden="true">
+        <span className="track-icon" aria-hidden="true">
           <Icon name={track.icon} size={20} />
         </span>
-        <DifficultyBadge difficulty={track.difficulty} />
+        <LevelMeter level={track.difficulty} />
       </div>
 
       <h3>
@@ -25,27 +28,13 @@ export function TrackCard({ track, listedScenarios, compact = false }: TrackCard
       </h3>
       <p className="track-tagline">{track.tagline}</p>
 
-      {compact ? null : <p className="track-description">{track.description}</p>}
-
-      <dl className="track-meta">
-        <div>
-          <dt>Planned</dt>
-          <dd>{pluralize(track.plannedExerciseCount, 'exercise')}</dd>
-        </div>
-        <div>
-          <dt>Listed now</dt>
-          <dd>{pluralize(listedScenarios, 'placeholder')}</dd>
-        </div>
-        <div>
-          <dt>Level</dt>
-          <dd>{difficultyLabels[track.difficulty]}</dd>
-        </div>
-      </dl>
-
-      <Link className="card-foot-link" to={`/tracks/${track.id}`}>
-        Open track
-        <Icon name="arrow-right" size={15} />
-      </Link>
+      <p className="track-meta-line">
+        {pluralize(track.plannedExerciseCount, 'exercise')} planned
+        <span className="meta-sep" aria-hidden="true">
+          ·
+        </span>
+        {pluralize(listedScenarios, 'listed', 'listed')}
+      </p>
     </article>
   )
 }

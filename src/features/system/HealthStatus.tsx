@@ -1,99 +1,137 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { HealthResponse } from '../../shared/health'
+import { Button } from '../../components/ui/Button'
 
 type HealthState =
   | { status: 'loading' }
   | { status: 'ok'; data: HealthResponse }
   | { status: 'error'; message: string }
 
+async function fetchHealth(): Promise<HealthResponse> {
+  const response = await fetch('/api/health', {
+    headers: { Accept: 'application/json' },
+  })
+  const data = (await response.json()) as HealthResponse
+
+  if (!response.ok || data.status !== 'ok') {
+    throw new Error('database check failed')
+  }
+
+  return data
+}
+
 export function HealthStatus() {
   const [state, setState] = useState<HealthState>({ status: 'loading' })
 
-  useEffect(() => {
-    const controller = new AbortController()
+  const load = useCallback(() => {
+    setState({ status: 'loading' })
 
-    async function checkHealth() {
-      try {
-        const response = await fetch('/api/health', {
-          headers: { Accept: 'application/json' },
-          signal: controller.signal,
-        })
-        const data = (await response.json()) as HealthResponse
-
-        if (!response.ok || data.status !== 'ok') {
-          setState({
-            status: 'error',
-            message: 'The API responded, but the database check failed.',
-          })
-          return
-        }
-
-        setState({ status: 'ok', data })
-      } catch {
-        if (controller.signal.aborted) {
-          return
-        }
-
+    fetchHealth()
+      .then((data) => setState({ status: 'ok', data }))
+      .catch(() =>
         setState({
           status: 'error',
-          message: 'Could not reach the API. Is the local API server running?',
-        })
-      }
-    }
-
-    void checkHealth()
-
-    return () => controller.abort()
+          message: 'The practice API could not be reached.',
+        }),
+      )
   }, [])
 
+  // Continuation-based updates keep the effect free of synchronous setState.
+  useEffect(() => {
+    let cancelled = false
+
+    fetchHealth()
+      .then((data) => {
+        if (!cancelled) {
+          setState({ status: 'ok', data })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState({
+            status: 'error',
+            message: 'The practice API could not be reached.',
+          })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const statusLabel =
+    state.status === 'ok'
+      ? 'Operational'
+      : state.status === 'loading'
+        ? 'Checking'
+        : 'Needs attention'
+
   return (
-    <section className="panel health-panel" aria-labelledby="health-title" aria-live="polite">
-      <div className="health-heading">
-        <h2 id="health-title">Live check</h2>
-        <span className={`status-badge status-${state.status}`}>
-          {state.status === 'loading' && 'Checking'}
-          {state.status === 'ok' && 'Operational'}
-          {state.status === 'error' && 'Needs attention'}
+    <section data-surface="workspace" className="workspace-panel" aria-labelledby="runtime-title">
+      <div className="workspace-head">
+        <h2 id="runtime-title" className="workspace-title">
+          Runtime status
+        </h2>
+        <span className={`workspace-status workspace-status-${state.status}`}>
+          <span className="workspace-dot" aria-hidden="true" />
+          {statusLabel}
         </span>
       </div>
 
-      {state.status === 'loading' && <p className="muted">Contacting /api/health…</p>}
+      <div className="workspace-body" aria-live="polite">
+        {state.status === 'loading' ? (
+          <p className="workspace-line">Contacting /api/health…</p>
+        ) : null}
 
-      {state.status === 'ok' && (
-        <>
-          <p className="muted">The Hono API reached D1 and read the migrated schema.</p>
-          <dl className="health-details">
-            <div>
-              <dt>Service version</dt>
-              <dd>{state.data.version}</dd>
+        {state.status === 'ok' ? (
+          <>
+            <p className="workspace-line">
+              The Hono API reached D1 and read the migrated schema.
+            </p>
+            <div className="workspace-facts">
+              <div>
+                <span className="workspace-key">Service version</span>
+                <span className="workspace-value">{state.data.version}</span>
+              </div>
+              <div>
+                <span className="workspace-key">Schema version</span>
+                <span className="workspace-value">{state.data.schemaVersion}</span>
+              </div>
+              <div>
+                <span className="workspace-key">Checked at</span>
+                <span className="workspace-value">
+                  {new Date(state.data.checkedAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </span>
+              </div>
+              <div>
+                <span className="workspace-key">Exercise targets</span>
+                <span className="workspace-value">Not implemented</span>
+              </div>
             </div>
-            <div>
-              <dt>Schema version</dt>
-              <dd>{state.data.schemaVersion}</dd>
-            </div>
-            <div>
-              <dt>Checked at</dt>
-              <dd>
-                {new Date(state.data.checkedAt).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                })}
-              </dd>
-            </div>
-          </dl>
-        </>
-      )}
+          </>
+        ) : null}
 
-      {state.status === 'error' && (
-        <>
-          <p className="muted">{state.message}</p>
-          <p className="hint">
-            Run <code>npm run db:migrate:local</code>, then <code>npm run dev</code>. The API
-            listens on port 8788 and Vite proxies <code>/api</code> to it.
+        {state.status === 'error' ? (
+          <p className="workspace-line">
+            The practice API could not be reached. Learning content still works — only this
+            runtime check fails.
           </p>
-        </>
-      )}
+        ) : null}
+
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={load}
+          loading={state.status === 'loading'}
+        >
+          Check again
+        </Button>
+      </div>
     </section>
   )
 }

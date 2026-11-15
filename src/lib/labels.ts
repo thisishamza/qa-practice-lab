@@ -34,16 +34,3 @@ export function pluralize(count: number, singular: string, plural = `${singular}
   return `${count} ${count === 1 ? singular : plural}`
 }
 
-export function scenarioStatusTone(
-  status: ScenarioStatus,
-): 'neutral' | 'info' | 'success' {
-  if (status === 'ready') {
-    return 'success'
-  }
-
-  if (status === 'in-design') {
-    return 'info'
-  }
-
-  return 'neutral'
-}
