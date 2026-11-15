@@ -248,6 +248,7 @@ phase starts.
 ### 2026-11-15 — OpenCode token-efficiency configuration (tooling only)
 
 - **No application code, content, tests, or Git history changed.** This turn inspected and tuned the OpenCode configuration for this project's workflow before Phase 3 begins.
+- **Documentation preservation:** this optimization was recorded on the `docs/opencode-workflow-optimization` branch and merged into `main` via PR #3 (https://github.com/thisishamza/qa-practice-lab/pull/3). The change reviewed there is this section plus the `AGENTS.md` "Token-efficient workflow" section under `## Workflow`.
 - **Inspection:** the project has no `opencode.json(c)`; the global config at `~/.config/opencode/opencode.json` contained only one local MCP server (`rea`). No model or provider configuration exists in files — the model (Inkling 2 Small Free via OpenRouter) is chosen in the TUI and is untouched. `~/.config/opencode/service.json` (OpenCode's own service registration) was deliberately not read or modified.
 - **Change:** merged into the global config (after a timestamped backup at `~/.config/opencode/opencode.json.bak-20261115T131319Z`):
   - `$schema: https://opencode.ai/config.json` (editor validation only)
