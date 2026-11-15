@@ -183,6 +183,24 @@ export async function resolveAttemptForSubmission(
 }
 
 /**
+ * Resolves the attempt a read should consider: the live in_progress
+ * attempt when one exists, otherwise the latest attempt for
+ * (session, hunt). Unlike submission resolution this never creates a row —
+ * read paths must not mint attempts.
+ */
+export async function resolveAttemptForView(
+  db: D1Database,
+  sessionId: number,
+  huntId: string,
+): Promise<AttemptRow | null> {
+  const live = await latestAttemptRow(db, sessionId, huntId, true)
+  if (live) {
+    return live
+  }
+  return latestAttemptRow(db, sessionId, huntId, false)
+}
+
+/**
  * Result of one deterministic evaluation, as needed by the attempt stamp.
  * Mirrors the fields of ReportEvaluationResult the stamp consumes.
  */

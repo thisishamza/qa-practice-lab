@@ -37,9 +37,12 @@ P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — pl
 and structured bug-report persistence with a scoped 30/minute report rate limit) and
 P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
 a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
-no AI) are implemented, reviewed and committed on the implementation branch; production is unchanged
-and still runs the pre-Phase-4 schema. The rest of Phase 4 (hints, reveal, UI, progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-the bug-report evaluation step is done; the evaluator's UI lands in P4-M2 and everything after WP3 is **not** implemented.
+no AI), and P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
+reveal as server-side API endpoints — unlocked only by a submitted report or an explicit
+confirmed give-up) are implemented, reviewed and committed on the implementation branch;
+production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (evaluation
+UI, hint/reveal UI, progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+the evaluator's UI lands in P4-M2 WP2/WP3 and everything after WP1 is **not** implemented.
 
 ## What you can do now
 
@@ -462,6 +465,27 @@ Phase 4 practice learning (P4-M1 WP2 + WP3; API-only — nothing is rendered in 
   cascade-delete with their practice session (orders precedent): guest progress is exactly as
   durable as the session's 7-day TTL. The `/progress` page still shows labelled sample data.
 
+Phase 4 learning experience (P4-M2 WP1; API-only — nothing is rendered in the UI yet):
+
+- `POST /api/v1/practice/hunts/:huntId/hints` — request one progressive hint, three levels per
+  hunt (Orient → Focus → Narrow). Body: `{ "level": 1|2|3 }` (strict). Level N requires level
+  N−1 already used on the attempt, enforced server-side (`409 hint_level_locked`); re-requesting
+  an unlocked level is idempotent. Hint usage is stored as a bitmask on the attempt row
+  (`hint_mask`), so progress survives refreshes and is isolated per session and per hunt; it
+  never reveals any reveal/solution content and never unlocks the solution. Response:
+  `{ level, hint, hintsUsed }` — no ids, no internal titles.
+- `GET /api/v1/practice/hunts/:huntId/reveal` — the gated solution, but only once the caller's
+  attempt for this hunt is `submitted` (a persisted report exists) or `revealed`; otherwise
+  `403 reveal_locked` (also for cookie-less callers; no attempt is minted by the read). Response:
+  `{ huntId, title, expected, actual, rootCause, reproduction[], verification[], concepts[],
+  commonMisconceptions[], attempt }` — learner-safe prose, never defect ids or code identifiers.
+- `POST /api/v1/practice/hunts/:huntId/reveal` — the explicit, confirmed give-up ("Show the
+  solution"). Requires `{ "confirm": true }` (anything else → `400 invalid_request`) and a live
+  session. An `in_progress` attempt is atomically switched to `revealed` (first `revealed_at`
+  kept); a `submitted` attempt stays `submitted`; prior submissions, best score and sticky
+  discovery are preserved. Give-up **never awards discovery** and is idempotent. Discovery is
+  governed solely by the §6.4 evaluator's finding check.
+
 **The seven hunts (one defect each), wired to scenarios:**
 
 | Scenario | Hunt | Area |
@@ -636,9 +660,11 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   outlives the catalogue).
 - Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
-   anything), and there is no reveal/scoring flow yet (reports are persisted and evaluated by the
-  deterministic §6.4 rubric, but the evaluation UI lands in P4-M2) — intended behaviour during an active
-  hunt is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
+   anything), and there is no reveal/scoring UI yet (reports are persisted and evaluated by the
+  deterministic §6.4 rubric; the server-side hint ladder and the gated solution reveal exist as
+  API endpoints since P4-M2 WP1 — unlocking only after a submitted report or an explicit confirmed
+  give-up — but the evaluation and reveal UI land in P4-M2 WP2/WP3) — intended behaviour during an active
+  hunt is intentionally not documented to the learner until the reveal flow lands. Hunt
   starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
   endpoints carry the rate limits described above; the limiter is a fixed-window approximation
   (counts are exact within a minute, bursts at the window boundary can briefly exceed the

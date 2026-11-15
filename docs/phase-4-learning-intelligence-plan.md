@@ -913,6 +913,72 @@ them is a code change with review, not a data edit.
 Combines (and preserves every requirement, acceptance criterion and security rule of)
 the original **P4-M4**, **P4-M5** and **P4-M6**.
 
+> **2026-11-16 — WP1 implemented (this note records the as-built behaviour; it
+> supersedes the sketch wording below where they differ):**
+>
+> **Registries.** Two new server-only compiled registries: `src/server/hints.ts`
+> (`HINTS`, exactly seven runnable hunts × three levels — Orient → Focus → Narrow;
+> no defect ids, internal titles, implementation identifiers or solution text) and
+> `src/server/reveals.ts` (`REVEALS`, exactly seven runnable hunts;
+> learner-safe `expected`/`actual`/`rootCause`/`reproduction`/`verification`/`concepts`/`commonMisconceptions`;
+> behaviour-level prose only — never code identifiers, file paths or defect ids).
+> Routing lives in `src/server/learning.ts`, mounted under `/v1`; neither registry
+> is imported by any client module (verified: client bundle contains zero hint/reveal
+> strings). **No migration was required** — 0010's `hint_mask` (bits 1/2/4 = levels
+> 1/2/3), `status='revealed'` and `revealed_at` carry WP1 unchanged;
+> `schema_version` stays 10; migration 0010 and production D1 were not touched.
+>
+> **Endpoints (as built).**
+> - `POST /api/v1/practice/hunts/:huntId/hints` — body `{ level: 1|2|3 }` (strict;
+>   anything else → `400 invalid_level`); `401 session_required` without a live
+>   session; `404 hunt_not_found` / `400 invalid_request` for unknown/malformed
+>   hunts; `409 hint_level_locked` when level N is requested before level N−1 on
+>   the attempt (the ladder cannot be skipped by editing the request). Re-requesting
+>   an already-unlocked level is idempotent (200, no double count, served from the
+>   same text). The mask is updated with a single guarded atomic
+>   `hint_mask | bit` statement; usage survives refreshes and session continuation
+>   because it lives on the attempt row. Hint access is attempt-scoped and
+>   session-owned: no attempt ids in requests, no cross-session read path
+>   (customer binding does not widen it either), and a hint request never
+>   reveals any hint text beyond the unlocked level — and never any reveal data.
+>   Viewing all three hints never unlocks the reveal. A session that never
+>   started the hunt mints its attempt implicitly on first hint request
+>   (consistent with the report path); read paths mint nothing.
+> - `GET /api/v1/practice/hunts/:huntId/reveal` — `200` with the reveal payload
+>   (`{ huntId, title, expected, actual, rootCause, reproduction[],
+>   verification[], concepts[], commonMisconceptions[], attempt }`, where `title` is
+>   the learner-safe hunt title and `attempt` is the `AttemptView`) only when the
+>   attempt status is `submitted` or `revealed`; otherwise `403 reveal_locked`
+>   (including for cookie-less callers and attempts that do not exist — no attempt
+>   is minted by this read). Discovery is not consulted.
+> - `POST /api/v1/practice/hunts/:huntId/reveal` — the explicit confirmed give-up.
+>   Requires `{ confirm: true }` (anything else → `400`) and a live session
+>   (`401 session_required`). Atomically sets an `in_progress` attempt to
+>   `revealed` and stamps `revealed_at` once (`COALESCE`); a `submitted` attempt
+>   stays `submitted`; a `revealed` attempt stays `revealed` with its original
+>   `revealed_at`. Submissions, best score and sticky `discovered` are preserved
+>   untouched; give-up **never awards discovery**. Response is the same envelope
+>   as the GET. Idempotent under retries.
+>
+> **Report-triggered reveal.** No report endpoint change was needed: the report
+> batch already transitions `in_progress → submitted` atomically with
+> persistence, and reveal eligibility reads that status — so a successfully
+> persisted report makes the solution eligible on the same attempt. A failed
+> report (validation/rate-limit/batch rollback) never unlocks the reveal.
+> Report submission and reveal retrieval stay separate endpoints; the report
+> response carries no reveal content.
+>
+> **Deviation/limitation notes.** The plan sketched the response `{ level, hint,
+> hintsUsed }` and flat reveal payloads; as built, the reveal envelope additionally
+> nests `attempt: AttemptView` (required by the WP1 brief's "return learner-safe
+> attempt status" rule; additive, keys additive-only). No other deviations.
+> Failed-batch atomicity for the report path remains covered by the prior WP2
+> all-or-nothing batch semantics (exercised in `tests/server/attempts.test.ts`);
+> no fault-injection harness exists in this codebase, so the WP1 suite asserts
+> the 400/401 paths instead. The 21 placeholder scenarios remain unchanged and
+> non-runnable. See PROJECT_STATE.md §11 for the dated entry.
+>
+
 1. **ID/title:** P4-M2 — Complete Bug-Hunt Learning Experience.
 2. **Objective / expected outcome:** learners can independently investigate defects,
    submit meaningful reports, receive deterministic feedback, use hints, and learn from

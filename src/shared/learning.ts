@@ -61,6 +61,56 @@ export interface AttemptHistoryEntry {
   submittedAt: string | null
 }
 
+/** Hint level of the three-step ladder. */
+export type HintLevel = 1 | 2 | 3
+
+/**
+ * Response of POST …/hints. The `hint` text itself is authored server-side
+ * (src/server/hints.ts) and served only for the requested unlocked level;
+ * no other hint or any reveal content is included.
+ */
+export interface HintResponse {
+  level: HintLevel
+  hint: string
+  /** Number of distinct hint levels used on this attempt (0–3). */
+  hintsUsed: number
+}
+
+/**
+ * Learner-safe reveal payload, served only after reveal eligibility
+ * (submitted report or explicit confirmed give-up). Content lives in the
+ * server-only registry (src/server/reveals.ts); these types carry no
+ * content of their own.
+ */
+export interface HuntReveal {
+  huntId: string
+  /** Learner-safe title (the hunt title); carries no internal identifiers. */
+  title: string
+  /** The documented clean-mode behaviour, in plain English. */
+  expected: string
+  /** The observed bug-hunt behaviour, described as behaviour (never code). */
+  actual: string
+  /** Learner-level explanation of which layer is wrong and why. */
+  rootCause: string
+  /** Numbered steps that reproduce the defect deterministically. */
+  reproduction: string[]
+  /** How to confirm the fix in a clean session. */
+  verification: string[]
+  /** QA concepts exercised by the exercise. */
+  concepts: string[]
+  /** One or two common wrong turns learners take. */
+  commonMisconceptions: string[]
+}
+
+/**
+ * Response of GET …/reveal (already eligible) and POST …/reveal (the
+ * explicit confirmed give-up / unlock path). Includes the learner-safe
+ * attempt snapshot; never a numeric attempt id.
+ */
+export interface RevealResponse extends HuntReveal {
+  attempt: AttemptView
+}
+
 export interface AttemptHistoryResponse {
   data: AttemptHistoryEntry[]
 }
