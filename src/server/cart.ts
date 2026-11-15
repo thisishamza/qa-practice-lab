@@ -142,15 +142,15 @@ async function readCart(db: D1Database, cartId: number): Promise<CartResponse> {
          p.price_cents,
          ci.quantity,
          CASE
-           WHEN i.quantity = 0 THEN 'out_of_stock'
-           WHEN i.quantity <= i.low_stock_threshold THEN 'low_stock'
+           WHEN COALESCE(i.quantity, 0) = 0 THEN 'out_of_stock'
+           WHEN COALESCE(i.quantity, 0) <= COALESCE(i.low_stock_threshold, 0) THEN 'low_stock'
            ELSE 'in_stock'
          END AS stock_status,
          p.active AS product_active,
-         i.quantity AS available_stock
+         COALESCE(i.quantity, 0) AS available_stock
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
-       JOIN inventory i ON i.product_id = p.id
+       LEFT JOIN inventory i ON i.product_id = p.id
        WHERE ci.cart_id = ?
        ORDER BY ci.id ASC`,
     )
@@ -201,7 +201,7 @@ function errorJson(
 }
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,79}$/
-const CART_ITEM_ID_PATTERN = /^([1-9]\d*)$/
+const CART_ITEM_ID_PATTERN = /^[1-9]\d{0,15}$/
 
 function parseQuantity(raw: unknown): number | null {
   if (typeof raw !== 'number' || !Number.isInteger(raw)) return null
@@ -349,7 +349,7 @@ cartRoutes.patch('/cart/items/:id', async (c) => {
   if (!idMatch) {
     return errorJson(c, 400, 'invalid_request', 'Cart item id must be a positive integer.')
   }
-  const itemId = Number(idMatch[1])
+  const itemId = Number(idMatch[0])
 
   const body = await c.req.json().catch(() => null)
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
@@ -421,7 +421,7 @@ cartRoutes.delete('/cart/items/:id', async (c) => {
   if (!idMatch) {
     return errorJson(c, 400, 'invalid_request', 'Cart item id must be a positive integer.')
   }
-  const itemId = Number(idMatch[1])
+  const itemId = Number(idMatch[0])
 
   const context = await resolveCartContext(c, { create: false })
   if (context.kind === 'none') {

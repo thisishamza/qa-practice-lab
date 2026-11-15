@@ -30,7 +30,6 @@ export function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>(initialErrors)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<ReactNode>(null)
-  const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const summaryRef = useRef<HTMLDivElement>(null)
 
@@ -193,7 +192,6 @@ export function LoginPage() {
                 <label htmlFor={fieldIds.email}>Email</label>
                 <input
                   id={fieldIds.email}
-                  ref={emailRef}
                   name="email"
                   type="email"
                   autoComplete="username"

@@ -3,12 +3,12 @@
 // cart data client-side — the server is always the source of truth.
 
 import type { CartResponse } from '../../shared/commerce'
-import { MAX_LINE_QUANTITY } from '../../shared/commerce'
 
 export class CartApiError extends Error {
   readonly status: number
   /** Machine-readable code from the server envelope, when present. */
   readonly code: string | null
+  /** Envelope passthrough: stock ceiling the server reported with a 422, when present. */
   readonly maxQuantity: number | null
 
   constructor(message: string, status: number, code: string | null = null, maxQuantity: number | null = null) {
@@ -43,7 +43,6 @@ async function errorFrom(response: Response, fallback: string): Promise<CartApiE
   )
 }
 
-export { MAX_LINE_QUANTITY }
 
 export async function fetchCart(signal?: AbortSignal): Promise<CartResponse> {
   const response = await fetch('/api/v1/cart', {

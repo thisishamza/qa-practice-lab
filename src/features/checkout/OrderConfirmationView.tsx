@@ -3,6 +3,7 @@
 // The confirmation never implies a real payment or shipment took place.
 
 import { Link } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import type { OrderDetail } from '../../shared/commerce'
 import { formatPriceCents } from '../../lib/shop'
 import { Breadcrumbs, type Crumb } from '../../components/ui/PageChrome'
@@ -39,6 +40,22 @@ export function OrderConfirmationView({
   onCancelConfirm,
   onCancelDismiss,
 }: OrderConfirmationViewProps) {
+  // Focus management for the destructive confirm panel: entering the
+  // confirming state moves focus to the panel (it mounts with role=alert);
+  // dismissing it returns focus to the "Cancel this order" button.
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const confirmRef = useRef<HTMLDivElement>(null)
+  const hadConfirmRef = useRef(false)
+
+  useEffect(() => {
+    if (cancelState !== 'idle') {
+      confirmRef.current?.focus()
+      hadConfirmRef.current = true
+    } else if (hadConfirmRef.current) {
+      cancelButtonRef.current?.focus()
+      hadConfirmRef.current = false
+    }
+  }, [cancelState])
   return (
     <div className="stack">
       <Breadcrumbs
@@ -213,6 +230,7 @@ export function OrderConfirmationView({
                         stock. Cancellation is permanent and cannot be undone.
                       </p>
                       <Button
+                        ref={cancelButtonRef}
                         variant="danger"
                         size="sm"
                         onClick={onCancel}
@@ -222,7 +240,7 @@ export function OrderConfirmationView({
                       </Button>
                     </>
                   ) : (
-                    <div className="confirm-cancel-confirm" role="alert">
+                    <div className="confirm-cancel-confirm" role="alert" ref={confirmRef} tabIndex={-1}>
                       <p>
                         <strong>Cancel this order?</strong>
                         <br />

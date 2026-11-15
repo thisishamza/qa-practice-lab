@@ -17,7 +17,8 @@ import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
 
 export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
-  const { loadState, mode, hunt, busy, startHunt, resetSession } = usePracticeSession()
+  const { loadState, mode, hunt, busy, actionError, startHunt, resetSession } =
+    usePracticeSession()
   const [huntState, setHuntState] = useState<
     { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; hunt: HuntSummary } | { status: 'missing' }
   >({ status: 'loading' })
@@ -117,6 +118,12 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
               <Icon name="arrow-right" size={16} />
             </Link>
           </div>
+          {actionError ? (
+            <p className="hunt-panel-error" role="alert">
+              <Icon name="alert" size={16} />
+              {actionError}
+            </p>
+          ) : null}
         </>
       )}
     </div>

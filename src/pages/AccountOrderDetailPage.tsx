@@ -7,7 +7,8 @@ import { OrderConfirmationView } from '../features/checkout/OrderConfirmationVie
 import { useCancelOrder } from '../features/checkout/useCancelOrder'
 import { Breadcrumbs } from '../components/ui/PageChrome'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState, LoadingState } from '../components/ui/States'
+import { EmptyState, LoadingState, ErrorState } from '../components/ui/States'
+import { Button } from '../components/ui/Button'
 import { Icon } from '../components/ui/Icon'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
@@ -57,6 +58,33 @@ export function AccountOrderDetailPage() {
       })
     return () => controller.abort()
   }, [signedIn, wellFormed, reference, attempt, refresh])
+
+  if (loadState.status === 'error') {
+    // The auth check itself failed — say so (with retry) rather than
+    // showing the guest prompt, which would be wrong and unrecoverable.
+    return (
+      <div className="stack">
+        <Breadcrumbs
+          items={[
+            { label: 'Dashboard', to: '/' },
+            { label: 'Account', to: '/account' },
+            { label: 'Order details' },
+          ]}
+        />
+        <PageHeader eyebrow="Meridian Outfitters" title="Order details" />
+        <ErrorState
+          title="Your account could not be loaded"
+          description={`${loadState.message} Check that the practice API is running, then reload this page.`}
+          action={
+            <Button size="sm" onClick={refresh}>
+              <Icon name="reset" size={15} />
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    )
+  }
 
   if (loadState.status === 'loading') {
     return (

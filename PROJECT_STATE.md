@@ -330,6 +330,47 @@ phase starts.
 
 ## 11. Progress log
 
+### 2026-11-15 — Phase 3 PR self-review: findings and fixes
+
+- **Branch before work:** `feat/phase-3-commerce-practice` @ `98bcfdf` (P3-M9), tree clean;
+  `main` untouched. The Phase 3 branch was confirmed in sync with `origin` (a background
+  process outside this session mirrored it — no manual push was performed here).
+- **Review:** two adversarial passes over the complete `main...HEAD` diff (115 files,
+  +20,292). Server pass: 10 findings (1 latent correctness defect, 2 doc/comment-vs-code
+  contradictions, rest informational). Frontend pass: 8 findings (2 Medium, rest Low).
+  Every finding was verified against the code before acceptance; severity re-graded honestly.
+- **Fixed (commit below):** cart context resyncs on failed checkout (unavailable/empty
+  outcomes); hunt-launch panel renders `actionError`; hunt panel clears justStarted/justReset
+  on external mode changes (render-phase adjustment, no setState-in-effect); account order
+  pages render the auth-error state with retry instead of the guest prompt; HealthStatus
+  sequences its retry via a monotonic request id; cancel confirm panel is focusable and takes
+  focus (Button now accepts a `ref`, mirroring IconButton); dead symbols removed
+  (`MAX_LINE_QUANTITY` re-export, unused `emailRef`, unreachable suspended copy — now wired to
+  the context's `suspended` flag); nameless `role="radiogroup"` dropped; cart/checkout/staff
+  inventory reads made `LEFT JOIN` fail-closed (missing inventory rows flag out of stock
+  instead of silently vanishing — checkout 422s, staff view shows 0 units); cart-item id
+  pattern bounded to 16 digits. Regression tests added (LEFT-JOIN fail-closed incl. staff
+  view; bounded id) — **344/344 green**. `npm run build` clean. Browser probe re-verified
+  **25/25** against the production build after the fixes.
+- **Documented, not changed (deliberate):** `inventory_adjustments.product_id` is
+  `ON DELETE CASCADE` (contradicts the "audit outlives its subjects" comment — unreachable in
+  app since products are deactivated, never deleted; fixing needs a table rebuild, deferred);
+  migration 0004's header comment says request_hash binds cart contents (code deliberately
+  excludes cart — comment frozen, contract documented in README/checkout.ts/audit §5);
+  sequential item ids appear in order payloads (the opaque claim applies to `orders.id`);
+  `orders.status` stores only `placed` (by design, derived cancellation); no cap on
+  `inventory.quantity` upper bound (restock-only control, documented); `x-forwarded-for`
+  trusted only as a dev fallback (soft limiter, documented); D1 statement count per checkout
+  is high (~15) — a request-scoped session-resolution optimization is the known follow-up,
+  deliberately not bundled into this review; sweep deletes a signed-in customer's order
+  history when the practice session expires after 7 days (the designed, documented retention
+  policy); account pages still show guest prompt during wishful "loading" windows.
+- **Git:** one follow-up commit on the branch (`fix: address PR self-review findings`);
+  `main` untouched, nothing pushed by this session, no PR created yet (compare URL prepared;
+  the branch has no GitHub credentials in this environment).
+- **Next exact action:** user opens the PR from the prepared compare URL (body in the final
+  report); review thread lands there. Phase 4 remains unstarted.
+
 ### 2026-11-15 — Phase 3 P3-M9: hardening, reset & Phase 3 exit audit
 
 - **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `7996c98` (P3-M8), tree

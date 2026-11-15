@@ -153,10 +153,10 @@ async function readFulfillableLines(
          p.price_cents,
          ci.quantity,
          p.active AS product_active,
-         i.quantity AS available_stock
+         COALESCE(i.quantity, 0) AS available_stock
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
-       JOIN inventory i ON i.product_id = p.id
+       LEFT JOIN inventory i ON i.product_id = p.id
        WHERE ci.cart_id = ?
        ORDER BY ci.id ASC`,
     )
@@ -252,11 +252,11 @@ async function readSummary(
          p.price_cents,
          ci.quantity,
          p.active AS product_active,
-         i.quantity AS available_stock,
-         i.low_stock_threshold AS low_stock_threshold
+         COALESCE(i.quantity, 0) AS available_stock,
+         COALESCE(i.low_stock_threshold, 0) AS low_stock_threshold
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
-       JOIN inventory i ON i.product_id = p.id
+       LEFT JOIN inventory i ON i.product_id = p.id
        WHERE ci.cart_id = ?
        ORDER BY ci.id ASC`,
     )

@@ -19,7 +19,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export function AdminInventoryPage() {
   useDocumentTitle('Inventory (staff)')
-  const { loadState, customer } = useAuth()
+  const { loadState, customer, suspended } = useAuth()
 
   const signedIn = loadState.status === 'ready' && customer !== null
   const isStaff = signedIn && customer.role === 'staff' && customer.status === 'active'
@@ -53,7 +53,21 @@ export function AdminInventoryPage() {
         />
       ) : null}
 
-      {loadState.status === 'ready' && !signedIn ? (
+      {loadState.status === 'ready' && suspended ? (
+        <EmptyState
+          title="This account is suspended"
+          description="The synthetic account you signed in with is suspended — the staff tool stays locked. Suspended demo accounts are an intended practice case; sign out and use another demo account."
+          icon="lock"
+          action={
+            <Link className="button button-small" to="/login">
+              <Icon name="lock" size={15} />
+              Sign in with another demo account
+            </Link>
+          }
+        />
+      ) : null}
+
+      {loadState.status === 'ready' && !signedIn && !suspended ? (
         <EmptyState
           title="Sign in with a staff account"
           description="The inventory tool is restricted to the synthetic staff account. Sign in with the staff fixture from the demo directory — ordinary customer accounts cannot restock."
@@ -70,11 +84,7 @@ export function AdminInventoryPage() {
       {signedIn && !isStaff ? (
         <EmptyState
           title="Staff access required"
-          description={
-            customer.status === 'suspended'
-              ? `${customer.name} is signed in but the synthetic account is suspended — the staff tool stays locked. Suspended demo accounts are an intended practice case.`
-              : `${customer.name} is signed in with a customer account, which cannot view or adjust inventory. Sign out and back in with the staff account to use this tool.`
-          }
+          description={`${customer.name} is signed in with a customer account, which cannot view or adjust inventory. Sign out and back in with the staff account to use this tool.`}
           icon="lock"
           action={
             <Link className="button button-small" to="/account">

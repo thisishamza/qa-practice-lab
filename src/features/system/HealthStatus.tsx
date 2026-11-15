@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { HealthResponse } from '../../shared/health'
 import { Button } from '../../components/ui/Button'
 
@@ -22,43 +22,37 @@ async function fetchHealth(): Promise<HealthResponse> {
 
 export function HealthStatus() {
   const [state, setState] = useState<HealthState>({ status: 'loading' })
+  // Monotonic request id: only the newest response may write state, so
+  // rapid "Check again" clicks and out-of-order responses can't go stale.
+  const requestIdRef = useRef(0)
 
-  const load = useCallback(() => {
-    setState({ status: 'loading' })
-
-    fetchHealth()
-      .then((data) => setState({ status: 'ok', data }))
-      .catch(() =>
-        setState({
-          status: 'error',
-          message: 'The practice API could not be reached.',
-        }),
-      )
-  }, [])
-
-  // Continuation-based updates keep the effect free of synchronous setState.
-  useEffect(() => {
-    let cancelled = false
-
+  const performCheck = useCallback((id: number) => {
     fetchHealth()
       .then((data) => {
-        if (!cancelled) {
+        if (id === requestIdRef.current) {
           setState({ status: 'ok', data })
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (id === requestIdRef.current) {
           setState({
             status: 'error',
             message: 'The practice API could not be reached.',
           })
         }
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [])
+
+  const load = useCallback(() => {
+    const id = ++requestIdRef.current
+    setState({ status: 'loading' })
+    performCheck(id)
+  }, [performCheck])
+
+  useEffect(() => {
+    const id = ++requestIdRef.current
+    performCheck(id)
+  }, [performCheck])
 
   const statusLabel =
     state.status === 'ok'

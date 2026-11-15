@@ -52,6 +52,9 @@ export function CheckoutPage() {
         case 'payment_declined':
           return { ok: false, kind: 'declined' }
         case 'cart_unavailable':
+          // The server refused the order — resync the cart so the learner
+          // sees the authoritative snapshot before adjusting lines.
+          refresh()
           return {
             ok: false,
             kind: 'unavailable',
@@ -66,6 +69,7 @@ export function CheckoutPage() {
             message: error.message,
           }
         case 'empty_cart':
+          refresh()
           return { ok: false, kind: 'empty' }
         default:
           return { ok: false, kind: 'error', message: error.message }

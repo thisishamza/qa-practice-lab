@@ -247,10 +247,11 @@ trip per consume. Buckets older than two hours are swept. Only SHA-256 IP hashes
 ## 9. Tests, build and browser results
 
 - `npm run check` — **passed**: ESLint clean; TypeScript clean in all three projects;
-  **342/342 tests green** (329 at P3-M8 + 13 new hardening tests in
-  `tests/server/hardening.test.ts`).
-- `npm run build` — **passed**: type-checks then bundles; JS **477.54 kB** (gzip 139.01 kB),
-  CSS **76.55 kB** (gzip 14.36 kB) — unchanged from P3-M8; no new runtime dependencies.
+  **344/344 tests green** (329 at P3-M8 + 15 hardening tests in
+  `tests/server/hardening.test.ts`, including the PR self-review regression
+  tests).
+- `npm run build` — **passed**: type-checks then bundles; JS **478.61 kB** (gzip 139.18 kB),
+  CSS **76.55 kB** (gzip 14.36 kB) — no new runtime dependencies.
 - **Migrations** — both paths tested:
   - Fresh database (`createMigratedD1()`): schema_version `9`, `rate_limit_buckets` usable.
   - Upgrade from the existing Phase 3 DB (`through: 8` → then `0009`): schema_version `9`,
@@ -267,6 +268,16 @@ trip per consume. Buckets older than two hours are swept. Only SHA-256 IP hashes
   `Retry-After`; 413 on a real 40 KB body; sweep requires staff); **zero unexpected console
   errors**. Both themes were previously verified across widths; this session re-verified the
   touched surfaces (none visually changed).
+- **PR self-review (2026-11-15):** two adversarial review passes (server-side and
+  frontend) over the full `main...HEAD` diff. Findings triaged and the safe ones fixed on
+  the branch: failed checkouts now resync the cart context, hunt-launch failures render an
+  inline error, stale hunt-panel success flags are cleared on mode change, account pages
+  render the auth-error state with retry, the cancel panel manages focus, HealthStatus
+  sequences its retry, dead symbols removed, the payment radiogroup lost its nameless role,
+  cart/checkout/staff reads are `LEFT JOIN` fail-closed on missing inventory rows (plus a
+  regression test), and cart-item ids are bounded. Report: see the PR review
+  thread/description; remaining items are documented in §10. All gates re-run green and the
+  browser probe re-verified **25/25** after the fixes.
 - **What was not run:** no load test or capacity exercise (rate limits are enforced, not
   stress-tested); no automated accessibility scanner — the a11y review was manual
   (semantics, focus, contrast tokens, reduced motion); no cross-browser matrix beyond Chrome;

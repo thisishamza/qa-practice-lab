@@ -82,6 +82,103 @@ async function seedExpiredSession(migrated: MigratedD1) {
   return null
 }
 
+describe('cart/checkout fail-closed on missing inventory rows (LEFT JOIN)', () => {
+  it('flags the line unavailable and rejects checkout with 422; staff view shows 0 units rather than hiding the product', async () => {
+    const migrated = createMigratedD1()
+    const added = await app.request(
+      '/api/v1/cart/items',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: 'ridgeline-2-person-tent', quantity: 1 }),
+      },
+      { DB: migrated.db },
+    )
+    const cookie = added.headers.get('set-cookie') ?? ''
+    const session = /mpl_session=([a-f0-9]{32})/.exec(cookie)?.[1] ?? ''
+
+    // Simulate the out-of-band precondition: product row exists, inventory row is gone.
+    migrated.sqlite.prepare('DELETE FROM inventory WHERE product_id = 1').run()
+
+    const cart = await app.request(
+      '/api/v1/cart',
+      { headers: { cookie: `mpl_session=${session}` } },
+      { DB: migrated.db },
+    )
+    const cartBody = (await cart.json()) as {
+      hasUnavailableItems: boolean
+      items: Array<{ available: boolean; availableStock: number; stockStatus: string }>
+    }
+    expect(cartBody.hasUnavailableItems).toBe(true)
+    expect(cartBody.items[0]!.available).toBe(false)
+    expect(cartBody.items[0]!.availableStock).toBe(0)
+    expect(cartBody.items[0]!.stockStatus).toBe('out_of_stock')
+
+    const checkout = await app.request(
+      '/api/v1/checkout',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: `mpl_session=${session}` },
+        body: JSON.stringify({
+          customerName: 'Ada Lovelace',
+          customerEmail: 'ada@example.com',
+          shippingLine: '12 Analytical Engine Way',
+          shippingCity: 'London',
+          shippingPostcode: 'N1 9GU',
+          paymentSimulation: 'approved',
+        }),
+      },
+      { DB: migrated.db },
+    )
+    expect(checkout.status).toBe(422)
+    expect(((await checkout.json()) as { error: string }).error).toBe('cart_unavailable')
+    const orders = migrated.sqlite.prepare('SELECT COUNT(*) AS n FROM orders').get() as { n: number }
+    expect(orders.n).toBe(0)
+
+    // Staff inventory view stays complete and honest.
+    const rowan = await signIn(migrated, ROWAN.email, ROWAN.password)
+    const admin = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie: cookies(rowan.session, rowan.customer) } },
+      { DB: migrated.db },
+    )
+    expect(admin.status).toBe(200)
+    const adminBody = (await admin.json()) as { data: Array<{ productId: number; quantity: number; stockStatus: string }> }
+    const product = adminBody.data.find((item) => item.productId === 1)
+    expect(product?.quantity).toBe(0)
+    expect(product?.stockStatus).toBe('out_of_stock')
+  })
+})
+
+describe('cart item id pattern is bounded', () => {
+  it('rejects absurdly long ids with 400 instead of silently mismatching', async () => {
+    const migrated = createMigratedD1()
+    const oversized = '9'.repeat(20)
+    for (const method of ['PATCH', 'DELETE'] as const) {
+      const response = await app.request(
+        `/api/v1/cart/items/${oversized}`,
+        {
+          method,
+          headers: { 'content-type': 'application/json' },
+          body: method === 'PATCH' ? JSON.stringify({ quantity: 1 }) : undefined,
+        },
+        { DB: migrated.db },
+      )
+      expect(response.status).toBe(400)
+      expect(((await response.json()) as { error: string }).error).toBe('invalid_request')
+    }
+
+    // A 17-digit id still fails the bound — never silently mis-matches an order.
+    const over = '1'.repeat(17)
+    const response = await app.request(
+      `/api/v1/cart/items/${over}`,
+      { method: 'DELETE' },
+      { DB: migrated.db },
+    )
+    expect(response.status).toBe(400)
+  })
+})
+
 describe('migration 0009 (rate_limit_buckets)', () => {
   it('applies cleanly on a fresh database (schema_version 9, bucket usable)', async () => {
     const migrated = createMigratedD1()

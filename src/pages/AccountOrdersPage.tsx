@@ -37,7 +37,13 @@ export function AccountOrdersPage() {
 
   const signedIn = loadState.status === 'ready' && customer !== null
   const effectiveStatus: 'loading' | 'ready' | 'error' | 'guest' =
-    loadState.status === 'loading' ? 'loading' : !signedIn ? 'guest' : status
+    loadState.status === 'loading'
+      ? 'loading'
+      : loadState.status === 'error'
+        ? 'error'
+        : !signedIn
+          ? 'guest'
+          : status
 
   useEffect(() => {
     if (!signedIn) {
@@ -104,10 +110,15 @@ export function AccountOrdersPage() {
 
       {effectiveStatus === 'error' ? (
         <ErrorState
-          title="Your order history could not be loaded"
-          description={`${errorMessage ?? 'The practice API could not be reached.'} Check the API is running, then try again.`}
+          title={loadState.status === 'error' ? 'Your account could not be loaded' : 'Your order history could not be loaded'}
+          description={`${
+            errorMessage ??
+            (loadState.status === 'error'
+              ? loadState.message
+              : 'The practice API could not be reached.')
+          } Check the API is running, then try again.`}
           action={
-            <Button size="sm" onClick={() => setAttempt((value) => value + 1)}>
+            <Button size="sm" onClick={() => (loadState.status === 'error' ? refresh() : setAttempt((value) => value + 1))}>
               <Icon name="reset" size={15} />
               Try again
             </Button>

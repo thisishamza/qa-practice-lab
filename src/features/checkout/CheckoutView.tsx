@@ -426,14 +426,7 @@ export function CheckoutView({
                   transaction. There is no card to enter and no money moves.
                 </p>
 
-                <div
-                  className="checkout-payment-options"
-                  role="radiogroup"
-                  aria-invalid={Boolean(fieldError('paymentSimulation')) || undefined}
-                  aria-describedby={
-                    fieldError('paymentSimulation') ? 'checkout-payment-error' : undefined
-                  }
-                >
+                <div className="checkout-payment-options">
                   <label className="checkout-payment-option" htmlFor="checkout-payment-approved">
                     <input
                       id="checkout-payment-approved"

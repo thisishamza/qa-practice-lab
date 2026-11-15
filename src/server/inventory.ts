@@ -73,15 +73,15 @@ function toAdminItem(row: InventoryRow): AdminInventoryItem {
 
 const INVENTORY_SELECT = `SELECT
     p.id, p.slug, p.name, c.name AS category_name, p.price_cents, p.active,
-    i.quantity, i.low_stock_threshold,
+    COALESCE(i.quantity, 0) AS quantity, COALESCE(i.low_stock_threshold, 0) AS low_stock_threshold,
     CASE
-      WHEN i.quantity = 0 THEN 'out_of_stock'
-      WHEN i.quantity <= i.low_stock_threshold THEN 'low_stock'
+      WHEN COALESCE(i.quantity, 0) = 0 THEN 'out_of_stock'
+      WHEN COALESCE(i.quantity, 0) <= COALESCE(i.low_stock_threshold, 0) THEN 'low_stock'
       ELSE 'in_stock'
     END AS stock_status
   FROM products p
   JOIN categories c ON c.id = p.category_id
-  JOIN inventory i ON i.product_id = p.id`
+  LEFT JOIN inventory i ON i.product_id = p.id`
 
 export const inventoryRoutes = new Hono<AppEnv>()
 

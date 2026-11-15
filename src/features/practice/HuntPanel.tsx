@@ -51,6 +51,17 @@ export function HuntPanel() {
 
   const bugHuntActive = mode === 'bug_hunt' && hunt !== null
 
+  // The ModeBanner can change the mode from outside this component. Clear
+  // any local "just started/reset" notice during render when the mode
+  // changed (React-endorsed alternative to a setState-in-effect) so it
+  // can't contradict the context.
+  const [previousMode, setPreviousMode] = useState(mode)
+  if (previousMode !== mode) {
+    setPreviousMode(mode)
+    setJustStarted(false)
+    setJustReset(false)
+  }
+
   return (
     <section className="content-section" aria-labelledby="bug-hunt-title">
       <SectionHeader
