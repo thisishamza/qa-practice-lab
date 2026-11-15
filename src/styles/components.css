@@ -403,6 +403,126 @@
   font-size: var(--text-h3);
 }
 
+.panel h3 {
+  color: var(--ink-strong);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+/* Evaluation transparency ------------------------------------------------- */
+
+.evaluation-subhead {
+  color: var(--ink-strong);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  margin-top: 0.25rem;
+}
+
+.rubric-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.rubric-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.rubric-row:last-child {
+  border-bottom: 0;
+}
+
+.rubric-row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.rubric-row-label {
+  color: var(--ink-strong);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+}
+
+.rubric-row-summary {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}
+
+.rubric-row-points {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-h3);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+}
+
+.rubric-total {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  text-align: right;
+}
+
+.verdict-band-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.verdict-band {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.verdict-band:last-child {
+  border-bottom: 0;
+}
+
+.verdict-band-range {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+}
+
+.verdict-band-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.verdict-band-label {
+  color: var(--ink-strong);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+}
+
+.evaluation-transparency {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .panel-note {
   color: var(--ink-muted);
   font-size: var(--text-meta);
@@ -1004,6 +1124,10 @@
 }
 
 .guide-section {
+  scroll-margin-top: calc(var(--topbar-height) + 1rem);
+}
+
+.content-section[id] {
   scroll-margin-top: calc(var(--topbar-height) + 1rem);
 }
 

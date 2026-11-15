@@ -180,6 +180,26 @@ export function ScenarioDetailPage() {
             </>
           ) : null}
 
+          {scenario.huntId ? (
+            <section className="content-section" aria-labelledby="scenario-evaluation">
+              <SectionHeader
+                id="scenario-evaluation"
+                title="How your report is evaluated"
+                description="The same ten deterministic checks, worth the same points, on every submission."
+              />
+              <p className="body-copy">
+                Every report filed for this exercise is scored out of 100 against a published
+                rubric — completeness, clarity and evidence, with a separate discovery signal for
+                whether the incorrect behaviour was identified. Hints never lower the score and
+                revealing the solution never counts as discovering it.{' '}
+                <Link to="/about#evaluation">
+                  See the full rubric, the verdict bands and what discovery means
+                </Link>
+                .
+              </p>
+            </section>
+          ) : null}
+
           <section className="content-section" aria-labelledby="scenario-prerequisites">
             <SectionHeader id="scenario-prerequisites" title="Prerequisites" />
             <ul className="plain-list">

@@ -21,6 +21,11 @@
 //   own enums only and are never derived from each other.
 
 import type { ReportEvaluation } from '../shared/learning'
+import {
+  EVALUATION_RUBRIC,
+  EVALUATION_TOTAL_POINTS,
+  type RubricCheckId,
+} from '../shared/evaluationRubric'
 
 /** Evaluated input. Validation runs in src/server/reports.ts; enums and
  * length caps are re-checked here so the evaluator stays honest for any
@@ -47,21 +52,18 @@ export interface ReportEvaluationResult extends ReportEvaluation {
 
 export type ReportVerdict = ReportEvaluation['verdict']
 
-/** One rubric check, with its point weight from plan §6.4. */
-export const RUBRIC_CHECKS = [
-  { id: 'title-present', label: 'Title', points: 10 },
-  { id: 'environment-present', label: 'Environment', points: 10 },
-  { id: 'steps-present', label: 'Steps', points: 15 },
-  { id: 'steps-quality', label: 'Step quality', points: 10 },
-  { id: 'expected-present', label: 'Expected', points: 8 },
-  { id: 'actual-present', label: 'Actual', points: 8 },
-  { id: 'expected-actual-distinct', label: 'Expected vs actual', points: 7 },
-  { id: 'severity-valid', label: 'Severity', points: 5 },
-  { id: 'priority-valid', label: 'Priority', points: 5 },
-  { id: 'finding', label: 'Finding', points: 22 },
-] as const
+/**
+ * The full evaluator rubric, re-exported from the canonical learner-safe
+ * module (src/shared/evaluationRubric.ts) so the published transparency
+ * surfaces and the implemented checks can never drift apart. Point weights
+ * are exactly plan §6.4.
+ */
+export const RUBRIC_CHECKS = EVALUATION_RUBRIC
 
-export type RubricCheckId = (typeof RUBRIC_CHECKS)[number]['id']
+export type { RubricCheckId }
+
+/** Total of all check weights; 100 for the approved §6.4 rubric. */
+export const RUBRIC_TOTAL_POINTS = EVALUATION_TOTAL_POINTS
 
 const POINTS: Readonly<Record<RubricCheckId, number>> = Object.fromEntries(
   RUBRIC_CHECKS.map((check) => [check.id, check.points]),

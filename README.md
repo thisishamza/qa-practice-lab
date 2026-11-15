@@ -51,9 +51,7 @@ request; the report path unlocks the reveal in-place after submission) are imple
 reviewed and committed on the implementation branch;
 production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard) is now
-implemented and committed on the branch**; **only P4-M3 WP2 (scoring transparency + recommended
-path) and WP3 (Phase 4 exit audit & release) remain**. See
+P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard) is implemented and committed on the branch (`feat: add phase 4 progress dashboard`), and P4-M3 WP2 (scoring transparency + recommended completion path) is implemented and committed on the branch (`feat: add phase 4 learning transparency`)** — **only P4-M3 WP3 (Phase 4 exit audit & release) remains**. See
 [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md).
 
 ## What you can do now
@@ -68,7 +66,8 @@ path) and WP3 (Phase 4 exit audit & release) remain**. See
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
-| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
+| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
+| `/about` | What works today, what comes next, honest guest/signed-in progress durability, the published report-evaluation rubric (weights, verdict bands, discovery vs report quality) at `/about#evaluation`, synthetic-environment limits |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -211,6 +210,11 @@ src/server/reportQuality.ts  Phase 4 deterministic §6.4 report evaluator (pure;
 src/lib/reportForm.ts      Phase 4 bug-report form logic (validation, submission flow, markdown download)
 src/lib/hintReveal.ts      Phase 4 hint-ladder/give-up/reveal flow logic (pure; injected transports)
 src/lib/attemptStatus.ts   Phase 4 attempt-status chip mapping (pure)
+src/lib/recommendedPath.ts  Phase 4 recommended-path derivation + completion mapping (pure)
+src/shared/evaluationRubric.ts  Phase 4 canonical learner-safe §6.4 rubric (shared by the server evaluator and the UI)
+src/features/progress/useProgress.ts  Phase 4 shared progress fetch state (route-remount refetch, retry)
+src/features/practice/RecommendedPath.tsx  Phase 4 /practice ordered path with live completion state
+src/features/evaluation/EvaluationTransparency.tsx  Phase 4 learner-facing rubric explainer (/about#evaluation)
 src/components/ui/Modal.tsx        Phase 4 WAI-modal dialog primitive (focus trap, Escape, restore)
 src/features/practice/BugReportForm.tsx        Phase 4 structured report form (WP2)
 src/features/practice/ReportEvaluationView.tsx Phase 4 evaluation result view (WP2)

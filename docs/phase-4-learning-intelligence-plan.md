@@ -4,12 +4,13 @@
 > the branch `feat/phase-4-learning-intelligence` (local-only; nothing pushed, merged or
 > deployed). **P4-M1 (WP1–WP3) and P4-M2 (WP1–WP3) are implemented, reviewed, verified and
 > committed. **P4-M3 WP1 — the progress API and the real `/progress` — is implemented, reviewed,
-> verified and committed** (see §7.1 and the as-built contract in P4-M3 WP1 item 8; details in
-> PROJECT_STATE.md §11/§14). **Only P4-M3 WP2 (scoring transparency + recommended path) and WP3
-> (Phase 4 exit audit & release) remain** — WP2 must not start without explicit maintainer
-> instruction. Implement **one milestone per session**; do not start a work package before the
-> previous one is verified and committed. Update `PROJECT_STATE.md` (§1, §9, §11, new §14) in
-> the same turn as any change to this plan.
+> verified and committed. **P4-M3 WP2 — scoring transparency & the recommended completion path —
+> is implemented, reviewed, verified and committed** (see the as-built note in P4-M3 WP2 item 8;
+> details in PROJECT_STATE.md §11/§14). **Only P4-M3 WP3 (Phase 4 exit audit & release)
+> remains** — WP3 must not start without explicit maintainer instruction. Implement **one
+> milestone per session**; do not start a work package before the previous one is verified and
+> committed. Update `PROJECT_STATE.md` (§1, §9, §11, new §14) in the same turn as any change to
+> this plan.
 >
 > **2026-11-16 — milestone consolidation:** Phase 4 contains **exactly three
 > milestones** (P4-M1 → P4-M2 → P4-M3). The original eight milestones
@@ -1342,6 +1343,77 @@ the original **P4-M7** and **P4-M8**.
    migration (reads only). No other endpoints change;
    `GET /api/v1/practice/hunts` unchanged. Error envelopes stay `{ error, message }`;
    `Cache-Control: no-store`; 32 KB body cap applies.
+   > **2026-11-16 — WP2 implemented (this note records the as-built behaviour; it
+   > supersedes the sketch wording below where they differ):**
+   >
+   > **Canonical rubric module.** `src/shared/evaluationRubric.ts` is the single
+   > source of truth for the §6.4 transparency surfaces: `EVALUATION_RUBRIC` (the ten
+   > checks in plan order — ids, labels, points, learner-friendly summaries),
+   > `EVALUATION_TOTAL_POINTS` (100) and `VERDICT_BANDS` (≥80 `solid` · 50–79
+   > `needs-work` · <50 `incomplete`). The server evaluator re-exports it as
+   > `RUBRIC_CHECKS` (unchanged point allocations, check logic and
+   > `verdictForScore`), so the published rubric and the implemented checks cannot
+   > drift apart. The module is learner-safe by construction: no finding terms,
+   > synonyms, defect ids or evaluator internals.
+   >
+   > **Evaluation transparency surface.** `src/features/evaluation/
+   > EvaluationTransparency.tsx` renders the ten checks with actual weights and the
+   > 100-point total, the three verdict bands with thresholds, the no-timer /
+   > no-speed / no-comparison / no-AI statement, and an explicit report-quality vs
+   > discovery section (a high score does not automatically mean the defect was
+   > found; discovery credited only by the finding check over title + steps +
+   > expected + actual; environment lines excluded; server-side curated,
+   > synonym-accepting match; sticky once earned; hints never award discovery or
+   > lower a score; reveal never awards discovery and never counts as completion; a
+   > revealed attempt confers no discovery even when a report is filed after it).
+   > **Canonical location: `/about#evaluation`** (AboutPage `id="evaluation"`,
+   > hash-scroll honoured client-side). Wired scenario pages carry a "How your
+   > report is evaluated" section linking to it — the About section is the only
+   > place the full rubric renders, so nothing is duplicated or independently
+   > maintained.
+   >
+   > **Recommended path.** `/practice`'s old static list was replaced by
+   > `src/features/practice/RecommendedPath.tsx` (presentational view +
+   > `useProgress()` container; `src/features/progress/useProgress.ts` was extracted
+   > from the WP1 `ProgressPage`, which now uses it too — one fetch per mount,
+   > route-remount refetch, manual retry/refresh, abort on unmount, no polling).
+   > `getRecommendedPath()` (`src/lib/recommendedPath.ts`) derives the seven wired
+   > hunts in the approved `recommendedHuntScenarioIds` order with positions 1–7,
+   > difficulty, `skillArea`, `expectedOutcomes[0]` ("You will be able to: …") and
+   > `conceptsPracticed` — all read from the shared curriculum registry, never
+   > re-declared. Each step shows a completion chip (Not started / In progress /
+   > Solution viewed / Completed), a `Discovered` tag only when the sticky discovery
+   > flag is set, and `Best {score}` when scored. **Completion definition
+   > (documented interpretation): a hunt is completed when at least one bug report
+   > has been submitted against it — `lastSubmittedAt !== null` in the WP1
+   > payload.** Sticky, score-independent, never reveal-conferred, never inferred
+   > from hints; a give-up alone (`lastSubmittedAt === null`) never completes; a
+   > re-opened attempt never regresses a completion. Discovery is displayed
+   > separately and is never inferred from any of the above. When progress fails to
+   > load, the path renders unchanged with statuses hidden (never fabricated) plus
+   > an inline `role="alert"` note and a "Try again" retry; while loading a
+   > non-blocking `role="status"` note renders. The 21 placeholders are not listed
+   > and the footer says so explicitly; hunt links and launch behaviour are
+   > unchanged; `/progress` behaviour is unchanged.
+   >
+   > **About page.** New "How long your progress lasts" (guest: anonymous,
+   > session-bound, seven-day TTL, deleted on expiry, never copied elsewhere,
+   > signing in does not transfer guest progress; signed-in: attribution to the
+   > synthetic training customer at submission time, stamped on the attempt, guest
+   > rows never re-attributed, sign-in never merges/migrates, fictional demo
+   > accounts only) and "Learning and evaluation" (the transparency component)
+   > sections; outdated "exercises unimplemented / progress is sample data / health
+   > check is the only live call" claims corrected; synthetic-environment and
+   > no-real-payments statement retained and expanded.
+   >
+   > **Verification.** 720/720 tests (+58); lint/typecheck/build clean; migrations
+   > unchanged (`schema_version` 10, production D1 untouched); client bundle clean.
+   > Browser probe (ephemeral, not committed): 32/32 across `/about`, `/practice`,
+   > `/scenarios/manual-cart-add-quantity`, `/progress` × light/dark ×
+   > 375/768/1024/1440 — zero overflow, one h1, valid heading hierarchy, keyboard
+   > focus-visible ring, zero console errors; `/about#evaluation` hash-scroll
+   > verified. **Committed on the branch as `feat: add phase 4 learning
+   > transparency`; never pushed, merged, PR'd or deployed.**
 9. **Security considerations:**
    - Authorization: progress is owner-scoped by `practice_session` (+ `customer_id`
      stamp) — the same rule as attempts/reports. There is no cross-customer or admin
@@ -1764,6 +1836,7 @@ documentation scope.
 
 All Phase 4 planning decisions are now resolved; there are no open questions blocking
 implementation. P4-M1 and P4-M2 are complete on the branch; **P4-M3 WP1 (progress API +
-real `/progress`) is implemented, verified and committed on the branch** (2026-11-16). The
-next step is **P4-M3 WP2** (scoring transparency & recommended completion path) — see §6
-(P4-M3) and PROJECT_STATE.md — which must not start without explicit maintainer instruction.
+real `/progress`) and P4-M3 WP2 (scoring transparency & recommended completion path) are
+implemented, verified and committed on the branch** (2026-11-16). The next step is
+**P4-M3 WP3** (Phase 4 exit audit & release) — see §6 (P4-M3) and PROJECT_STATE.md — which
+must not start without explicit maintainer instruction.
