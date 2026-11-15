@@ -9,6 +9,7 @@ import { practiceRoutes } from './practice'
 import { attemptRoutes } from './attempts'
 import { reportRoutes } from './reports'
 import { learningRoutes } from './learning'
+import { progressRoutes } from './progress'
 import { maintenanceRoutes } from './maintenance'
 import { clientIp, consumeRateLimit, sha256Hex, MUTATE_LIMIT } from './rateLimit'
 
@@ -132,6 +133,7 @@ app.route('/v1', practiceRoutes)
 app.route('/v1', attemptRoutes)
 app.route('/v1', reportRoutes)
 app.route('/v1', learningRoutes)
+app.route('/v1', progressRoutes)
 app.route('/v1', maintenanceRoutes)
 
 app.notFound((c) =>

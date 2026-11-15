@@ -552,33 +552,6 @@
   background: var(--warn);
 }
 
-.progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.95rem;
-}
-
-.progress-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.progress-row-link {
-  display: grid;
-  flex: 0 0 auto;
-  width: 1.7rem;
-  height: 1.7rem;
-  place-items: center;
-  border-radius: 7px;
-  color: var(--ink-muted);
-}
-
-.progress-row-link:hover {
-  background: var(--surface-sunken);
-  color: var(--ink);
-}
-
 /* Cards ------------------------------------------------------------------ */
 
 .track-grid,

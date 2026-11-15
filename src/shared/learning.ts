@@ -115,6 +115,76 @@ export interface AttemptHistoryResponse {
   data: AttemptHistoryEntry[]
 }
 
+/** Attribution mode of the progress payload (P4-M3 WP1). */
+export type ProgressPersistence = 'session' | 'customer'
+
+/** One wired hunt with the caller's aggregated state across all attempts. */
+export interface ProgressHuntEntry {
+  huntId: string
+  /** The catalogue scenario this hunt is wired to (learner-safe link target). */
+  scenarioId: string
+  title: string
+  /** Latest attempt's lifecycle status; `none` when the hunt was never attempted. */
+  status: AttemptStatusView
+  /** Sticky across non-revealed attempts; a revealed attempt never confers discovery. */
+  discovered: boolean
+  /** Best score across all of this hunt's attempts; null until scored. */
+  bestScore: number | null
+  /** Total hints used across all attempts on this hunt. */
+  hintsUsed: number
+  /** Number of attempts opened on this hunt. */
+  attempts: number
+  /** Latest first-submission time across the hunt's attempts; null when never submitted. */
+  lastSubmittedAt: string | null
+}
+
+/**
+ * One submitted report, newest first. No attempt ids, no report ids, no
+ * evaluator internals — the verdict is the persisted score mapped through
+ * the §6.4 bands (src/server/reportQuality.ts).
+ */
+export interface ProgressRecentSubmission {
+  huntId: string
+  /** Learner-safe hunt title. */
+  title: string
+  /** Persisted deterministic score 0–100. */
+  score: number
+  verdict: ReportEvaluation['verdict']
+  createdAt: string
+}
+
+/** Aggregate counts over the caller's attempts in scope. */
+export interface ProgressTotals {
+  /** Total attempt rows in scope. */
+  attempts: number
+  inProgress: number
+  /** Attempts whose status is `submitted` (status buckets stay pure: attempts = inProgress + submitted + revealed). */
+  submitted: number
+  /** Attempts whose status is `revealed` (solution viewed). */
+  revealed: number
+  /** Submitted bug reports in scope (one row per submission). */
+  reports: number
+  /** Distinct hunts with at least one discovered attempt (≤ 7) from non-revealed attempts. Never score-derived. */
+  discovered: number
+  /** Total hints used across all attempts in scope. */
+  hintsUsed: number
+  /** Best attempt score in scope; null until a report is scored. */
+  bestScore: number | null
+  /** Mean of scored attempt best scores (integer); null until at least one attempt is scored. */
+  averageBestScore: number | null
+}
+
+/** Response of GET /api/v1/practice/progress. */
+export interface ProgressResponse {
+  /** `customer` when the caller is signed in with an active customer binding; else `session`. */
+  persistence: ProgressPersistence
+  /** One entry per wired hunt, in registry order. */
+  hunts: ProgressHuntEntry[]
+  /** Newest first, at most 10 rows. */
+  recent: ProgressRecentSubmission[]
+  totals: ProgressTotals
+}
+
 /** Structured bug-report submission body (POST …/report). */
 export interface BugReportSubmission {
   title: string

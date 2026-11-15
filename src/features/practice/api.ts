@@ -13,6 +13,7 @@ import type {
   BugReportSubmission,
   HintLevel,
   HintResponse,
+  ProgressResponse,
   ReportSubmissionResponse,
   RevealResponse,
 } from '../../shared/learning'
@@ -179,6 +180,24 @@ export async function giveUpAndReveal(huntId: string): Promise<RevealResponse> {
     throw await errorFrom(response, 'The solution could not be revealed.')
   }
   return readJson<RevealResponse>(response)
+}
+
+/**
+ * The caller's aggregated progress across every hunt in scope — the
+ * session's own attempts, plus customer-bound attempts when signed in.
+ * Ownership resolves from the HttpOnly session cookie; no attempt, report
+ * or customer id is ever sent. An empty payload (not an error) is returned
+ * when there is no live practice session.
+ */
+export async function fetchProgress(signal?: AbortSignal): Promise<ProgressResponse> {
+  const response = await fetch('/api/v1/practice/progress', {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'Your progress could not be loaded.')
+  }
+  return readJson<ProgressResponse>(response)
 }
 
 export async function resetPracticeSession(): Promise<PracticeSessionResponse> {

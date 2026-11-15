@@ -28,8 +28,10 @@ exit audit in `docs/phase-3-exit-audit.md`).
 
 The storefront is the first real practice surface, and seven of its behaviours are now
 reproducible defects for controlled bug-hunt practice (see
-[Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. There is
-**no learner account persistence** yet (progress is not saved). No SQL playground, performance
+[Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. Progress is
+tracked server-side only for the practice session (or, when signed in, for the synthetic training
+account) — there is **no permanent learner account persistence**: guest progress expires with the
+practice session and never transfers to an account. No SQL playground, performance
 runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
 hints, structured bug reports with deterministic evaluation, and real progress tracking) is
 underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
@@ -49,8 +51,10 @@ request; the report path unlocks the reveal in-place after submission) are imple
 reviewed and committed on the implementation branch;
 production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-P4-M2 is complete and **only P4-M3 (Progress API, aggregate scoring & Phase 4 release)
-remains not implemented**.
+P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard) is now
+implemented and committed on the branch**; **only P4-M3 WP2 (scoring transparency + recommended
+path) and WP3 (Phase 4 exit audit & release) remain**. See
+[docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md).
 
 ## What you can do now
 
@@ -63,7 +67,7 @@ remains not implemented**.
 | `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel (and the structured report form while the hunt is active) |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
-| `/progress` | No-persistence progress preview, clearly labelled as sample data |
+| `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
 | `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
@@ -76,8 +80,10 @@ remains not implemented**.
 | `/account/orders/:reference` | Order details, readable only by the owning synthetic customer; placed orders can be cancelled here |
 | `/admin/inventory` | Staff-only inventory view and restock tool (staff account only) |
 
-Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
-saved; the progress page shows labelled sample data and says so. The cart and orders are the real
+Theme choice and sidebar collapse are remembered in `localStorage`. Progress is tracked server-side
+under an opaque `mpl_session` cookie (HttpOnly, `SameSite=Strict`, 7-day expiry): the `/progress`
+page shows the caller's real attempts, reports, scores and discoveries — guest progress expires
+with the session and never transfers to an account. The cart and orders are the real
 pieces of server-side practice state: they persist in D1 under an opaque `mpl_session` cookie
 (HttpOnly, `SameSite=Strict`, 7-day expiry) and are never shared between browser sessions.
 Signing in adds a second, independent `mpl_customer` cookie (HttpOnly, `SameSite=Strict`,
@@ -478,10 +484,18 @@ Phase 4 practice learning (P4-M1 WP2 + WP3; rendered by the P4-M2 WP2 UI on the 
 - `GET /api/v1/practice/attempts` — bounded history (newest first, ≤50) across hunts for this
   session, plus customer-bound attempts when signed in. No internal ids. Empty `{ data: [] }`
   without a session.
+- `GET /api/v1/practice/progress` — the learner's progress aggregate: per-wired-hunt entries
+  (status, discovery, best score, hints used, attempts, last submission), the 10 newest
+  submissions (score + verdict from the §6.4 bands), totals (attempts, status buckets,
+  submissions, distinct discovered hunts, hints used, best and average best score over scored
+  attempts) and a `persistence` marker (`session` | `customer`). No attempt/report/customer
+  ids, no evaluator internals, no defect ids. Discovery requires a non-revealed attempt with
+  the persisted finding-check result; a reveal never awards discovery and hints never lower a
+  score. Averages render only over scored attempts.
 - Hunt starts now also ensure exactly one live (`in_progress`) attempt per (session, hunt) —
   idempotent under retries and concurrency (a partial unique index enforces it in D1). Attempts
   cascade-delete with their practice session (orders precedent): guest progress is exactly as
-  durable as the session's 7-day TTL. The `/progress` page still shows labelled sample data.
+  durable as the session's 7-day TTL. The `/progress` page shows this same persisted state.
 
   **P4-M2 WP2 (rendered).** The wired hunt panels (`/practice` and the scenario launch panel)
   carry a **structured report form** while a hunt is active: labelled fields (title, environment,
@@ -685,8 +699,9 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
   server-side (session-scoped) and are evaluated by the deterministic §6.4
   rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI and the
-  hint/reveal UI ships in the P4-M2 WP3 UI; only progress (P4-M3) remains unimplemented);
-  the progress page still shows labelled sample data and says so. Phase 4
+  hint/reveal UI ships in the P4-M2 WP3 UI; P4-M3 WP1 (progress API + real /progress) is
+  implemented on the branch — only P4-M3 WP2/WP3 remain);
+  Phase 4
   (P4-M1 WP1–WP3 and P4-M2 WP1–WP3 implemented and committed on the branch) addresses exactly this — see
   `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and

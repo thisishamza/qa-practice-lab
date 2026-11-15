@@ -403,6 +403,16 @@ const MESSAGES: Readonly<Record<RubricCheckId, { pass: string; fail: string }>> 
 }
 
 /**
+ * Maps a persisted deterministic score onto its verdict band
+ * (≥80 solid · 50–79 needs-work · <50 incomplete). Used both by the
+ * evaluator and by read paths that re-present a persisted score; the
+ * bands live here so the two can never drift.
+ */
+export function verdictForScore(score: number): ReportVerdict {
+  return score >= 80 ? 'solid' : score >= 50 ? 'needs-work' : 'incomplete'
+}
+
+/**
  * Evaluates one structured report against the plan §6.4 rubric.
  * Deterministic: no clock, no randomness, no I/O. Output score is an
  * integer 0–100; verdict bands are ≥80 solid · 50–79 needs-work · <50
@@ -462,7 +472,7 @@ export function evaluateReport(input: EvaluateReportInput): ReportEvaluationResu
     return { id, label, passed, message: passed ? MESSAGES[id].pass : MESSAGES[id].fail }
   })
 
-  const verdict: ReportVerdict = score >= 80 ? 'solid' : score >= 50 ? 'needs-work' : 'incomplete'
+  const verdict: ReportVerdict = verdictForScore(score)
 
   return { score, verdict, discovered: findingOk, checks }
 }

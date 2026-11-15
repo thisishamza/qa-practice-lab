@@ -1,10 +1,15 @@
 # Phase 4 — Learning & Bug-Hunt Intelligence — Plan
 
-> **Purpose:** authoritative design for Phase 4 and its milestone sequence.
-> **Planning only — no Phase 4 implementation has been started.** Implement **one
-> milestone per session**; do not start a milestone before the previous one is
-> verified and committed. Update `PROJECT_STATE.md` (§1, §9, §11, new §14) in the
-> same turn as any change to this plan.
+> **2026-11-16 — implementation status:** Phase 4 implementation is underway and committed on
+> the branch `feat/phase-4-learning-intelligence` (local-only; nothing pushed, merged or
+> deployed). **P4-M1 (WP1–WP3) and P4-M2 (WP1–WP3) are implemented, reviewed, verified and
+> committed. **P4-M3 WP1 — the progress API and the real `/progress` — is implemented, reviewed,
+> verified and committed** (see §7.1 and the as-built contract in P4-M3 WP1 item 8; details in
+> PROJECT_STATE.md §11/§14). **Only P4-M3 WP2 (scoring transparency + recommended path) and WP3
+> (Phase 4 exit audit & release) remain** — WP2 must not start without explicit maintainer
+> instruction. Implement **one milestone per session**; do not start a work package before the
+> previous one is verified and committed. Update `PROJECT_STATE.md` (§1, §9, §11, new §14) in
+> the same turn as any change to this plan.
 >
 > **2026-11-16 — milestone consolidation:** Phase 4 contains **exactly three
 > milestones** (P4-M1 → P4-M2 → P4-M3). The original eight milestones
@@ -1310,10 +1315,33 @@ the original **P4-M7** and **P4-M8**.
    content components; `AboutPage` gains the transparency section; `PracticePage`
    recommended path refined (outcome lines + completion state). WP3 — none.
 7. **Database work:** none (reads only). Optional index already exists (0010).
-8. **API contracts:** `GET /api/v1/practice/progress` →
-   `200 { persistence: 'session'|'customer', hunts: [{ huntId, scenarioId, title, status, bestScore, hintsUsed, lastSubmittedAt }], recent: [{ attemptId, huntId, title, score, verdict, createdAt }], totals: { submitted, discovered, hintsUsed, averageBestScore } }`.
-   No other endpoints change; `GET /api/v1/practice/hunts` unchanged. Error envelopes
-   stay `{ error, message }`; `Cache-Control: no-store`; 32 KB body cap applies.
+8. **API contracts (P4-M3 WP1, as built 2026-11-16):** `GET /api/v1/practice/progress` →
+   `200 { persistence: 'session'|'customer', hunts: [{ huntId, scenarioId, title, status, discovered, bestScore, hintsUsed, attempts, lastSubmittedAt }], recent: [{ huntId, title, score, verdict, createdAt }], totals: { attempts, inProgress, submitted, revealed, reports, discovered, hintsUsed, bestScore, averageBestScore } }`.
+   As built: **no `attemptId` in `recent`** — the plan's sketch listed one, but no
+   internal database id may appear in a learner-facing payload (the attempts-history
+   precedent); `recent` rows identify themselves only by hunt, score, verdict and
+   timestamp. `verdict` is the persisted `quality_score` mapped through the §6.4
+   bands (≥80 solid · 50–79 needs-work · <50 incomplete), never a re-evaluation.
+   `hunts` is one entry per wired registry hunt in registry order (`status` =
+   latest attempt, `discovered` sticky across the hunt's attempts, `bestScore` =
+   max across its attempts, `hintsUsed` summed, `attempts` counted,
+   `lastSubmittedAt` = latest first submission). `totals` counts attempts by status
+   (buckets stay pure: attempts = inProgress + submitted + revealed), `reports` =
+   `bug_reports` rows in scope, `discovered` = DISTINCT hunts discovered, `hintsUsed`
+   = mask popcount sum, `bestScore` = max over scored attempts, `averageBestScore` =
+   integer mean over scored attempts only (null until at least one is scored).
+   **Discovery credit excludes `revealed`-status attempts** — a give-up that comes
+   first keeps the attempt revealed even when a report is filed afterwards, and such
+   an attempt confers no discovery (sticky semantics otherwise unchanged:
+   submit-then-reveal keeps the attempt `submitted` and keeps its credit). A reveal
+   alone never awards discovery and hints never lower a score. Scope is the caller's
+   session rows plus, when signed in, the active customer binding's rows — `OR` on
+   one table, so no row counts twice; there is no cross-customer path. Empty
+   payload (all-`none`, zeroed totals, `recent: []`) when no live practice session
+   exists. Bounded: hunts fixed at the registry size (7), `recent` at 10. No
+   migration (reads only). No other endpoints change;
+   `GET /api/v1/practice/hunts` unchanged. Error envelopes stay `{ error, message }`;
+   `Cache-Control: no-store`; 32 KB body cap applies.
 9. **Security considerations:**
    - Authorization: progress is owner-scoped by `practice_session` (+ `customer_id`
      stamp) — the same rule as attempts/reports. There is no cross-customer or admin
@@ -1414,7 +1442,7 @@ vocabulary). Old M8 depended on all — P4-M3 WP3 depends on all.
 | `POST /api/v1/practice/hunts/:huntId/report` | P4-M1 (WP2 storage → WP3 evaluation) | Write, `report:<iphash>` 30/min + 120/min backstop | As built (WP3): `201 { attempt, report, evaluation }` — score/verdict/checks persisted; `401 session_required` without a live session; no `409` (no conflict condition in the contract). |
 | `GET /api/v1/practice/hunts/:huntId/attempt` | P4-M1 (WP2) | Read | As built: 404-free learner-safe attempt state (`{ status: 'none', … }` shape when none exists); `400`/`404` only for malformed/unknown hunt ids. |
 | `GET /api/v1/practice/attempts` | P4-M1 (WP2) | Read | As built: ≤50 rows, newest first; session-scoped plus customer-bound when signed in. |
-| `GET /api/v1/practice/progress` | P4-M3 (WP1) | Read | Aggregate; session + bound customer rows. |
+| `GET /api/v1/practice/progress` | P4-M3 (WP1) | Read | As built: aggregate; session + bound customer rows; no internal ids; hunts fixed at the registry size (7), recent ≤ 10; discovery excludes revealed attempts; `persistence` marker `session`\|`customer`. |
 | `POST /api/v1/practice/hunts/:huntId/hints` | P4-M2 (WP1) | Write (mask) + backstop | Idempotent per level; 409 on skipping levels. |
 | `GET /api/v1/practice/hunts/:huntId/reveal` | P4-M2 (WP1) | Read (gated) | 403 `reveal_locked` until submitted/revealed. |
 | `POST /api/v1/practice/hunts/:huntId/reveal` | P4-M2 (WP1) | Write | Explicit confirmed give-up; idempotent. |
@@ -1735,4 +1763,7 @@ only. A roadmap change requires explicit maintainer approval and is outside Phas
 documentation scope.
 
 All Phase 4 planning decisions are now resolved; there are no open questions blocking
-implementation. The next step is **P4-M1** (see §13 and PROJECT_STATE.md §14).
+implementation. P4-M1 and P4-M2 are complete on the branch; **P4-M3 WP1 (progress API +
+real `/progress`) is implemented, verified and committed on the branch** (2026-11-16). The
+next step is **P4-M3 WP2** (scoring transparency & recommended completion path) — see §6
+(P4-M3) and PROJECT_STATE.md — which must not start without explicit maintainer instruction.
