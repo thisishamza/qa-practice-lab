@@ -87,19 +87,30 @@ const DESCRIPTION_ONLY_TERM = 'vestibules'
 const NAME_TERM = 'trekking'
 
 describe('hunt and defect registries (code, not data)', () => {
-  it('ships exactly one proof hunt whose defects all exist in the defect registry', () => {
-    expect(HUNTS.length).toBeGreaterThanOrEqual(1)
+  it('ships the full P3-M8 hunt set whose defects all exist in the defect registry', () => {
+    expect(HUNTS.length).toBe(7)
+    expect(new Set(HUNTS.map((hunt) => hunt.id)).size).toBe(HUNTS.length)
     for (const hunt of HUNTS) {
       expect(hunt.id).toMatch(/^[a-z0-9][a-z0-9-]{2,63}$/)
       expect(hunt.defectIds.length).toBeGreaterThan(0)
       for (const defectId of hunt.defectIds) {
         expect(findDefect(defectId), `${hunt.id} references missing ${defectId}`).not.toBeNull()
       }
+      expect(hunt.scenarioId).toBeTruthy()
     }
   })
 
-  it('registers exactly one v1 proof defect', () => {
-    expect(DEFECTS.map((defect) => defect.id)).toEqual(['CATALOGUE-001'])
+  it('registers the full P3-M8 defect catalogue', () => {
+    expect(DEFECTS.map((defect) => defect.id)).toEqual([
+      'CATALOGUE-001',
+      'CATALOGUE-002',
+      'CART-001',
+      'INVENTORY-001',
+      'PRICING-001',
+      'CHECKOUT-001',
+      'AUTHZ-001',
+    ])
+    expect(new Set(DEFECTS.map((defect) => defect.id)).size).toBe(DEFECTS.length)
   })
 
   it('resolves unknown registry ids to null', () => {

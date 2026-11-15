@@ -49,6 +49,7 @@ import {
   type AccountOrderListResponse,
 } from '../shared/commerce'
 import type { AppEnv } from './app'
+import { isDefectActive } from './defects'
 import { ORDER_REFERENCE_PATTERN, orderDetailById } from './checkout'
 import {
   CUSTOMER_COOKIE,
@@ -274,11 +275,20 @@ authRoutes.get('/account/orders/:reference', async (c) => {
   if (guard.kind === 'error') {
     return guard.response
   }
-  const order = await c.env.DB.prepare(
-    'SELECT id FROM orders WHERE reference = ? AND customer_id = ?',
-  )
-    .bind(reference, guard.customer.id)
-    .first<{ id: number }>()
+  // BUG-HUNT DEFECT AUTHZ-001 (hunt-authz-001): in a bug-hunt session
+  // carrying this defect, the customer_id predicate is dropped from the
+  // lookup, so any active customer can read any existing order by its
+  // reference. Clean mode always requires the caller's customer_id.
+  const ownershipDropped = await isDefectActive(c, 'AUTHZ-001')
+  const order = ownershipDropped
+    ? await c.env.DB.prepare('SELECT id FROM orders WHERE reference = ?')
+        .bind(reference)
+        .first<{ id: number }>()
+    : await c.env.DB.prepare(
+        'SELECT id FROM orders WHERE reference = ? AND customer_id = ?',
+      )
+        .bind(reference, guard.customer.id)
+        .first<{ id: number }>()
 
   if (!order) {
     // Unknown reference and not-owned reference alike — conceal existence,

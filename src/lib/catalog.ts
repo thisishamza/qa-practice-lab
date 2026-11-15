@@ -10,6 +10,8 @@ import { difficultyOrder } from './labels'
 
 export type FilterValue<T extends string> = T | 'all'
 
+export type HuntFilter = 'all' | 'available'
+
 export interface ScenarioFilters {
   query: string
   trackId: FilterValue<TrackId>
@@ -17,6 +19,7 @@ export interface ScenarioFilters {
   mode: FilterValue<ScenarioMode>
   status: FilterValue<ScenarioStatus>
   category: FilterValue<CategoryId>
+  hunt: HuntFilter
 }
 
 export type ScenarioSort = 'recommended' | 'title' | 'difficulty' | 'time'
@@ -28,6 +31,7 @@ export const defaultScenarioFilters: ScenarioFilters = {
   mode: 'all',
   status: 'all',
   category: 'all',
+  hunt: 'all',
 }
 
 export const defaultScenarioSort: ScenarioSort = 'recommended'
@@ -66,6 +70,7 @@ const categoryIds: readonly CategoryId[] = [
 const difficulties: readonly Difficulty[] = ['beginner', 'intermediate', 'advanced']
 const modes: readonly ScenarioMode[] = ['clean', 'bug-hunt']
 const statuses: readonly ScenarioStatus[] = ['planned', 'in-design', 'ready']
+const hunts: readonly HuntFilter[] = ['all', 'available']
 const sorts: readonly ScenarioSort[] = ['recommended', 'title', 'difficulty', 'time']
 
 function parseEnum<T extends string>(
@@ -93,6 +98,7 @@ export function filtersFromSearchParams(searchParams: URLSearchParams): Scenario
     mode: parseEnum(searchParams.get('mode'), modes),
     status: parseEnum(searchParams.get('status'), statuses),
     category: parseEnum(searchParams.get('category'), categoryIds),
+    hunt: parseEnum(searchParams.get('hunt'), hunts),
   }
 }
 
@@ -126,6 +132,9 @@ export function buildSearchParams(
   if (filters.category !== 'all') {
     params.set('category', filters.category)
   }
+  if (filters.hunt !== 'all') {
+    params.set('hunt', filters.hunt)
+  }
   if (sort !== defaultScenarioSort) {
     params.set('sort', sort)
   }
@@ -140,7 +149,8 @@ export function hasActiveFilters(filters: ScenarioFilters): boolean {
     filters.difficulty !== 'all' ||
     filters.mode !== 'all' ||
     filters.status !== 'all' ||
-    filters.category !== 'all'
+    filters.category !== 'all' ||
+    filters.hunt !== 'all'
   )
 }
 
@@ -154,7 +164,8 @@ export function countActiveFacetFilters(
     Number(filters.difficulty !== 'all') +
     Number(filters.mode !== 'all') +
     Number(filters.status !== 'all') +
-    Number(filters.category !== 'all')
+    Number(filters.category !== 'all') +
+    Number(filters.hunt !== 'all')
 
   if (sort !== defaultScenarioSort) {
     count += 1
@@ -216,6 +227,10 @@ export function filterScenarios(
     }
 
     if (filters.category !== 'all' && scenario.categoryId !== filters.category) {
+      return false
+    }
+
+    if (filters.hunt === 'available' && !scenario.huntId) {
       return false
     }
 

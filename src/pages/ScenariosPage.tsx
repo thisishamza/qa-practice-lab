@@ -49,6 +49,7 @@ export function ScenariosPage() {
 
   const filtered = sortScenarios(filterScenarios(scenarios, filters), sort)
   const availability = countScenariosByStatus(scenarios)
+  const wiredHunts = scenarios.filter((scenario) => scenario.huntId).length
 
   return (
     <div className="stack">
@@ -59,8 +60,8 @@ export function ScenariosPage() {
       />
 
       <p className="catalogue-availability">
-        Not runnable yet — {availability['in-design']} in design · {availability.planned}{' '}
-        planned · {availability.ready} ready
+        {availability.ready} ready · {availability.planned} planned · {availability['in-design']}{' '}
+        in design — {wiredHunts} live bug-hunt exercises in the practice shop
       </p>
 
       <ScenarioFilterBar

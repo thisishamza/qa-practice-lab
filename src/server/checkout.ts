@@ -67,6 +67,7 @@ import {
   type PaymentSimulation,
 } from '../shared/commerce'
 import type { AppEnv } from './app'
+import { isDefectActive } from './defects'
 import { resolveCustomerContext } from './customer'
 import {
   SESSION_COOKIE,
@@ -185,14 +186,24 @@ async function readFulfillableLines(
 type LineProblem =
   | { slug: string; name: string; reason: 'inactive' | 'insufficient_stock' | 'out_of_stock'; availableStock: number }
 
-function blockingProblems(lines: FulfillableLine[]): LineProblem[] {
+function blockingProblems(
+  lines: FulfillableLine[],
+  options: { rejectExactStock?: boolean } = {},
+): LineProblem[] {
   const problems: LineProblem[] = []
   for (const line of lines) {
     if (!line.productActive) {
       problems.push({ slug: line.slug, name: line.name, reason: 'inactive', availableStock: line.availableStock })
     } else if (line.availableStock === 0) {
       problems.push({ slug: line.slug, name: line.name, reason: 'out_of_stock', availableStock: 0 })
-    } else if (line.quantity > line.availableStock) {
+    } else if (
+      // BUG-HUNT DEFECT INVENTORY-001 (hunt-inventory-001): in a bug-hunt
+      // session carrying this defect, the sufficiency comparison is off by
+      // one at the boundary — an order for exactly the remaining stock is
+      // rejected instead of accepted. Clean mode rejects only quantities
+      // above available stock.
+      options.rejectExactStock ? line.quantity >= line.availableStock : line.quantity > line.availableStock
+    ) {
       problems.push({
         slug: line.slug,
         name: line.name,
@@ -333,7 +344,10 @@ function containsControlCharacter(value: string): boolean {
   return false
 }
 
-function validateDetails(raw: unknown): { details?: CheckoutDetails; fields: Record<string, string> } {
+function validateDetails(
+  raw: unknown,
+  options: { skipNameCheck?: boolean } = {},
+): { details?: CheckoutDetails; fields: Record<string, string> } {
   const fields: Record<string, string> = {}
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return { fields: { body: 'Expected a JSON object with the checkout details.' } }
@@ -341,7 +355,10 @@ function validateDetails(raw: unknown): { details?: CheckoutDetails; fields: Rec
   const body = raw as Record<string, unknown>
 
   const customerName = typeof body.customerName === 'string' ? body.customerName.trim().replace(/\s+/g, ' ') : ''
-  if (!NAME_PATTERN.test(customerName)) {
+  // BUG-HUNT DEFECT CHECKOUT-001 (hunt-checkout-001): in a bug-hunt session
+  // carrying this defect, the name pattern check is skipped so a blank
+  // customer name is accepted. Every other field is still validated.
+  if (!options.skipNameCheck && !NAME_PATTERN.test(customerName)) {
     fields.customerName = 'Enter a name (2–100 letters).'
   }
 
@@ -536,8 +553,12 @@ checkoutRoutes.get('/checkout', async (c) => {
 })
 
 checkoutRoutes.post('/checkout', async (c) => {
+  // Defect activation is resolved per request from the caller's session.
+  const exactStockRejected = await isDefectActive(c, 'INVENTORY-001')
+  const skipNameCheck = await isDefectActive(c, 'CHECKOUT-001')
+  const pricingSnapshotDefect = await isDefectActive(c, 'PRICING-001')
   const body = await c.req.json().catch(() => null)
-  const { details, fields } = validateDetails(body)
+  const { details, fields } = validateDetails(body, { skipNameCheck })
   if (!details) {
     return errorJson(c, 400, 'invalid_request', 'Check the highlighted fields and try again.', {
       fields,
@@ -605,7 +626,7 @@ checkoutRoutes.post('/checkout', async (c) => {
     )
   }
 
-  const problems = blockingProblems(lines)
+  const problems = blockingProblems(lines, { rejectExactStock: exactStockRejected })
   if (problems.length > 0) {
     return errorJson(
       c,
@@ -685,7 +706,11 @@ checkoutRoutes.post('/checkout', async (c) => {
         line.name,
         line.unitPriceCents,
         line.quantity,
-        line.lineTotalCents,
+        // BUG-HUNT DEFECT PRICING-001 (hunt-pricing-001): in a bug-hunt
+        // session carrying this defect the stored snapshot records the unit
+        // price as the line total, ignoring quantity. Clean mode always
+        // stores unit price x quantity.
+        pricingSnapshotDefect ? line.unitPriceCents : line.lineTotalCents,
       ],
     })),
     ...decrementStatements,
@@ -712,7 +737,7 @@ checkoutRoutes.post('/checkout', async (c) => {
       return replayResponse(c, raced, requestHash)
     }
     const rechecked = await readFulfillableLines(c.env.DB, session.cartId)
-    const nowBlocking = blockingProblems(rechecked)
+    const nowBlocking = blockingProblems(rechecked, { rejectExactStock: exactStockRejected })
     if (nowBlocking.length > 0) {
       return errorJson(
         c,

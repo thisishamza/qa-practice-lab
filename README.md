@@ -13,21 +13,19 @@ The redesign makes the interface a precise, consistent "test bench": self-hosted
 JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
-the single commerce practice domain. **P3-M1 (domain foundation), P3-M2 (storefront catalogue
-UI), P3-M3 (session-keyed shopping cart) and P3-M4 (checkout & orders) are implemented on the
-`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema (categories, products, inventory)
-with deterministic synthetic seed data, a `schema_version` of 4, a `/api/v1` catalogue API with
-search, a working `/shop` storefront with URL-driven search, filtering, sorting and pagination,
-a session-based cart with server-calculated totals, and a practice checkout that places a
-simulated order in one atomic database transaction with idempotency protection. Synthetic auth,
-inventory depth, and the clean/bug-hunt modes are planned milestones (see
-`docs/phase-3-commerce-practice-plan.md`) and do not exist yet.
+the single commerce practice domain. **P3-M1 through P3-M8 are implemented on the
+`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema with deterministic synthetic
+seed data (`schema_version` 8), a `/api/v1` catalogue API with search, a working `/shop`
+storefront, a session-based cart with server-calculated totals, a practice checkout that places
+a simulated order in one atomic database transaction with idempotency protection, synthetic
+customer sign-in, staff-only inventory management with exactly-once cancellation, and a
+seven-hunt bug-hunt program wired into the scenario catalogue.
 
-The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
-The storefront is the first real practice surface: the catalogue, cart, checkout and synthetic
-customer sign-in are fully functional, with staff-only inventory management. There is **no
-bug-hunt mode and no learner account persistence** yet. No SQL playground, performance runner, or
-security challenge exists yet.
+The storefront is the first real practice surface, and seven of its behaviours are now
+reproducible defects for controlled bug-hunt practice (see
+[Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. There is
+**no learner account persistence** yet (progress is not saved). No SQL playground, performance
+runner, or security challenge exists yet.
 
 ## What you can do now
 
@@ -36,12 +34,12 @@ security challenge exists yet.
 | `/` | Dashboard: start path, curriculum overview, and catalogue highlights |
 | `/tracks` | Browse the twelve testing disciplines |
 | `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
-| `/scenarios` | Search and filter every scenario by track, difficulty, mode, and status |
-| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability |
+| `/scenarios` | Search and filter every scenario by track, difficulty, mode, status, category, and hunt availability |
+| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | No-persistence progress preview, clearly labelled as sample data |
-| `/practice` | Live health check, bug-hunt mode controls (start/reset the practice hunt), planned practice formats and safety boundaries |
+| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts, local bug-report export), planned practice formats and safety boundaries |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -64,7 +62,7 @@ and a customer session is only honoured while its owning practice session is liv
 Every page carries a slim **mode banner** showing whether the commerce app is in
 **Clean mode** (default, intended behaviour) or **Bug-hunt mode** (a deliberately broken
 state for testing practice). The bug-hunt controls live on `/practice` — see
-[Bug-hunt mode](#bug-hunt-mode-p3-m7).
+[Bug-hunt mode](#bug-hunt-mode-p3-m8).
 
 ## Training-only synthetic sign-in
 
@@ -375,30 +373,54 @@ but the synthetic account is suspended; `404 not_found` = the resource is unknow
 by the caller (existence concealed). `403` is deliberately not used for cross-customer access, so
 the 401/403/404 triple each has one unambiguous meaning.
 
-Bug-hunt mode (P3-M7):
+Bug-hunt mode (P3-M8):
 
+- `GET /api/v1/practice/hunts` — the learner-safe list of the registered hunts:
+  `{ "data": [ { "id", "title", "summary", "scenarioId" } ] }`, in registry order. Read-only;
+  no cookie required; never contains defect ids.
 - `GET /api/v1/practice/session` — the current practice mode: `{ "mode": "clean", "hunt": null }`
-  or `{ "mode": "bug_hunt", "hunt": { "id", "title", "summary" } }`. Read-only; unknown browsers
-  get clean mode and no cookie is minted by reads. Never contains defect ids.
+  or `{ "mode": "bug_hunt", "hunt": { "id", "title", "summary", "scenarioId" } }`. Read-only;
+  unknown browsers get clean mode and no cookie is minted by reads. Never contains defect ids.
 - `POST /api/v1/practice/hunts/:huntId/start` — enter bug-hunt mode for a registered hunt.
-  The hunt id must match the server-side registry (`hunt-catalogue-001` is the only hunt in v1);
-  unknown ids answer `404 hunt_not_found`, malformed ids `400 invalid_request`. The request
-  **takes no body** — there is nothing a client may tune. If the browser has a live session it is
-  re-stamped in place (mode `bug_hunt`, hunt id) and keeps its cart, orders and customer binding;
-  otherwise a fresh bug-hunt session is minted and returned via cookie. Starting the same hunt
-  again is idempotent.
+  The hunt id must match the server-side registry; unknown ids answer `404 hunt_not_found`,
+  malformed ids `400 invalid_request`. The request **takes no body** — there is nothing a client
+  may tune. If the browser has a live session it is re-stamped in place (mode `bug_hunt`, hunt
+  id) and keeps its cart, orders and customer binding; otherwise a fresh bug-hunt session is
+  minted and returned via cookie. Starting the same hunt again is idempotent and does not count
+  against the start cap. Hunt starts are **softly capped per IP per UTC day** (20 starts; only a
+  SHA-256 hash of the IP is stored, one row per address, reset on the day boundary). Beyond the
+  cap the endpoint answers `429 hunt_start_cap_reached` with `Retry-After`; resetting never
+  counts against the cap, and local development without a visible client IP is not capped.
 - `POST /api/v1/practice/session/reset` — return the session to clean mode. Non-destructive: the
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
+
+**The seven hunts (one defect each), wired to scenarios:**
+
+| Scenario | Hunt | Area |
+| --- | --- | --- |
+| `api-catalogue-filters` | `hunt-catalogue-002` | catalogue category filtering |
+| `api-checkout-exact-stock` | `hunt-inventory-001` | inventory boundary at checkout |
+| `manual-address-edge-cases` | `hunt-checkout-001` | checkout validation |
+| `manual-cart-add-quantity` | `hunt-cart-001` | cart quantity accumulation |
+| `manual-cart-totals` | `hunt-pricing-001` | order line-total snapshot |
+| `manual-shop-search` | `hunt-catalogue-001` | catalogue search coverage |
+| `security-object-access` | `hunt-authz-001` | access control on order detail |
+
+Wiring both directions: wired scenario pages carry a **Bug-hunt exercise** launch panel
+(start/reset in place); `/practice` lists the hunts with start/switch/reset and a **local
+bug-report export** (the report is generated in your browser as a markdown download — nothing
+is uploaded, stored or graded); the scenario catalogue cards show a **Bug-hunt exercise** badge,
+the status filter includes `Ready`, and `/scenarios?hunt=available` deep-links the seven wired
+scenarios.
 
 **Bug-hunt mode — learner-facing summary.** Starting a hunt puts *your browser session only*
 into an intentionally broken state (the banner turns amber and names the hunt). One defect is
 active; it is deterministic and reproducible. Nothing about the hunt is stored anywhere but your
 own `practice_sessions` row, other browsers never share it, and `reset` always returns the shop
-to clean behaviour. In v1 the single hunt (`hunt-catalogue-001`) breaks one facet of the shop
-search — work out which. Reset restores correct behaviour. Defect ids, expected/actual details
-and repro steps are deliberately **not** exposed to the learner; they live in
-`docs/bug-hunt-catalogue.md` for maintainers.
+to clean behaviour. Work out what the defect is, gather evidence, file your local report, and
+reset. Defect ids, expected/actual details and repro steps are deliberately **not** exposed to
+the learner; they live in `docs/bug-hunt-catalogue.md` for maintainers.
 
 **Engine guarantees:** Clean mode never reaches a defect branch. Activation is re-resolved
 per request from the caller's own session row — there is no global flag, cache or shared
@@ -453,8 +475,9 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 ## Known constraints
 
-- All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
-  progress; the progress page shows labelled sample data and says so.
+- Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
+  bug-hunt exercises (see above); there is no scoring and no saved progress; the progress page
+  shows labelled sample data and says so.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
   PBKDF2 password digests and the session tokens are fixtures; there is no registration, password
@@ -469,12 +492,14 @@ build limits, D1 daily reads/writes and per-invocation query limits).
   `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
   yet. Cancelling an order whose product was deleted returns nothing to stock (the snapshot
   outlives the catalogue).
-- Bug-hunt mode ships **one** proof hunt (`hunt-catalogue-001`, one deterministic defect in the
-  shop search). It is the engine v1, not the catalogue: the full 5–7 defect set, scenario wiring
-  and hunt discovery arrive in P3-M8. Reset preserves the cart, orders and sign-in (it re-stamps
-  the session; it does not cascade-delete anything), and there is no reveal/scoring flow yet —
-  intended behaviour during an active hunt is intentionally not documented to the learner until
-  the reveal flow lands (Phase 4+). Hunt starts and resets are not rate-limited yet (P3-M9).
+- Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
+  preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
+  anything), and there is no reveal/scoring flow yet — intended behaviour during an active hunt
+  is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
+  starts are softly capped per IP per UTC day (20; only a hash of the IP is stored); all other
+  endpoints are not rate-limited yet (P3-M9). The mint/adopt semantics, migration 0008 and the
+  rejection envelope are documented in `docs/phase-3-commerce-practice-plan.md` and
+  `docs/bug-hunt-catalogue.md`.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

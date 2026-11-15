@@ -36,6 +36,7 @@ import {
   type StockStatus,
 } from '../shared/commerce'
 import type { AppEnv } from './app'
+import { isDefectActive } from './defects'
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -305,14 +306,28 @@ cartRoutes.post('/cart/items', async (c) => {
     )
   }
 
+  // BUG-HUNT DEFECT CART-001 (hunt-cart-001): in a bug-hunt session carrying
+  // this defect, the upsert sets the line quantity to the newly added
+  // quantity instead of accumulating onto the existing line. The stock
+  // guard still applies to the resulting quantity. Clean mode always
+  // accumulates — the documented idempotent add-to-cart semantics.
+  const resetOnAdd = await isDefectActive(c, 'CART-001')
   const write = await c.env.DB.prepare(
-    `INSERT INTO cart_items (cart_id, product_id, quantity)
-     VALUES (?, ?, ?)
-     ON CONFLICT (cart_id, product_id) DO UPDATE
-       SET quantity = cart_items.quantity + excluded.quantity,
-           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-       WHERE cart_items.quantity + excluded.quantity <= (SELECT quantity FROM inventory WHERE product_id = excluded.product_id)
-         AND cart_items.quantity + excluded.quantity <= ?`,
+    resetOnAdd
+      ? `INSERT INTO cart_items (cart_id, product_id, quantity)
+         VALUES (?, ?, ?)
+         ON CONFLICT (cart_id, product_id) DO UPDATE
+           SET quantity = excluded.quantity,
+               updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE excluded.quantity <= (SELECT quantity FROM inventory WHERE product_id = excluded.product_id)
+             AND excluded.quantity <= ?`
+      : `INSERT INTO cart_items (cart_id, product_id, quantity)
+         VALUES (?, ?, ?)
+         ON CONFLICT (cart_id, product_id) DO UPDATE
+           SET quantity = cart_items.quantity + excluded.quantity,
+               updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE cart_items.quantity + excluded.quantity <= (SELECT quantity FROM inventory WHERE product_id = excluded.product_id)
+             AND cart_items.quantity + excluded.quantity <= ?`,
   )
     .bind(context.cartId, product.id, quantity, MAX_LINE_QUANTITY)
     .run()

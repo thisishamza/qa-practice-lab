@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  fetchPracticeHunts,
   fetchPracticeSession,
   resetPracticeSession,
   startHunt,
@@ -93,5 +94,31 @@ describe('resetPracticeSession', () => {
   it('throws PracticeApiError on failure', async () => {
     stubFetch(async () => jsonResponse({ error: 'internal_error', message: 'nope' }, 500))
     await expect(resetPracticeSession()).rejects.toBeInstanceOf(PracticeApiError)
+  })
+})
+
+
+describe('fetchPracticeHunts', () => {
+  it('returns the registered hunt list', async () => {
+    const data = [
+      { id: 'hunt-catalogue-001', title: 't', summary: 's', scenarioId: 'manual-shop-search' },
+    ]
+    stubFetch(async () => jsonResponse({ data }))
+    await expect(fetchPracticeHunts()).resolves.toEqual(data)
+    const url = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string
+    expect(url).toBe('/api/v1/practice/hunts')
+  })
+
+  it('returns an empty list when the envelope is malformed', async () => {
+    stubFetch(async () => jsonResponse({}))
+    await expect(fetchPracticeHunts()).resolves.toEqual([])
+  })
+
+  it('throws PracticeApiError on HTTP errors', async () => {
+    stubFetch(async () => jsonResponse({ error: 'internal_error', message: 'D1 unavailable' }, 500))
+    await expect(fetchPracticeHunts()).rejects.toMatchObject({
+      name: 'PracticeApiError',
+      status: 500,
+    })
   })
 })

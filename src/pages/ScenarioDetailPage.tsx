@@ -13,6 +13,7 @@ import { LevelMeter } from '../components/ui/LevelMeter'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
+import { HuntLaunchPanel } from '../features/practice/HuntLaunchPanel'
 
 export function ScenarioDetailPage() {
   const { scenarioId } = useParams()
@@ -164,16 +165,24 @@ export function ScenarioDetailPage() {
                 { label: 'Estimated time', value: formatMinutes(scenario.estimatedMinutes) },
                 {
                   label: 'Availability',
-                  value: scenario.runnable ? 'Runnable' : 'Not runnable yet',
+                  value: scenario.runnable
+                    ? scenario.huntId
+                      ? 'Runnable — bug-hunt'
+                      : 'Runnable'
+                    : 'Not runnable yet',
                 },
               ]}
             />
           </div>
 
-          <Callout tone="warning" title="This exercise is not runnable yet">
-            The description, objectives, and prerequisites are reviewable now. A launch
-            control, target environment, and scoring will be added in a later phase.
-          </Callout>
+          {scenario.huntId ? (
+            <HuntLaunchPanel scenario={scenario} />
+          ) : (
+            <Callout tone="warning" title="This exercise is not runnable yet">
+              The description, objectives, and prerequisites are reviewable now. A launch
+              control, target environment, and scoring will be added in a later phase.
+            </Callout>
+          )}
 
           {relatedScenarios.length > 0 ? (
             <div className="panel">

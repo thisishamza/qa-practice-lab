@@ -1,33 +1,53 @@
-// Bug-hunt controls for the /practice page (P3-M7, engine v1).
+// Bug-hunt controls for the /practice page (P3-M7, expanded in P3-M8).
 //
-// Learner-facing and honest: it shows the current mode, starts or resets the
-// one available practice hunt, and never reveals what the defect is or where
-// it lives. The hunt registry on the server is the source of truth; the
-// display copy below intentionally mirrors src/server/hunts.ts without
-// including defect ids. P3-M8 will make hunts discoverable from the
-// scenario catalogue instead of a hard-coded entry.
+// Learner-facing and honest: it lists the hunts from the server registry
+// (GET /api/v1/practice/hunts), starts or resets them through the
+// server-controlled activation flow, and never reveals what the defect is
+// or where it lives. Defect ids never reach the browser. A hunt id is the
+// only client-selectable value; the server re-validates everything else.
 
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePracticeSession } from './usePracticeSession'
+import { fetchPracticeHunts } from './api'
+import { BugReportExport } from './BugReportExport'
 import { Button } from '../../components/ui/Button'
 import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
 import { SectionHeader } from '../../components/ui/PageChrome'
+import { scenarios } from '../../data/scenarios'
+import { PracticeApiError } from './api'
+import type { HuntSummary } from '../../shared/practice'
 
-/** Mirrors the single registered hunt in src/server/hunts.ts. No defect ids. */
-const AVAILABLE_HUNT = {
-  id: 'hunt-catalogue-001',
-  title: 'Catalogue search under-matches',
-  summary:
-    'Shoppers swear the search misses products. Find out what the shop search is failing to match and file a report.',
-} as const
+type HuntsState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; hunts: HuntSummary[] }
 
 export function HuntPanel() {
   const { loadState, mode, hunt, busy, actionError, startHunt, resetSession } =
     usePracticeSession()
   const [justStarted, setJustStarted] = useState(false)
   const [justReset, setJustReset] = useState(false)
+  const [huntsState, setHuntsState] = useState<HuntsState>({ status: 'loading' })
+  const [huntsAttempt, setHuntsAttempt] = useState(0)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchPracticeHunts(controller.signal)
+      .then((hunts) => setHuntsState({ status: 'ready', hunts }))
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        setHuntsState({
+          status: 'error',
+          message:
+            error instanceof PracticeApiError
+              ? error.message
+              : 'The available hunts could not be loaded.',
+        })
+      })
+    return () => controller.abort()
+  }, [huntsAttempt])
 
   const bugHuntActive = mode === 'bug_hunt' && hunt !== null
 
@@ -36,11 +56,13 @@ export function HuntPanel() {
       <SectionHeader
         id="bug-hunt-title"
         title="Bug-hunt mode"
-        description="Practice against a deliberately broken shop. Defects are deterministic, scoped to your browser session, and never affect other learners."
+        description="Practise against a deliberately broken shop. Defects are deterministic, scoped to your browser session, and never affect other learners."
         action={
-          <Tag tone="warn" icon="bug">
-            1 hunt available
-          </Tag>
+          huntsState.status === 'ready' ? (
+            <Tag tone="warn" icon="bug">
+              {huntsState.hunts.length} hunt{huntsState.hunts.length === 1 ? '' : 's'} available
+            </Tag>
+          ) : undefined
         }
       />
 
@@ -58,92 +80,130 @@ export function HuntPanel() {
             ) : (
               <Tag tone="ready">Clean mode</Tag>
             )}
-            {bugHuntActive ? (
-              <p className="hunt-panel-hunt">
-                <span className="hunt-panel-hunt-title">{hunt.title}</span>
-                <span className="hunt-panel-hunt-summary">{hunt.summary}</span>
-              </p>
-            ) : (
-              <p className="hunt-panel-hunt">
-                <span className="hunt-panel-hunt-title">{AVAILABLE_HUNT.title}</span>
-                <span className="hunt-panel-hunt-summary">{AVAILABLE_HUNT.summary}</span>
-              </p>
-            )}
           </div>
 
-          {bugHuntActive ? (
-            <>
-              <p className="panel-note">
-                The defect is live for this browser session only — your cart, orders and
-                sign-in are untouched. Resetting returns the shop to clean behaviour; your
-                cart and orders are kept.
+          {huntsState.status === 'loading' ? (
+            <p className="panel-note" role="status">
+              Loading the available hunts…
+            </p>
+          ) : huntsState.status === 'error' ? (
+            <div role="alert" className="hunt-panel-error">
+              <p>
+                <Icon name="alert" size={16} /> The available hunts could not be loaded.{' '}
+                {huntsState.message}
               </p>
-              <div className="button-row">
-                <Button
-                  variant="secondary"
-                  loading={busy === 'reset'}
-                  onClick={() => {
-                    void resetSession().then((ok) => {
-                      if (ok) {
-                        setJustReset(true)
-                        setJustStarted(false)
-                      }
-                    })
-                  }}
-                >
-                  <Icon name="reset" size={16} />
-                  Reset to clean mode
-                </Button>
-                <Link className="button button-ghost" to="/shop">
-                  Open the shop
-                  <Icon name="arrow-right" size={16} />
-                </Link>
-              </div>
-              {justStarted ? (
-                <p className="hunt-panel-success" role="status">
-                  <Icon name="check" size={16} />
-                  Bug-hunt mode is on for this browser. Open the{' '}
-                  <Link to="/shop">shop</Link> and start investigating.
-                </p>
-              ) : null}
-            </>
+              <Button variant="ghost" size="sm" onClick={() => setHuntsAttempt((n) => n + 1)}>
+                <Icon name="reset" size={15} />
+                Try again
+              </Button>
+            </div>
           ) : (
-            <>
-              <p className="panel-note">
-                Start the hunt to put the shop into a known-broken state. Work out what is
-                wrong, collect evidence, then reset. Nothing about the hunt ever leaks into
-                other sessions.
-              </p>
-              <div className="button-row">
-                <Button
-                  loading={busy === 'start'}
-                  onClick={() => {
-                    void startHunt(AVAILABLE_HUNT.id).then((ok) => {
-                      if (ok) {
-                        setJustStarted(true)
-                        setJustReset(false)
-                      }
-                    })
-                  }}
-                >
-                  <Icon name="bug" size={16} />
-                  Start the practice hunt
-                </Button>
-              </div>
-              {justReset ? (
-                <p className="hunt-panel-success" role="status">
-                  <Icon name="check" size={16} />
-                  Clean mode restored. The shop behaves as specified again.
-                </p>
-              ) : null}
-            </>
+            <ul className="hunt-list" aria-label="Available bug-hunt exercises">
+              {huntsState.hunts.map((entry) => {
+                const isActive = bugHuntActive && hunt.id === entry.id
+                const scenario = entry.scenarioId
+                  ? scenarios.find((candidate) => candidate.id === entry.scenarioId)
+                  : undefined
+                return (
+                  <li key={entry.id} className="hunt-row" aria-current={isActive ? 'true' : undefined}>
+                    <div className="hunt-row-body">
+                      <span className="hunt-row-title">
+                        {isActive ? <Tag tone="warn" icon="bug">Active</Tag> : null}
+                        {entry.title}
+                      </span>
+                      <span className="hunt-row-summary">{entry.summary}</span>
+                      {scenario ? (
+                        <Link className="hunt-row-link" to={`/scenarios/${scenario.id}`}>
+                          Scenario: {scenario.title}
+                          <Icon name="chevron-right" size={14} />
+                        </Link>
+                      ) : null}
+                    </div>
+                    <div className="hunt-row-actions">
+                      {isActive ? (
+                        <Button
+                          variant="secondary"
+                          loading={busy === 'reset'}
+                          onClick={() => {
+                            void resetSession().then((ok) => {
+                              if (ok) {
+                                setJustReset(true)
+                                setJustStarted(false)
+                              }
+                            })
+                          }}
+                        >
+                          <Icon name="reset" size={16} />
+                          Reset to clean mode
+                        </Button>
+                      ) : (
+                        <Button
+                          loading={busy === 'start'}
+                          variant={bugHuntActive ? 'secondary' : 'primary'}
+                          onClick={() => {
+                            void startHunt(entry.id).then((ok) => {
+                              if (ok) {
+                                setJustStarted(true)
+                                setJustReset(false)
+                              }
+                            })
+                          }}
+                        >
+                          <Icon name="bug" size={16} />
+                          {bugHuntActive ? 'Switch to this hunt' : 'Start this hunt'}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           )}
+
+          {bugHuntActive ? (
+            <p className="panel-note">
+              The defect is live for this browser session only — your cart, orders and sign-in
+              are untouched. Resetting returns the shop to clean behaviour; your cart and orders
+              are kept.
+            </p>
+          ) : (
+            <p className="panel-note">
+              Start a hunt to put the shop into a known-broken state. Work out what is wrong,
+              collect evidence, then reset. Nothing about the hunt ever leaks into other
+              sessions.
+            </p>
+          )}
+
+          {justStarted ? (
+            <p className="hunt-panel-success" role="status">
+              <Icon name="check" size={16} />
+              Bug-hunt mode is on for this browser. Open the{' '}
+              <Link to="/shop">shop</Link> and start investigating.
+            </p>
+          ) : null}
+          {justReset ? (
+            <p className="hunt-panel-success" role="status">
+              <Icon name="check" size={16} />
+              Clean mode restored. The shop behaves as specified again.
+            </p>
+          ) : null}
 
           {actionError ? (
             <p className="hunt-panel-error" role="alert">
               <Icon name="alert" size={16} />
               {actionError}
             </p>
+          ) : null}
+
+          {bugHuntActive ? (
+            <div className="bug-report-block">
+              <h3>File a report</h3>
+              <p className="panel-note">
+                Found something? Write the report while it is in front of you. It is exported as a
+                local markdown file — the lab does not receive it.
+              </p>
+              <BugReportExport />
+            </div>
           ) : null}
         </div>
       )}

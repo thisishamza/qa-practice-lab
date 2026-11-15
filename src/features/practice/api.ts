@@ -3,7 +3,11 @@
 // here invents session state client-side. The mode is decided by the server
 // from the HttpOnly `mpl_session` cookie — never from browser storage.
 
-import type { PracticeSessionResponse } from '../../shared/practice'
+import type {
+  HuntListResponse,
+  HuntSummary,
+  PracticeSessionResponse,
+} from '../../shared/practice'
 
 export class PracticeApiError extends Error {
   readonly status: number
@@ -34,6 +38,18 @@ async function errorFrom(response: Response, fallback: string): Promise<Practice
     response.status,
     typeof body?.error === 'string' ? body.error : null,
   )
+}
+
+export async function fetchPracticeHunts(signal?: AbortSignal): Promise<HuntSummary[]> {
+  const response = await fetch('/api/v1/practice/hunts', {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  if (!response.ok) {
+    throw await errorFrom(response, 'The available hunts could not be loaded.')
+  }
+  const body = await readJson<HuntListResponse>(response)
+  return Array.isArray(body.data) ? body.data : []
 }
 
 export async function fetchPracticeSession(signal?: AbortSignal): Promise<PracticeSessionResponse> {

@@ -126,8 +126,14 @@ catalogueRoutes.get('/products', async (c) => {
   const conditions = ['p.active = 1']
   const bindings: string[] = []
   if (category) {
-    conditions.push('c.slug = ?')
-    bindings.push(category)
+    // BUG-HUNT DEFECT CATALOGUE-002 (hunt-catalogue-002): in a bug-hunt
+    // session carrying this defect, the category predicate is silently
+    // dropped so the filter changes nothing. Clean mode always narrows
+    // the result set (and the count, which shares the conditions).
+    if (!(await isDefectActive(c, 'CATALOGUE-002'))) {
+      conditions.push('c.slug = ?')
+      bindings.push(category)
+    }
   }
   if (query) {
     const pattern = `%${escapeLike(query)}%`

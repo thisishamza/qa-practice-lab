@@ -1,9 +1,10 @@
-// Practice-session mode engine (P3-M7) — clean vs bug-hunt.
+// Practice-session mode engine (P3-M7, expanded in P3-M8) — clean vs bug-hunt.
 //
 // Endpoints:
-//   GET  /api/v1/practice/session              — current mode + learner-safe hunt summary
-//   POST /api/v1/practice/hunts/:huntId/start  — enter bug-hunt mode for a registered hunt
-//   POST /api/v1/practice/session/reset        — return the session to clean mode
+//   GET  /api/v1/practice/hunts              — learner-safe list of available hunts
+//   GET  /api/v1/practice/session            — current mode + learner-safe hunt summary
+//   POST /api/v1/practice/hunts/:huntId/start — enter bug-hunt mode for a registered hunt
+//   POST /api/v1/practice/session/reset       — return the session to clean mode
 //
 // Security model:
 // - Everything resolves from the `mpl_session` cookie; only a SHA-256 hash
@@ -17,23 +18,34 @@
 // - Starting a hunt re-stamps the caller's own live session in place
 //   (mode='bug_hunt', hunt_id) — the same practice session keeps its cart,
 //   orders and (when signed in) customer binding. Re-starting the same hunt
-//   is idempotent; starting another hunt re-stamps to that hunt.
-//   If the browser has no live session, a fresh bug-hunt session is minted.
+//   is idempotent and does not count against the daily start cap; starting
+//   another hunt re-stamps to that hunt and counts. If the browser has no
+//   live session, a fresh bug-hunt session is minted (counts against the
+//   cap).
 // - Reset is a NON-DESTRUCTIVE re-stamp of the live session to clean mode
 //   (hunt_id=NULL). The plan's "expire + fresh session" sketch was NOT used:
 //   expiring the practice session would cascade-delete the learner's orders
 //   and cart (M4 FKs) and detach their synthetic customer session (M5 FKs),
 //   which is far more destructive than "restores clean mode" promises. Reset
 //   with no live session mints a fresh clean one so the learner always lands
-//   in a known-good state.
+//   in a known-good state. Reset never counts against the start cap.
+// - Hunt starts are capped per IP per UTC day (HUNT_START_DAILY_CAP). Only a
+//   SHA-256 hash of the IP is stored (hunt_start_caps), never the raw
+//   address, and the counter keeps one row per hashed IP, reset on the day
+//   boundary. The cap is a soft abuse control, not a security boundary; when
+//   no IP is visible (local development) it is skipped.
 // - Responses never contain defect ids or hints; a bug_hunt session whose
 //   hunt_id is no longer in the registry reports plain clean mode.
 
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { getCookie, setCookie } from 'hono/cookie'
-import type { PracticeSessionResponse } from '../shared/practice'
+import type {
+  HuntListResponse,
+  HuntSummary,
+  PracticeSessionResponse,
+} from '../shared/practice'
 import type { AppEnv } from './app'
-import { findHunt } from './hunts'
+import { HUNTS, findHunt } from './hunts'
 import {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -44,6 +56,8 @@ import {
 } from './session'
 
 const HUNT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,63}$/
+/** Soft per-IP per UTC day cap on entering a hunt. See the header comment. */
+const HUNT_START_DAILY_CAP = 20
 
 function cookieOptions(secure: boolean) {
   return {
@@ -59,12 +73,14 @@ function isSecureRequest(url: string): boolean {
   return new URL(url).protocol === 'https:'
 }
 
-function huntSummary(huntId: string | null): PracticeSessionResponse['hunt'] {
+function huntSummary(huntId: string | null): HuntSummary | null {
   if (!huntId) {
     return null
   }
   const hunt = findHunt(huntId)
-  return hunt ? { id: hunt.id, title: hunt.title, summary: hunt.summary } : null
+  return hunt
+    ? { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId }
+    : null
 }
 
 function sessionResponse(mode: 'clean' | 'bug_hunt', huntId: string | null): PracticeSessionResponse {
@@ -77,7 +93,61 @@ function sessionResponse(mode: 'clean' | 'bug_hunt', huntId: string | null): Pra
   return { mode: 'clean', hunt: null }
 }
 
+function clientIp(c: Context<AppEnv>): string | null {
+  const direct = c.req.header('cf-connecting-ip')?.trim()
+  if (direct) {
+    return direct
+  }
+  const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
+  return forwarded || null
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Record one hunt start for this IP/day. Returns true when the start is
+ * allowed; false when the daily cap is already reached (the counter is
+ * left untouched). The check-then-increment sequence can overshoot the cap
+ * by a request or two under concurrency — a soft cap by design.
+ */
+async function consumeHuntStart(
+  db: D1Database,
+  day: string,
+  ipHash: string,
+): Promise<boolean> {
+  await db.prepare('DELETE FROM hunt_start_caps WHERE day != ?').bind(day).run()
+  const row = await db.prepare('SELECT starts FROM hunt_start_caps WHERE ip_hash = ?')
+    .bind(ipHash)
+    .first<{ starts: number }>()
+  if ((row?.starts ?? 0) >= HUNT_START_DAILY_CAP) {
+    return false
+  }
+  await db.prepare(
+    `INSERT INTO hunt_start_caps (ip_hash, day, starts) VALUES (?, ?, 1)
+     ON CONFLICT(ip_hash) DO UPDATE SET
+       starts = CASE WHEN hunt_start_caps.day = excluded.day THEN hunt_start_caps.starts + 1 ELSE 1 END,
+       day = excluded.day`,
+  )
+    .bind(ipHash, day)
+    .run()
+  return true
+}
+
 export const practiceRoutes = new Hono<AppEnv>()
+
+practiceRoutes.get('/practice/hunts', async (c) => {
+  // Read-only, learner-safe; no cookie needed and nothing is minted.
+  const data = HUNTS.map((hunt) => ({
+    id: hunt.id,
+    title: hunt.title,
+    summary: hunt.summary,
+    scenarioId: hunt.scenarioId,
+  }))
+  return c.json({ data } satisfies HuntListResponse)
+})
 
 practiceRoutes.get('/practice/session', async (c) => {
   const presented = getCookie(c, SESSION_COOKIE)
@@ -110,27 +180,66 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
   // Any request body is deliberately ignored: there is nothing a client
   // may tune — the hunt's defect list is fixed in the server registry.
   const presented = getCookie(c, SESSION_COOKIE)
+  let live: { id: number; mode: 'clean' | 'bug_hunt'; huntId: string | null } | null = null
   if (presented && isTokenFormat(presented)) {
-    const tokenHash = await hashSessionToken(presented)
-    const live = await findLiveSession(c.env.DB, tokenHash)
-    if (live) {
-      await c.env.DB.prepare(
-        "UPDATE practice_sessions SET mode = 'bug_hunt', hunt_id = ? WHERE id = ?",
-      )
-        .bind(hunt.id, live.id)
-        .run()
-      return c.json({
-        mode: 'bug_hunt',
-        hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary },
-      } satisfies PracticeSessionResponse)
+    const liveSession = await findLiveSession(c.env.DB, await hashSessionToken(presented))
+    if (liveSession) {
+      live = { id: liveSession.id, mode: liveSession.mode, huntId: liveSession.huntId }
     }
+  }
+
+  if (live && live.mode === 'bug_hunt' && live.huntId === hunt.id) {
+    // Idempotent re-start of the hunt already active: re-stamp in place
+    // (cart/orders/customer binding untouched) and do NOT consume the cap.
+    await c.env.DB.prepare(
+      "UPDATE practice_sessions SET mode = 'bug_hunt', hunt_id = ? WHERE id = ?",
+    )
+      .bind(hunt.id, live.id)
+      .run()
+    return c.json({
+      mode: 'bug_hunt',
+      hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
+    } satisfies PracticeSessionResponse)
+  }
+
+  // Entering a hunt (fresh session or a switch from clean/another hunt)
+  // counts against the soft per-IP daily cap. When no IP is visible (local
+  // dev), the cap is skipped.
+  const ip = clientIp(c)
+  if (ip) {
+    const day = new Date().toISOString().slice(0, 10)
+    const allowed = await consumeHuntStart(c.env.DB, day, await sha256Hex(ip))
+    if (!allowed) {
+      const retryAfter = 86400 - (Math.floor(Date.now() / 1000) % 86400)
+      c.header('Retry-After', String(retryAfter))
+      return c.json(
+        {
+          error: 'hunt_start_cap_reached',
+          message:
+            'The daily limit for starting practice hunts on this network has been reached. Try again tomorrow, or reset your session to clean mode instead.',
+        },
+        429,
+      )
+    }
+  }
+
+  if (live) {
+    await c.env.DB.prepare(
+      "UPDATE practice_sessions SET mode = 'bug_hunt', hunt_id = ? WHERE id = ?",
+    )
+      .bind(hunt.id, live.id)
+      .run()
+    return c.json({
+      mode: 'bug_hunt',
+      hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
+    } satisfies PracticeSessionResponse)
   }
 
   const fresh = await createSessionWithCart(c.env.DB, { mode: 'bug_hunt', huntId: hunt.id })
   setCookie(c, SESSION_COOKIE, fresh.token, cookieOptions(isSecureRequest(c.req.url)))
   return c.json({
     mode: 'bug_hunt',
-    hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary },
+    hunt: { id: hunt.id, title: hunt.title, summary: hunt.summary, scenarioId: hunt.scenarioId },
   } satisfies PracticeSessionResponse)
 })
 

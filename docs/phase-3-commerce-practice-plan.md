@@ -59,6 +59,7 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 | M5 (done) | `GET /api/v1/auth/accounts` · `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` · `GET /api/v1/account` · `GET /api/v1/account/orders` · `GET /api/v1/account/orders/:reference` | Synthetic auth + protected account |
 | M6 (implemented) | `GET /api/v1/admin/inventory` · `PATCH /api/v1/admin/inventory/:productId` (staff role) · `POST /api/v1/orders/:reference/cancel` (stock re-check inside checkout) | Inventory |
 | M7 (implemented) | `POST /api/v1/practice/hunts/:huntId/start` · `POST /api/v1/practice/session/reset` · `GET /api/v1/practice/session` | Hunt sessions |
+| M8 (implemented) | `GET /api/v1/practice/hunts` (learner-safe list, `{ id, title, summary, scenarioId }`) — hunt starts softly capped at 20/IP/UTC day (429 `hunt_start_cap_reached` + `Retry-After`); `hunt_start_caps` stores only a SHA-256 of the IP | Hunt catalogue + caps |
 
 All mutating endpoints require an anonymous practice session cookie; M5 adds synthetic
 bearer-style auth on top. Nothing here is exposed without the session cookie.
@@ -286,27 +287,66 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
      far more destructive than "restores clean mode" promises. The cart, orders and
      sign-in binding survive reset; verified by test.
   3. Hunt start re-stamps the live session in place rather than minting a new one (cart and
-     orders stay put); repeated starts are idempotent. The learner-facing hunt list is
-     hard-coded on `/practice` until P3-M8 wires hunts into the scenario catalogue
-     (no `GET /api/v1/practice/hunts` endpoint yet — hunt→scenario wiring is M8).
+     orders stay put); repeated starts are idempotent. The learner-facing hunt list was
+     hard-coded on `/practice` for M7 and is served by `GET /api/v1/practice/hunts` since M8.
 - **Testing:** `tests/server/hunt.test.ts` (24 tests: registry integrity, start/reset, both
   defect branches, two-learner isolation, guest + synthetic-account compatibility across
   reset, forged body/defect-id rejection, expired/unknown-hunt → clean, idempotency,
   non-destructive order preservation) + `tests/practice/api.test.ts` (client) + browser probe
   (two isolated contexts) + all pre-existing suites green.
 
-### P3-M8 — Bug-hunt defect set & scenario wiring
+### P3-M8 — Bug-hunt defect set & scenario wiring *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** the actual learner-facing hunts.
-- **Scope:** 5–7 deterministic defects across pricing/inventory/filtering/validation/authZ
-  (examples: price rounding, stale stock after update, broken catalogue filter, coupon
-  free-shipping boundary, incorrect role visibility, validation that accepts empty names).
-  Each defect: registry entry + single-site branch + both-branch tests + internal doc entry;
-  hunt→scenario links surfaced in catalogue UI; bug-report capture stays minimal (local
-  markdown export) until reveal flow lands.
-- **Acceptance:** every defect reproducible by scripted steps; clean mode verified defect-free
-  against the same probe suite; hunt starts capped per IP/day.
-- **Risks:** scope creep — any defect touching more than one site is redesigned or dropped.
+- **Scope (as built):** **seven deterministic defects, one per hunt**, across
+  pricing/inventory/cart/filtering/validation/authZ — `CATALOGUE-001` (search description
+  facet, shipped in M7), `CATALOGUE-002` (category filter silently ignored),
+  `CART-001` (re-adding replaces instead of accumulating quantity), `INVENTORY-001`
+  (exact-stock checkout rejected, off-by-one boundary), `PRICING-001` (stored order line
+  totals ignore quantity), `CHECKOUT-001` (blank customer name passes validation),
+  `AUTHZ-001` (account order detail drops the customer_id ownership check). Each defect:
+  registry entry + single-site branch + both-branch tests + internal doc entry
+  (`docs/bug-hunt-catalogue.md`). Defects chosen to be reproducible through **existing**
+  commerce workflows — no product features were invented to host them (the plan's
+  free-shipping/coupon example was dropped for the same reason M7 dropped `PRICE-001`; there
+  is no shipping feature to hang it on).
+- **Hunt→scenario wiring:** hunts carry a learner-safe `scenarioId` (validated both
+  directions by tests). Seven scenarios are wired: three existing placeholders promoted
+  to runnable/ready and rewritten (`manual-cart-totals` → `hunt-pricing-001`,
+  `manual-address-edge-cases` → `hunt-checkout-001`, `security-object-access` →
+  `hunt-authz-001`) and four new ready scenarios (`manual-shop-search` →
+  `hunt-catalogue-001`, `api-catalogue-filters` → `hunt-catalogue-002`,
+  `manual-cart-add-quantity` → `hunt-cart-001`, `api-checkout-exact-stock` →
+  `hunt-inventory-001`). Wired scenario detail pages carry a **Bug-hunt exercise** launch
+  panel (start/reset in place); `/practice` lists the seven hunts (start/switch/reset)
+  loaded from `GET /api/v1/practice/hunts`; the catalogue shows a **Bug-hunt exercise**
+  badge per wired card, the status filter includes `Ready`, and
+  `/scenarios?hunt=available` deep-links the wired seven. Bug-report capture stays minimal:
+  a local markdown export in the browser (`BugReportExport`) — nothing is uploaded, stored
+  or graded.
+- **Acceptance:** every defect reproducible by scripted steps (integration suite
+  `tests/server/hunt-set.test.ts` + browser probe, 60/60 checks); clean mode verified
+  defect-free against the same probe suite; hunt starts capped per IP/day — implemented as a
+  **soft per-IP per UTC day cap (20 starts)** on `POST /api/v1/practice/hunts/:huntId/start`
+  only (resets and idempotent same-hunt re-starts are not capped). `hunt_start_caps` stores
+  only a SHA-256 of the IP (one row per address, previous-day rows deleted on write), never
+  the raw address; when no client IP is visible (local dev) the cap is skipped; over-shooting
+  by a request or two under concurrency is accepted by design. 429 `hunt_start_cap_reached`
+  with `Retry-After`.
+- **Deviations from the sketched scope:**
+  1. "stale stock after update" was not feasible without inventing a cache, and the
+     free-shipping boundary stays dropped (no shipping exists). `INVENTORY-001` is the
+     boundary off-by-one analogue.
+  2. Bug-report capture is a local markdown export only, per the plan's "local markdown
+     export" wording — no server storage, no scoring, no reveal.
+  3. The 24 non-wired catalogue placeholders remain non-runnable; only the seven wired
+     hunt scenarios are `ready`/`runnable`.
+  4. `hunt_start_caps` is additive migration `0008_hunt_start_caps.sql`
+     (`schema_version` → 8). The plan's abuse-control sketch in §4 mentioned the cap;
+     this milestone implements exactly that and defers session sweeping to M9.
+- **Risks:** scope creep — every defect ships as exactly one code site (`INVENTORY-001`
+  passes one `rejectExactStock` flag into both `blockingProblems` callers so they cannot
+  disagree).
 
 ### P3-M9 — Hardening, reset & Phase 3 exit
 
@@ -320,15 +360,18 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
 
 ## 6. Scenario mapping (initial sketch)
 
-| Hunt | Scenario area | Defect(s) |
+| Hunt | Scenario (wired) | Defect(s) |
 |---|---|---|
-| `hunt-catalogue-001` | Filtering/search | `CATALOGUE-001` description facet ignored — **shipped in M7** |
-| `hunt-pricing-001` | Checkout totals | threshold off-by-one (candidate — no shipping feature exists; re-scope in M8) |
-| `hunt-inventory-001` | Inventory/staleness | stale stock read after cart mutation |
-| `hunt-validation-001` | Checkout form | empty-name/postcode edge case accepted |
-| `hunt-authz-001` | Order ownership | missing ownership check on one endpoint |
+| `hunt-catalogue-001` | `manual-shop-search` | `CATALOGUE-001` description facet ignored — **shipped in M7** |
+| `hunt-catalogue-002` | `api-catalogue-filters` | `CATALOGUE-002` category filter ignored |
+| `hunt-cart-001` | `manual-cart-add-quantity` | `CART-001` add-to-cart accumulation lost |
+| `hunt-inventory-001` | `api-checkout-exact-stock` | `INVENTORY-001` exact-stock checkout rejected |
+| `hunt-pricing-001` | `manual-cart-totals` | `PRICING-001` order line totals ignore quantity |
+| `hunt-checkout-001` | `manual-address-edge-cases` | `CHECKOUT-001` blank customer name accepted |
+| `hunt-authz-001` | `security-object-access` | `AUTHZ-001` order-detail ownership check dropped |
 
-Final hunt set is fixed in M8; this table is a sketch, not a contract.
+Final hunt set as built in M8. This table is now the contract; the §4 engine design is
+unchanged except for the additive `hunt_start_caps` table (migration 0008).
 
 ## 7. Free-tier impact (summary)
 
