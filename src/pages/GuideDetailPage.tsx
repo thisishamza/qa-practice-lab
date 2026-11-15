@@ -1,17 +1,18 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getGuide, getGuidesForTrack } from '../data/guides'
+import { getGuide, getGuidesForTrack, guides } from '../data/guides'
 import { getScenario } from '../data/scenarios'
 import { getTrack } from '../data/tracks'
-import { difficultyLabels, formatMinutes } from '../lib/labels'
+import { formatMinutes } from '../lib/labels'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
-import { Breadcrumbs } from '../components/ui/PageChrome'
-import { FactList } from '../components/ui/FactList'
+import { Breadcrumbs, SectionHeader } from '../components/ui/PageChrome'
 import { LevelMeter } from '../components/ui/LevelMeter'
 import { Tag } from '../components/ui/Tag'
 import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
+import { GuideCard } from '../features/guides/GuideCard'
 
 const sections = [
   { id: 'introduction', label: 'Introduction' },
@@ -26,8 +27,36 @@ const sections = [
 export function GuideDetailPage() {
   const { guideId } = useParams()
   const guide = guideId ? getGuide(guideId) : undefined
+  const [activeSection, setActiveSection] = useState(sections[0].id)
 
   useDocumentTitle(guide?.title ?? 'Guide not found')
+
+  // Scrollspy: highlight the section currently in view.
+  useEffect(() => {
+    if (!guide) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id)
+          }
+        }
+      },
+      { rootMargin: '-15% 0px -70% 0px', threshold: 0 },
+    )
+
+    for (const section of sections) {
+      const element = document.getElementById(section.id)
+      if (element) {
+        observer.observe(element)
+      }
+    }
+
+    return () => observer.disconnect()
+  }, [guide])
 
   if (!guide) {
     return (
@@ -61,6 +90,9 @@ export function GuideDetailPage() {
   const siblingGuides = getGuidesForTrack(guide.trackId).filter(
     (entry) => entry.id !== guide.id,
   )
+  const libraryIndex = guides.findIndex((entry) => entry.id === guide.id)
+  const previousGuide = libraryIndex > 0 ? guides[libraryIndex - 1] : undefined
+  const nextGuide = libraryIndex < guides.length - 1 ? guides[libraryIndex + 1] : undefined
 
   return (
     <div className="stack">
@@ -87,6 +119,24 @@ export function GuideDetailPage() {
         <span className="meta-item">{guide.concepts.length} concepts</span>
         <span className="meta-item">{guide.steps.length} steps</span>
       </div>
+
+      {/* Mobile table of contents, above the article */}
+      <details className="toc-mobile">
+        <summary>On this page</summary>
+        <ol>
+          {sections.map((section) => (
+            <li key={section.id}>
+              <a
+                href={`#${section.id}`}
+                aria-current={activeSection === section.id ? 'true' : undefined}
+                className={activeSection === section.id ? 'is-active' : undefined}
+              >
+                {section.label}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </details>
 
       <div className="detail-layout guide-layout">
         <article className="detail-main guide-article">
@@ -197,6 +247,40 @@ export function GuideDetailPage() {
             )}
           </section>
 
+          {siblingGuides.length > 0 ? (
+            <section className="content-section guide-section" aria-labelledby="more-in-discipline">
+              <SectionHeader
+                id="more-in-discipline"
+                title="More in this discipline"
+                description={`Other introductory guides for ${track?.name ?? guide.trackId}.`}
+              />
+              <div className="guide-list">
+                {siblingGuides.map((entry) => (
+                  <GuideCard key={entry.id} guide={entry} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <nav className="guide-pager" aria-label="Guide library">
+            {previousGuide ? (
+              <Link className="guide-pager-link" to={`/guides/${previousGuide.id}`}>
+                <span className="guide-pager-kicker">Previous guide</span>
+                <span className="guide-pager-title">{previousGuide.title}</span>
+              </Link>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            {nextGuide ? (
+              <Link className="guide-pager-link is-next" to={`/guides/${nextGuide.id}`}>
+                <span className="guide-pager-kicker">Next guide</span>
+                <span className="guide-pager-title">{nextGuide.title}</span>
+              </Link>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+          </nav>
+
           <Callout tone="neutral" title="Exercises are still placeholders">
             Reading a guide does not require a runnable exercise. When the related
             scenarios become available, this page will link directly to their launch
@@ -210,39 +294,17 @@ export function GuideDetailPage() {
             <ol>
               {sections.map((section) => (
                 <li key={section.id}>
-                  <a href={`#${section.id}`}>{section.label}</a>
+                  <a
+                    href={`#${section.id}`}
+                    aria-current={activeSection === section.id ? 'true' : undefined}
+                    className={activeSection === section.id ? 'is-active' : undefined}
+                  >
+                    {section.label}
+                  </a>
                 </li>
               ))}
             </ol>
           </nav>
-
-          <div className="panel">
-            <h2>Guide facts</h2>
-            <FactList
-              items={[
-                { label: 'Discipline', value: track?.name ?? guide.trackId },
-                { label: 'Level', value: difficultyLabels[guide.level] },
-                { label: 'Reading time', value: formatMinutes(guide.readingMinutes) },
-                { label: 'Related exercises', value: relatedScenarios.length },
-              ]}
-            />
-          </div>
-
-          {siblingGuides.length > 0 ? (
-            <div className="panel">
-              <h2>More in this discipline</h2>
-              <ul className="aside-link-list">
-                {siblingGuides.map((entry) => (
-                  <li key={entry.id}>
-                    <Link to={`/guides/${entry.id}`}>
-                      <Icon name="book" size={15} />
-                      {entry.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </aside>
       </div>
     </div>

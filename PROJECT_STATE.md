@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1–M5 are complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks, M5 scenario catalogue). M6 (guides) has not started.** Phase 3 (commerce practice app) remains paused.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1–M6 are complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks, M5 scenario catalogue, M6 guides). M7 (progress, practice/workspace, 404) has not started.** Phase 3 (commerce practice app) remains paused.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -220,6 +220,8 @@ Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `c
 `package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
 IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
 
+Redesign M6 changed `src/pages/GuidesPage.tsx` (index-row listing, mono availability line), `src/features/guides/GuideCard.tsx` (horizontal index row), `src/pages/GuideDetailPage.tsx` (prose 66ch, scrollspy TOC, mobile details TOC, pager, FactList removed), `src/styles/components.css` (concept/code/TOC/pager styles). No guide content or data changed.
+
 Redesign M5 changed `src/pages/ScenariosPage.tsx` (URL-driven state, availability line), `src/features/catalog/{ScenarioFilterBar,ScenarioCard}.tsx` (facet grid + chips + mobile drawer; mode meta), `src/lib/catalog.ts` (URL-param helpers, sort, status counts), `tests/lib/catalog.test.ts`, and `src/styles/components.css` (chips, search clear, drawer styles). No scenario statuses, routes, or backend changed.
 
 Redesign M4 changed `src/pages/DashboardPage.tsx` (zones rebuilt), `src/pages/TracksPage.tsx`, `src/features/tracks/TrackCard.tsx`, `src/pages/NotFoundPage.tsx` (`button-row`), and `src/styles/{pages,components}.css` (hero/quick-practice/track-grid-wide removed; new start-path, track-row, scenario-row styles). No content data, routes, or backend changed.
@@ -238,6 +240,37 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M6: guides experience
+
+- **Checkpoint before this milestone:** the M5 diff contained exactly the eight expected files (`catalog.ts`, `ScenariosPage.tsx`, `{ScenarioFilterBar,ScenarioCard}.tsx`, `styles/components.css`, `tests/lib/catalog.test.ts`, `AGENTS.md`, `PROJECT_STATE.md`). `npm run check` and `npm run build` were re-run on the M5 state, then M5 was committed as **`16222ad`** (`feat: redesign scenario catalogue`, 8 files, +988/−126). Nothing pushed. M1 `b84b210`, M2 `d77a446`, M3 `c89ced0`, M4 `d94f3b1` untouched.
+- **Scope (as instructed):** Guides listing, Guide Detail reading experience, and guide discovery/navigation. **Track-detail redesign remains explicitly deferred — it was not started in M6 and is still outstanding from the M4 audit.** Scenario catalogue (M5), progress/practice pages (M7), dashboard/track redesign, backend, and dependencies untouched. Scenario/progress pages not in scope and were not touched.
+- **Skill:** loaded earlier this session; focused `--domain ux` query on reading line length verified (65–75 ch; implemented as 66ch `--prose-measure` at 1.7 leading — already the approved system). The `--stack react` query for code blocks returned no database match; standard `pre` + `overflow-x: auto` practice applied instead, stated explicitly.
+- **Listing changes (`src/pages/GuidesPage.tsx`, `src/features/guides/GuideCard.tsx`):**
+  - Header kept (`Learning library` eyebrow, title, self-contained-guides description); the boxed callout was replaced by one honest mono line (`6 guides across 6 disciplines — all readable today`).
+  - Index rows replace the card grid: title link (the only link), 1–2 line summary, then `LevelMeter · read time · concepts · steps` meta; chevron-right affordance; hover = border-strong. Grouped by discipline with existing SectionHeader rows (one per discipline, unchanged IA).
+  - No search/filters (6 guides across 6 disciplines don't justify them), no fake metrics, no decorative icons.
+- **Detail changes (`src/pages/GuideDetailPage.tsx`):**
+  - **Reading layout:** article capped at 74ch; prose at 66ch/1.7; `h2` at `--text-h2` with scroll-margin for the sticky top bar; semantic `<article>` + sectioned `h2`s; one `h1`.
+  - **Concepts** became a test-report definition list: mono term left, explanation right, hairline row dividers (was: left-rule card boxes).
+  - **Code examples:** always-dark `pre` (`--code-bg`) with mono `--text-code`, `white-space: pre`, independent horizontal scroll; figcaption = semibold title + neutral language tag; gold-standard for the Phase 4+ API examples.
+  - **Steps:** hairline square mono numerals (were filled rounded chips).
+  - **TOC:** scrollspy via `IntersectionObserver` (`rootMargin: -15% 0px -70% 0px`); exactly one `aria-current="true"` + `.is-active` at a time; ≥1180px it stays sticky in the aside; ≤1180px it is a native `<details>` "On this page" disclosure above the article (hidden sidebar), keyboard-operable without JS.
+  - **Facts:** the "Guide facts" panel (duplicate of the header meta) was removed; the aside now holds only the TOC.
+  - **Navigation:** related scenarios (unchanged rows), sibling guides surfaced at the end of the article as index rows under "More in this discipline", and a **guide-library pager** (Previous / Next, ordered by the data file; real content, no wrap). Breadcrumb remains the back-to-guides path.
+  - **Mobile:** single column; mobile TOC above the article; code scrolls independently; no page overflow at 375.
+- **CSS:** `.guide-row*`, `.guides-note`, concept-list row styles, step-number chip, code-example dark pre, `.toc-mobile` (details/summary), `.guide-pager*` (2-col → 1-col ≤640), `.guide-article` cap, ≤1180px hide-TOC/show-details rules, `.aside-link-list`, `.guide-grid`, `.guide-card-top/.guide-icon`, `.guide-index-meta` deleted. `.body-copy` now uses `var(--prose-measure)`.
+- **Commands and results:**
+  - `npm run check` — **passed** (ESLint clean; all three TS projects clean; **41/41 tests pass**, unchanged — no content or logic changed that tests cover).
+  - `npm run build` — passed. Final: JS **383.67 kB** (117.06 kB gzip, +0.75 vs M5), CSS **55.87 kB** (11.71 kB gzip, +2.28 vs M5). No dependency changes.
+  - Browser probe (`m6-verify.mjs`): **83/83 pass** — all six guide detail routes render with one `h1`, 7 TOC links, mono code blocks; TOC has exactly one active entry ("Introduction"); related scenario and pager navigation work (previous guide appears on the API guide); invalid id → EmptyState + recovery; mobile `<details>` TOC toggles open/closed with 7 links; focus rings on guide row title links and TOC links; no overflow at 375/768/1024/1440 in both themes; zero console errors.
+  - M5 regression probe: **66/66 pass**. M3/M4 regression probe: **121/121 pass**.
+  - Screenshots (light/dark × 4 widths for listing and detail) live in `/tmp/opencode/m6-*.png`, not in the repo.
+- **Fix during verification:** one probe assertion raced client-side navigation (read pager text before React re-rendered); fixed the probe to wait for the destination `h1` — the pager itself was correct.
+- **Branch / latest commit:** `feat/phase-2.5-redesign`; M6 changes uncommitted at report time (`git status`: 4 modified files). Latest commits: `16222ad` (M5), `d94f3b1` (M4). Nothing pushed.
+- **Known limitations:** the pager uses data-file order (not per-discipline grouping) — acceptable, matches the library index; "More in this discipline" is absent for disciplines with a single guide (currently the norm — by design); no progress/reading-time tracking added (out of scope; M7 owns progress); TOC active state only tracks section starts (no character-level position — adequate).
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M7 — progress, practice/workspace, 404, states** from `docs/phase-2.5-ui-ux-audit.md` §11 (run `npm run check` first). Track-detail redesign remains outstanding (audit M4 scope). Do not start Phase 3.
 
 ### 2026-11-15 — Redesign M5: scenario catalogue
 
@@ -530,4 +563,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management), M3 (primitives and cards), M4 (dashboard and tracks) and M5 (scenario catalogue) are complete and verified, and M6 has not started.** Continue with **M6 — guides index and reading page** only after explicit instruction, then proceed through M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management), M3 (primitives and cards), M4 (dashboard and tracks), M5 (scenario catalogue) and M6 (guides) are complete and verified, and M7 has not started.** Continue with **M7 — progress, practice/workspace, 404 and cross-page states** only after explicit instruction, then M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
