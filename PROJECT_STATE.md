@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1–M4 are complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks). M5 (catalog and filters) has not started.** Phase 3 (commerce practice app) remains paused.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1–M5 are complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks, M5 scenario catalogue). M6 (guides) has not started.** Phase 3 (commerce practice app) remains paused.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -203,7 +203,7 @@ qa-practice-lab/
 │   └── favicon.svg
 └── tests/
     ├── data/content.test.ts           # content integrity and non-runnable guarantees
-    ├── lib/catalog.test.ts            # filtering, search, counts
+    ├── lib/catalog.test.ts            # filtering, search, counts, URL-param state, sorting
     └── server/health.test.ts
 ```
 
@@ -219,6 +219,8 @@ Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `c
 `layout.css`, `src/main.tsx`, `src/lib/theme.ts`, `index.html`, `eslint.config.js`,
 `package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
 IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
+
+Redesign M5 changed `src/pages/ScenariosPage.tsx` (URL-driven state, availability line), `src/features/catalog/{ScenarioFilterBar,ScenarioCard}.tsx` (facet grid + chips + mobile drawer; mode meta), `src/lib/catalog.ts` (URL-param helpers, sort, status counts), `tests/lib/catalog.test.ts`, and `src/styles/components.css` (chips, search clear, drawer styles). No scenario statuses, routes, or backend changed.
 
 Redesign M4 changed `src/pages/DashboardPage.tsx` (zones rebuilt), `src/pages/TracksPage.tsx`, `src/features/tracks/TrackCard.tsx`, `src/pages/NotFoundPage.tsx` (`button-row`), and `src/styles/{pages,components}.css` (hero/quick-practice/track-grid-wide removed; new start-path, track-row, scenario-row styles). No content data, routes, or backend changed.
 
@@ -236,6 +238,30 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M5: scenario catalogue
+
+- **Checkpoint before this milestone:** the M4 diff contained exactly the eight expected files (`DashboardPage`, `TracksPage`, `NotFoundPage`, `TrackCard`, `styles/{components,pages}.css`, `AGENTS.md`, `PROJECT_STATE.md`). `npm run check` and `npm run build` were re-run on the M4 state, then M4 was committed as **`d94f3b1`** (`feat: redesign dashboard and learning tracks`, 8 files, +386/−454). Nothing pushed. M1 `b84b210`, M2 `d77a446`, M3 `c89ced0` untouched.
+- **Scope (as instructed):** catalogue page only. Scenario detail pages were NOT redesigned. **Track-detail redesign (audit M4 scope) is explicitly deferred and remains outstanding — it was not started in M5 either; it is tracked here and in the M4/M6 handoff, not silently closed.** Dashboard category deep links are not needed (categories are chosen on the catalogue) — `?category=` works directly. Guides (M6), progress/practice (M7), backend, and dependencies untouched.
+- **What was built:**
+  - **URL is the single source of truth** (`useSearchParams` + pure helpers in `src/lib/catalog.ts`): `?q=&track=&difficulty=&mode=&status=&category=&sort=`. Unknown/invalid values fall back to the default rather than erroring (verified by unit tests). Text edits use `replace` (no history spam); facet changes and sort changes use `push` (Back/Forward step through them). Default values are omitted from the URL.
+  - **Search** — matches title, summary, description, objectives, prerequisites, ids, and hyphen/space variants across track/mode/category/difficulty/status (existing matcher, extended with `category`). Labelled input, clear-× control, Escape clears, `role="search"` on the panel. Worked examples verified: `q=cart` → 5 cards, refresh preserves state, top-bar `/` deep link `/scenarios?q=cart` still works.
+  - **Filters** — Track, Difficulty, Mode, Status, Category (all real data dimensions; 11 exploratory, 13 clean / 11 bug-hunt, 14 planned / 10 in-design, 0 ready). Multiple filters combine; each active facet renders a removable **chip** (e.g. `Track: API Testing ×`); **Clear all** resets filters + search + sort; result count in an `aria-live` region; the results grid is no longer wrapped in `aria-live` (announced via the count only).
+  - **Sorting** — `recommended` (authored order, default), `title` (A–Z), `difficulty` (beginner→intermediate→advanced), `time` (shortest first). Sort persists in the URL; no popularity/rating options exist.
+  - **Availability honesty** — a mono line under the header states real data (`Not runnable yet — 10 in design · 14 planned · 0 ready`); the old callout was removed; no metrics imply persistence or execution.
+  - **Responsive** — ≥861px: full control grid (search + six labelled selects); ≤860px: facet grid hidden; search stays, a sort select sits inline with a **Filters (n)** trigger that opens a proper drawer: `role="dialog"` + `aria-modal`, `aria-labelledby`, Tab/Shift+Tab trap, initial focus on the close button, Escape/backdrop close, body scroll lock, focus restored to the trigger, `Show N scenarios` CTA, auto-close at ≥1024px. The grid of cards is 3-up at 1440 / 2-up at 1024/768 / 1-up at 375.
+  - **Cards** — StatusTag + title link (only link), summary, meta now `Track · Difficulty · Mode · Time · Category`; fully labelled, no color-only signalling.
+- **Tests & verification:**
+  - `npm run check` — **passed** (ESLint clean; all three TS projects clean; **41/41 tests pass** — 11 new: URL-param parse/serialize/round-trip, invalid-param fallback, sort orders, category filter, status counts). One test assertion was written wrong and fixed during development (`status=bogus` now used for invalid input; `ready` is a valid status).
+  - `npm run build` — passed. Final: JS **382.92 kB** (116.75 kB gzip, +6.98 vs M4), CSS **53.31 kB** (11.43 kB gzip, +2.49 vs M4). No dependency changes.
+  - Browser probe (`m5-verify.mjs`, Playwright/Chrome vs production build): **66/66 pass** — deep links at all widths, refresh persistence, Back/Forward, chip add/remove, Clear all, empty-state recovery, scenario-card navigation, 375px drawer (scroll lock, focus trap/return, trigger count badge, Show-results), unique accessible card names at 4 widths × 2 themes, one `h1`, no overflow, focus rings, zero console errors.
+  - M3/M4 regression probe: **121/121 pass**.
+  - Screenshots (light/dark × 375/768/1024/1440 + drawer in both themes) live in `/tmp/opencode/m5-*.png`, not in the repo.
+- **Fixes during verification:** MODE default option "Clean and bug hunt" clipped in narrow desktop selects → shortened to "All modes"; probe bug (assumed `q=cart∩beginner` = 5 cards — actually 1) corrected; stale `wrangler pages dev` instances killed so probes ran against the fresh build.
+- **Branch / latest commit:** `feat/phase-2.5-redesign`; M5 changes uncommitted at report time (`git status`: 6 modified files, nothing else). Latest commits: `d94f3b1` (M4), `c89ced0` (M3).
+- **Known limitations:** catalogue meta separators can start a wrapped line (accepted, aria-hidden); the mobile drawer applies facet changes immediately (URL is the source of truth — there is no staged "Apply"); availability line wraps at 375px (acceptable); no dashboard→catalogue `?category=` deep links because the dashboard no longer shows categories (M4 decision).
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M6 — guides index and reading page** from `docs/phase-2.5-ui-ux-audit.md` §11 (run `npm run check` first). Track-detail redesign remains outstanding (audit M4 scope) and may be scheduled before or with M6 if instructed. Do not start M7 or Phase 3.
 
 ### 2026-11-15 — Redesign M4: dashboard and tracks
 
@@ -504,4 +530,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management), M3 (primitives and cards) and M4 (dashboard and tracks) are complete and verified, and M5 has not started.** Continue with **M5 — catalog, filters and scenario detail** only after explicit instruction, then proceed through M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color), M2 (shell, navigation, search, drawer, route management), M3 (primitives and cards), M4 (dashboard and tracks) and M5 (scenario catalogue) are complete and verified, and M6 has not started.** Continue with **M6 — guides index and reading page** only after explicit instruction, then proceed through M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

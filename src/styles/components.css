@@ -887,6 +887,7 @@
 
 .search-input input {
   padding-left: 2.2rem;
+  padding-right: 2.3rem;
 }
 
 .search-input input:hover,
@@ -905,7 +906,7 @@
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
   gap: 0.7rem;
 }
 
@@ -1639,10 +1640,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
 }
 
 @media (max-width: 760px) {
@@ -1667,7 +1664,6 @@
 }
 
 @media (max-width: 560px) {
-  .filter-grid,
   .stats-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1690,5 +1686,182 @@
 
   .state {
     padding: 2.25rem 1rem;
+  }
+}
+
+/* Catalogue availability line + filter chips ------------------------------ */
+
+.catalogue-availability {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  max-width: 100%;
+  min-height: 1.75rem;
+  padding: 0 0.45rem 0 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    background-color var(--transition);
+}
+
+.filter-chip:hover {
+  border-color: var(--ink-subtle);
+  background: var(--surface-sunken);
+}
+
+.filter-chip svg {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+}
+
+/* Search clear control inside the catalogue search field ------------------- */
+
+.search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    color var(--transition),
+    background-color var(--transition);
+}
+
+.search-clear:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+/* Mobile filter row + drawer ---------------------------------------------- */
+
+.filter-mobile-row {
+  display: none;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.filter-mobile-row .filter-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-trigger {
+  flex: 0 0 auto;
+}
+
+.filter-layer {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-overlay) + 10);
+}
+
+.filter-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(4 8 20 / 0.58);
+}
+
+.filter-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 92vw);
+  height: 100%;
+  padding: 1rem;
+  border-left: 1px solid var(--border-strong);
+  background: var(--surface);
+  animation: filter-drawer-in 180ms var(--ease);
+}
+
+@keyframes filter-drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-drawer {
+    animation: none;
+  }
+}
+
+.filter-drawer-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-drawer-title {
+  font-size: var(--text-h3);
+}
+
+.filter-drawer-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem 0.15rem;
+  overflow-y: auto;
+}
+
+.filter-drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.filter-drawer-foot .button:last-child {
+  margin-left: auto;
+}
+
+@media (max-width: 860px) {
+  .filter-grid {
+    display: none;
+  }
+
+  .filter-mobile-row {
+    display: flex;
   }
 }

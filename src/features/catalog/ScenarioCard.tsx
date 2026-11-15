@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import type { Scenario } from '../../data/types'
 import { getTrack } from '../../data/tracks'
 import { testingCategoriesById } from '../../data/categories'
-import { difficultyLabels, formatMinutes } from '../../lib/labels'
+import { difficultyLabels, formatMinutes, scenarioModeLabels } from '../../lib/labels'
 import { StatusTag } from '../../components/ui/Tag'
 import { Meta } from '../../components/ui/Meta'
 import { Icon } from '../../components/ui/Icon'
@@ -26,6 +26,7 @@ export function ScenarioCard({ scenario }: { scenario: Scenario }) {
           {track?.name ?? scenario.trackId}
         </span>
         <span className="meta-item">{difficultyLabels[scenario.difficulty]}</span>
+        <span className="meta-item">{scenarioModeLabels[scenario.mode]}</span>
         <span className="meta-item">
           <Icon name="clock" size={14} />
           {formatMinutes(scenario.estimatedMinutes)}
