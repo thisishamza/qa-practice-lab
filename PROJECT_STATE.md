@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is COMPLETE: M1–M8 are all complete and verified (M1 foundations, M2 shell/navigation/search, M3 primitives and cards, M4 dashboard and tracks, M5 scenario catalogue, M6 guides, M7 practice and progress, M8 track detail + 404 + consistency/a11y audit). M9 (optional polish) is not started and only on request. Phase 3 (commerce practice app) remains paused.**
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2).** M9 (optional polish) is not started and only on request. **Phase 3 (commerce practice app) is next on the roadmap and has not been started.**
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -248,6 +248,7 @@ phase starts.
 ### 2026-11-15 — Redesign M8: final consistency, remaining pages and design audit
 
 - **Checkpoint before this milestone:** the M7 diff contained exactly the eight expected files (`ProgressPage`, `PracticePage`, `HealthStatus.tsx`, `styles/{workspace,components,pages}.css`, `AGENTS.md`, `PROJECT_STATE.md`). `npm run check` and `npm run build` were re-run on the M7 state, then M7 was committed as **`c200095`** (`feat: redesign progress and practice experience`, 8 files, +529/−546). Nothing pushed. M1 `b84b210`, M2 `d77a446`, M3 `c89ced0`, M4 `d94f3b1`, M5 `16222ad`, M6 `c1867e9` untouched.
+- **Phase 2.5 completion and merge:** M8 was committed as **`5c4a959`** (`feat: redesign track detail, 404 and final consistency audit`, 8 files, +159/−223), with a docs-only follow-up commit **`f014e78`**. A docs-only README correction for Phase 2.5 landed as **`98dbe55`**. On 2026-11-15 the branch was pushed to `origin/feat/phase-2.5-redesign` and **PR #2 (`Complete Phase 2.5 UI redesign`, https://github.com/thisishamza/qa-practice-lab/pull/2) was opened against `main`**; it was clean (`mergeable: true`, `mergeable_state: clean`), with no branch protection and no CI check runs configured on the repository. The redesign was merged into `main` via PR #2 on 2026-11-15. Phase 3 (commerce practice app) is the next milestone and has not been started.
 - **Track Detail page (outstanding from M4):**
   - Removed the "Track facts" panel (duplicated LevelMeter/planned/listed already in the meta row) and the boxed "What planned means" callout (now a one-line `.tracks-note`).
   - **"All scenarios" deep link** now points at `/scenarios?track={track.id}` — the catalogue opens pre-filtered to this track (verified: select shows `manual-testing`, 2 cards).
