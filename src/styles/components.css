@@ -751,73 +751,6 @@
 
 /* Category + format cards ------------------------------------------------ */
 
-.category-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 0.7rem;
-}
-
-.category-card {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--ink);
-  transition:
-    border-color var(--transition),
-    background-color var(--transition);
-}
-
-.category-card:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-sunken);
-  color: var(--ink);
-}
-
-.category-icon {
-  display: grid;
-  flex: 0 0 auto;
-  width: 2.1rem;
-  height: 2.1rem;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  color: var(--ink-muted);
-}
-
-.category-copy {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.category-copy strong {
-  color: var(--ink-strong);
-  font-size: var(--text-meta);
-  font-weight: var(--weight-semibold);
-}
-
-.category-copy span {
-  color: var(--ink-muted);
-  font-size: var(--text-meta);
-  line-height: 1.4;
-}
-
-.category-count {
-  color: var(--ink-subtle);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.04em;
-  text-align: right;
-  white-space: nowrap;
-}
-
 .format-card {
   gap: 0.45rem;
 }
@@ -1386,33 +1319,6 @@
 
 /* Not found -------------------------------------------------------------- */
 
-.not-found {
-  padding: clamp(1.5rem, 4vw, 3rem);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background:
-    radial-gradient(32rem 18rem at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
-    var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.not-found-code {
-  color: color-mix(in srgb, var(--accent) 45%, transparent);
-  font-size: clamp(3.5rem, 11vw, 6.5rem);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.06em;
-  line-height: 0.9;
-}
-
-.not-found h1 {
-  margin: 0.35rem 0 0.7rem;
-  max-width: 22ch;
-}
-
-.not-found .page-lede {
-  margin-bottom: 1.25rem;
-}
-
 /* Responsive component adjustments --------------------------------------- */
 
 @media (max-width: 1180px) {
@@ -1459,11 +1365,7 @@
     .track-grid,
   .scenario-grid,
   .format-grid,
-  .category-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-      .state {
+        .state {
     padding: 2.25rem 1rem;
   }
 }
@@ -1786,4 +1688,54 @@
   .guide-pager {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Aside link lists (track/scenario detail sidebars) ----------------------- */
+
+.aside-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.aside-link-list a {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+  color: var(--ink);
+  font-size: var(--text-meta);
+  line-height: 1.45;
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.aside-link-list li:first-child a {
+  border-top: 0;
+}
+
+.aside-link-list a:hover {
+  color: var(--link);
+}
+
+.aside-link-list svg {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+  color: var(--ink-subtle);
+}
+
+.aside-link-list a:hover svg {
+  color: var(--link);
+}
+
+.aside-link-meta {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--ink-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }

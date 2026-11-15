@@ -141,13 +141,13 @@ kbd {
   padding: 0.7rem 1rem;
   border-radius: var(--radius-sm);
   background: var(--ink-strong);
-  color: var(--bg);
+  color: var(--canvas);
   font-weight: var(--weight-semibold);
 }
 
 .skip-link:focus {
   top: 0.75rem;
-  color: var(--bg);
+  color: var(--canvas);
 }
 
 .sr-only {

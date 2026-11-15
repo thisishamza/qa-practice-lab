@@ -29,8 +29,8 @@ export function AboutPage() {
               query in the URL, so a search can be linked or shared.
             </p>
             <p className="panel-note">
-              Every catalog entry is a placeholder. Progress and activity figures are
-              labelled demo data and are not persisted.
+              Every catalog entry is a placeholder. Progress is not tracked or saved;
+              the figures shown on the progress page are labelled sample data.
             </p>
           </div>
         </section>

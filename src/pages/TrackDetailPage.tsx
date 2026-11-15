@@ -7,10 +7,8 @@ import { difficultyLabels, pluralize } from '../lib/labels'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Breadcrumbs, SectionHeader } from '../components/ui/PageChrome'
-import { FactList } from '../components/ui/FactList'
 import { LevelMeter } from '../components/ui/LevelMeter'
 import { Tag } from '../components/ui/Tag'
-import { Callout } from '../components/ui/Callout'
 import { EmptyState } from '../components/ui/States'
 import { Icon } from '../components/ui/Icon'
 import { ScenarioCard } from '../features/catalog/ScenarioCard'
@@ -49,7 +47,13 @@ export function TrackDetailPage() {
   const guide = track.gettingStarted.guideId
     ? getGuide(track.gettingStarted.guideId)
     : undefined
-  const otherTracks = learningTracks.filter((entry) => entry.id !== track.id).slice(0, 3)
+  const relatedTracks = learningTracks
+    .filter(
+      (entry) =>
+        entry.id !== track.id &&
+        entry.categoryIds.some((categoryId) => track.categoryIds.includes(categoryId)),
+    )
+    .slice(0, 3)
 
   return (
     <div className="stack">
@@ -75,7 +79,7 @@ export function TrackDetailPage() {
         </span>
         <span className="meta-item">
           <Icon name="scenarios" size={15} />
-          {pluralize(trackScenarios.length, 'placeholder')} listed
+          {pluralize(trackScenarios.length, 'listed', 'listed')}
         </span>
         {track.categoryIds.map((categoryId) => {
           const category = testingCategoriesById.get(categoryId)
@@ -87,16 +91,16 @@ export function TrackDetailPage() {
         })}
       </div>
 
+      <p className="tracks-note">
+        Objectives and listed scenarios are real; exercises are not runnable yet — each
+        scenario carries its own availability status.
+      </p>
+
       <div className="detail-layout">
         <div className="detail-main">
           <section className="content-section" aria-labelledby="track-about">
             <SectionHeader id="track-about" title="About this track" />
             <p className="body-copy">{track.description}</p>
-            <Callout tone="neutral" title="What “planned” means here">
-              The track structure, objectives, and scenario entries are real. The
-              exercises are not runnable yet; each scenario shows its own availability
-              status.
-            </Callout>
           </section>
 
           <section className="content-section" aria-labelledby="track-objectives">
@@ -141,8 +145,8 @@ export function TrackDetailPage() {
               title="Scenarios in this track"
               description="Representative placeholders from the scenario catalogue."
               action={
-                <Link className="text-link" to="/scenarios">
-                  All scenarios
+                <Link className="text-link" to={`/scenarios?track=${track.id}`}>
+                  {pluralize(trackScenarios.length, 'scenario')} in the catalogue
                   <Icon name="arrow-right" size={14} />
                 </Link>
               }
@@ -165,18 +169,6 @@ export function TrackDetailPage() {
 
         <aside className="detail-aside">
           <div className="panel">
-            <h2>Track facts</h2>
-            <FactList
-              items={[
-                { label: 'Difficulty', value: difficultyLabels[track.difficulty] },
-                { label: 'Planned exercises', value: track.plannedExerciseCount },
-                { label: 'Listed now', value: trackScenarios.length },
-                { label: 'Guide', value: guide ? 'Available' : 'Scheduled' },
-              ]}
-            />
-          </div>
-
-          <div className="panel">
             <h2>Starting guide</h2>
             {guide ? (
               <>
@@ -190,25 +182,34 @@ export function TrackDetailPage() {
               </>
             ) : (
               <p className="panel-note">
-                A dedicated guide for this track is scheduled. The getting-started steps
-                above are enough to begin reviewing the material.
+                A dedicated guide for this track is scheduled. The getting-started steps above
+                are enough to begin reviewing the material.
               </p>
             )}
           </div>
 
-          <div className="panel">
-            <h2>Explore next</h2>
-            <ul className="aside-link-list">
-              {otherTracks.map((entry) => (
-                <li key={entry.id}>
-                  <Link to={`/tracks/${entry.id}`}>
-                    <Icon name={entry.icon} size={15} />
-                    {entry.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {relatedTracks.length > 0 ? (
+            <div className="panel">
+              <h2>Related tracks</h2>
+              <p className="panel-note">Shares testing categories with this track.</p>
+              <ul className="aside-link-list">
+                {relatedTracks.map((entry) => (
+                  <li key={entry.id}>
+                    <Link to={`/tracks/${entry.id}`}>
+                      <Icon name={entry.icon} size={15} />
+                      <span>
+                        {entry.name}
+                        <span className="aside-link-meta">
+                          {difficultyLabels[entry.difficulty]} ·{' '}
+                          {pluralize(entry.plannedExerciseCount, 'exercise')} planned
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </aside>
       </div>
     </div>

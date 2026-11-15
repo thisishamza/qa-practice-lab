@@ -2,7 +2,6 @@
  * Design tokens — three layers
  * 1. Primitives   raw values: palette, type, space, radius, motion
  * 2. Semantic     role-based aliases: canvas/surface/ink/border/action/…
- * 3. Compatibility names kept for one migration step (M1–M2).
  *
  * Themes: [data-theme="dark"] flips the semantic layer.
  * Workspaces: [data-surface="workspace"] applies the dark technical palette
@@ -186,32 +185,6 @@
   --code-bg: var(--night-900);
   --code-ink: var(--night-100);
 
-  /* ---------------------------------------------------------------------
-   * 3. Compatibility aliases (remove after M3)
-   * ------------------------------------------------------------------ */
-
-  --bg: var(--canvas);
-  --bg-elevated: var(--surface-raised);
-  --surface-2: var(--surface-sunken);
-  --surface-3: var(--slate-200);
-  --muted: var(--ink-muted);
-  --muted-strong: var(--slate-700);
-  --line: var(--border);
-  --line-strong: var(--border-strong);
-
-  --accent: var(--action);
-  --accent-strong: var(--action-hover);
-  --accent-soft: var(--surface-selected);
-  --accent-contrast: var(--action-ink);
-  --cyan: var(--link);
-
-  --success: var(--run);
-  --success-soft: var(--run-soft);
-  --warning: var(--warn);
-  --warning-soft: var(--warn-soft);
-  --info: var(--ink-muted);
-  --info-soft: var(--surface-sunken);
-
   /* Component tokens */
   --control-h: 2.75rem;
   --control-h-sm: 2.25rem;
@@ -266,10 +239,6 @@
   --code-bg: var(--night-950);
   --code-ink: var(--night-100);
 
-  /* Compatibility surfaces that are not pure aliases */
-  --surface-3: #1d2947;
-  --muted-strong: #c9d2e3;
-
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 16px 34px -20px rgba(0, 0, 0, 0.7);
   --shadow-lg: 0 34px 80px -48px rgba(0, 0, 0, 0.85);
@@ -317,28 +286,6 @@
 
   --code-bg: var(--night-950);
   --code-ink: var(--night-100);
-
-  /* Compatibility aliases must be re-declared inside the scope: custom
-   * properties resolve where they are declared, not where they are used. */
-  --bg: var(--canvas);
-  --bg-elevated: var(--surface-raised);
-  --surface-2: var(--surface-sunken);
-  --surface-3: #1d2947;
-  --muted: var(--ink-muted);
-  --muted-strong: #c9d2e3;
-  --line: var(--border);
-  --line-strong: var(--border-strong);
-  --accent: var(--action);
-  --accent-strong: var(--action-hover);
-  --accent-soft: var(--surface-selected);
-  --accent-contrast: var(--action-ink);
-  --cyan: var(--link);
-  --success: var(--run);
-  --success-soft: var(--run-soft);
-  --warning: var(--warn);
-  --warning-soft: var(--warn-soft);
-  --info: var(--ink-muted);
-  --info-soft: var(--surface-sunken);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 16px 34px -20px rgba(0, 0, 0, 0.7);
