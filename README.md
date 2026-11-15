@@ -1,13 +1,16 @@
 # QA Practice Lab
 
 A safe, phased practice environment for software testing. The project is being built one
-verifiable slice at a time; **Phases 1 and 2 are implemented**.
+verifiable slice at a time; **Phases 1 and 2 are implemented, and the Phase 2.5 UI redesign
+(M1–M8) is complete**.
 
 Phase 1 proves the full local stack: a React + TypeScript shell, a Hono API running on Cloudflare
 Pages Functions, and a Cloudflare D1 database checked through `GET /api/health`.
 
 Phase 2 adds the learner-facing interface: a responsive app shell, twelve learning tracks, a
 searchable scenario catalog, six full guides, progress and practice pages, and light/dark themes.
+The redesign makes the interface a precise, consistent "test bench": self-hosted IBM Plex Sans and
+JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
 The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
 No commerce application, authentication, bug-hunt mode, SQL playground, performance runner, or
@@ -17,18 +20,18 @@ security challenge exists yet.
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Dashboard: tracks, categories, recommendations, demo progress, quick practice |
+| `/` | Dashboard: start path, curriculum overview, and catalogue highlights |
 | `/tracks` | Browse the twelve testing disciplines |
 | `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
 | `/scenarios` | Search and filter every scenario by track, difficulty, mode, and status |
 | `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
-| `/progress` | Progress layout populated with clearly labelled demo data |
+| `/progress` | No-persistence progress preview, clearly labelled as sample data |
 | `/practice` | Live health check plus the planned practice formats and safety boundaries |
 
-Theme choice and sidebar collapse are remembered in `localStorage`. Dashboard progress, streaks,
-and recent activity are sample data and are never presented as real completions.
+Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
+saved; the progress page shows labelled sample data and says so.
 
 ## Requirements
 
@@ -166,7 +169,7 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 ## Known constraints
 
 - All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
-  progress; dashboard and progress figures are demo data.
+  progress; the progress page shows labelled sample data and says so.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance
