@@ -32,12 +32,14 @@ reproducible defects for controlled bug-hunt practice (see
 **no learner account persistence** yet (progress is not saved). No SQL playground, performance
 runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
 hints, structured bug reports with deterministic evaluation, and real progress tracking) is
-underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios) is implemented, and
+underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
 P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — plus server-side hunt-attempt
-and structured bug-report persistence with a scoped 30/minute report rate limit) is implemented,
-reviewed and committed on the implementation branch; production is unchanged and still runs the pre-Phase-4
-schema. The rest of Phase 4 is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-report evaluation (WP3) and everything after it is **not** implemented.
+and structured bug-report persistence with a scoped 30/minute report rate limit) and
+P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
+a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
+no AI) are implemented, reviewed and committed on the implementation branch; production is unchanged
+and still runs the pre-Phase-4 schema. The rest of Phase 4 (hints, reveal, UI, progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+the bug-report evaluation step is done; the evaluator's UI lands in P4-M2 and everything after WP3 is **not** implemented.
 
 ## What you can do now
 
@@ -188,6 +190,7 @@ src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed to
 src/server/practice.ts     Practice-mode routes (/api/v1/practice/*) + the 20/IP/UTC-day hunt-start cap
 src/server/attempts.ts     Phase 4 attempt lifecycle + GET /practice/attempts (bounded history)
 src/server/reports.ts      Phase 4 structured bug-report validation + POST .../report
+src/server/reportQuality.ts  Phase 4 deterministic §6.4 report evaluator (pure; server-only)
 src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
 src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
@@ -420,8 +423,7 @@ Bug-hunt mode (P3-M8):
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
 
-Phase 4 practice learning (P4-M1 WP2; API-only — nothing is rendered in the UI yet, and report
-evaluation lands in WP3):
+Phase 4 practice learning (P4-M1 WP2 + WP3; API-only — nothing is rendered in the UI yet):
 
 - `POST /api/v1/practice/hunts/:huntId/report` — submit a structured bug report. Body:
   `{ title, environment, preconditions?, steps, expected, actual, severity, priority,
@@ -439,9 +441,15 @@ evaluation lands in WP3):
   else a fresh one) and ids are never accepted from the client. Submissions are **rate limited to
   30 per IP per minute** (`report:<iphash>`, only a SHA-256 hash of the IP is stored) with
   `429 rate_limited` + `Retry-After` on overflow. `201` answers
-  `{ attempt, report }` — learner-safe: no attempt/report ids, no defect ids. Until WP3 lands,
-  `report.qualityScore` is a placeholder `0` and `report.feedback` an empty checklist; WP3
-  replaces this with the deterministic rule-based evaluation in the same request path.
+  `{ attempt, report, evaluation }` — learner-safe: no attempt/report ids, no defect ids, no
+  finding-check terms. The report is evaluated synchronously by the deterministic §6.4 rule-based
+  rubric (title 10 · environment 10 · steps 15 · step quality 10 · expected 8 · actual 8 ·
+  expected-vs-actual distinct 7 · severity 5 · priority 5 · finding 22; verdict bands
+  ≥80 `solid` · 50–79 `needs-work` · <50 `incomplete` — no AI, no network, no randomness).
+  `report.qualityScore`, `report.feedback` (per-check `{ id, passed, message }` results),
+  `evaluation.checks`, `attempt.bestQualityScore` (running maximum across submissions) and
+  `attempt.discovered` (sticky once earned) all reflect this evaluation; client-supplied score,
+  feedback or discovery fields are ignored.
 - `GET /api/v1/practice/hunts/:huntId/attempt` — the caller's current attempt for one registered
   hunt: `{ status, hintsUsed, bestQualityScore, discovered, submittedAt }` where `status` is
   `none|in_progress|submitted|revealed` (`none` when the caller has no attempt — the endpoint is
@@ -607,9 +615,9 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
   bug-hunt exercises (see above); hunt attempts and submitted bug reports now persist
-  server-side (session-scoped, API-only — there is no evaluation and nothing is rendered in the
-  UI yet); the progress page still shows labelled sample data and says so. Phase 4 (P4-M1 WP1
-  and WP2 implemented and committed on the branch; WP3 and the rest planned) addresses exactly this — see
+  server-side (session-scoped, API-only — reports are evaluated by the deterministic §6.4
+  rubric but nothing is rendered in the UI yet); the progress page still shows labelled sample data and says so. Phase 4 (P4-M1 WP1,
+  WP2 and WP3 implemented and committed on the branch; P4-M2 and the rest planned) addresses exactly this — see
   `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
@@ -628,8 +636,8 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   outlives the catalogue).
 - Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
-   anything), and there is no reveal/scoring flow yet (attempt/report persistence exists but
-  reports are stored unevaluated placeholders until WP3) — intended behaviour during an active
+   anything), and there is no reveal/scoring flow yet (reports are persisted and evaluated by the
+  deterministic §6.4 rubric, but the evaluation UI lands in P4-M2) — intended behaviour during an active
   hunt is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
   starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
   endpoints carry the rate limits described above; the limiter is a fixed-window approximation

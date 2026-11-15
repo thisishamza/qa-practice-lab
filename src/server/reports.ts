@@ -1,13 +1,16 @@
-// Structured bug reports (P4-M1 WP2) — persistence, validation and the
-// submission endpoint. The deterministic evaluator lands in WP3; until then
-// every stored report carries the WP2 placeholder (`quality_score = 0`,
-// empty feedback checklist) and the response omits `evaluation`.
+// Structured bug reports (P4-M1 WP2/WP3) — persistence, validation and the
+// submission endpoint. The deterministic evaluator (src/server/reportQuality.ts,
+// pure function) runs synchronously in this request path; the report insert and
+// the attempt stamp (status transition, first submitted_at, submit-time
+// customer binding, running-maximum best score, sticky discovered) commit as
+// ONE all-or-nothing D1 batch.
 //
 // Endpoint:
 //   POST /api/v1/practice/hunts/:huntId/report
 //     Body: { title, environment, preconditions?, steps, expected, actual,
 //             severity, priority, reproducibility? }
-//     201 → { attempt, report } (learner-safe; no ids, no evaluator data)
+//     201 → { attempt, report, evaluation } (learner-safe; no ids, no
+//             finding-check terms, no evaluator internals)
 //     400 invalid_request (+ per-field `fields`) — body/validation failures
 //     401 session_required                       — no live practice session
 //     404 hunt_not_found                         — unknown/forged hunt id
@@ -30,13 +33,20 @@
 //   (multi-line fields keep their line structure).
 // - Report text is learner data: synthetic by policy, stored tied to the
 //   session, cascade-deleted with it, never logged. No endpoint accepts a
-//   client-supplied defect id, and no response carries one.
+//   client-supplied defect id, score, feedback or discovery flag, and no
+//   response carries them. The server is the only source of the evaluation:
+//   unknown body keys (including `qualityScore`, `feedback`, `discovered`,
+//   `evaluation`) are ignored by validation.
+// - The evaluator (WP3) is a pure function: no AI, no network, no clock,
+//   no randomness. Evaluation runs before the batch; the persisted
+//   quality_score/feedback come from it, never from the client.
 
 import { Hono } from 'hono'
 import { getCookie } from 'hono/cookie'
 import type {
   AttemptView,
   BugReportView,
+  ReportFeedbackItem,
   ReportPriority,
   ReportReproducibility,
   ReportSeverity,
@@ -49,8 +59,9 @@ import {
   resolveAttemptForSubmission,
   submissionStatements,
 } from './attempts'
-import { HUNT_ID_PATTERN, findHunt } from './hunts'
+import { findHunt, HUNT_ID_PATTERN } from './hunts'
 import { clientIp, consumeRateLimit, sha256Hex, REPORT_LIMIT } from './rateLimit'
+import { evaluateReport } from './reportQuality'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -62,7 +73,7 @@ export const SINGLE_LINE_MAX = 200
 export const PRECONDITIONS_MAX = 1000
 export const STEPS_MAX = 4000
 export const PROSE_MAX = 2000
-/** Cap on the stored JSON feedback payload (the evaluator emits ≤ 32 checks). */
+/** Cap on the stored JSON feedback payload (the §6.4 evaluator emits 10 checks). */
 export const FEEDBACK_MAX = 16384
 
 const SEVERITIES: readonly ReportSeverity[] = ['critical', 'high', 'medium', 'low']
@@ -299,16 +310,45 @@ reportRoutes.post('/practice/hunts/:huntId/report', async (c) => {
   const attempt = await resolveAttemptForSubmission(c.env.DB, live.id, huntId)
   const now = new Date().toISOString()
 
+  // Deterministic evaluation, computed before the batch. The client is
+  // never consulted for score, feedback or discovery — the server's
+  // evaluator is the only source. Unknown body keys were already dropped
+  // by validation, so nothing client-supplied can steer this result.
+  const evaluation = evaluateReport({
+    huntId,
+    title: report.title,
+    environment: report.environment,
+    steps: report.steps,
+    expected: report.expected,
+    actual: report.actual,
+    severity: report.severity,
+    priority: report.priority,
+  })
+  const feedbackItems: ReportFeedbackItem[] = evaluation.checks.map(({ id, passed, message }) => ({
+    id,
+    passed,
+    message,
+  }))
+  const evaluationResponse = {
+    score: evaluation.score,
+    verdict: evaluation.verdict,
+    checks: evaluation.checks,
+  }
+
   // Report insert and attempt submission-stamp commit as ONE all-or-nothing
   // D1 batch: a failure anywhere leaves neither a report nor a stamped
-  // attempt behind.
-  const stamp = submissionStatements(attempt.id, customerId, now)
+  // attempt behind. The stamp carries the running-maximum best score and
+  // the sticky discovered flag, computed in SQL inside the batch.
+  const stamp = submissionStatements(attempt.id, customerId, now, {
+    score: evaluation.score,
+    discovered: evaluation.discovered,
+  })
   await c.env.DB.batch([
     c.env.DB.prepare(
       `INSERT INTO bug_reports
          (attempt_id, title, environment, preconditions, steps, expected, actual,
           severity, priority, reproducibility, quality_score, feedback, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '[]', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       attempt.id,
       report.title,
@@ -320,6 +360,8 @@ reportRoutes.post('/practice/hunts/:huntId/report', async (c) => {
       report.severity,
       report.priority,
       report.reproducibility,
+      evaluation.score,
+      JSON.stringify(feedbackItems),
       now,
     ),
     c.env.DB.prepare(stamp.sql).bind(...stamp.binds),
@@ -330,6 +372,11 @@ reportRoutes.post('/practice/hunts/:huntId/report', async (c) => {
     ...attempt,
     status: attempt.status === 'in_progress' ? 'submitted' : attempt.status,
     submitted_at: submittedAt,
+    best_quality_score:
+      attempt.best_quality_score === null || attempt.best_quality_score < evaluation.score
+        ? evaluation.score
+        : attempt.best_quality_score,
+    discovered: attempt.discovered === 1 || evaluation.discovered ? 1 : 0,
   })
   const reportResponse: BugReportView = {
     title: report.title,
@@ -341,13 +388,17 @@ reportRoutes.post('/practice/hunts/:huntId/report', async (c) => {
     severity: report.severity,
     priority: report.priority,
     reproducibility: report.reproducibility,
-    qualityScore: 0, // WP2 placeholder; WP3 replaces with the real evaluation.
-    feedback: [],
+    qualityScore: evaluation.score,
+    feedback: feedbackItems,
     createdAt: now,
   }
 
   return c.json(
-    { attempt: attemptResponse, report: reportResponse } satisfies ReportSubmissionResponse,
+    {
+      attempt: attemptResponse,
+      report: reportResponse,
+      evaluation: evaluationResponse,
+    } satisfies ReportSubmissionResponse,
     201,
   )
 })

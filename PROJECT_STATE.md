@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE, merged into `main` via PR #4, and DEPLOYED TO PRODUCTION (https://qa-practice-lab.pages.dev, Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, schema_version 9) on 2026-11-16 — see §11. P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) is complete; the deployment was performed with user approval and the smoke suite passed against production. Phase 4 has started: the plan is written and, on 2026-11-16, consolidated from eight milestones to exactly three and had its five planning decisions resolved: `docs/phase-4-learning-intelligence-plan.md` ("Phase 4 — Learning & Bug-Hunt Intelligence", milestones P4-M1 → P4-M2 → P4-M3). **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`) on 2026-11-16 — see §11 and §14. P4-M1 WP2 (migration 0010 `db/migrations/0010_hunt_attempts.sql`, `schema_version` → 10, attempts/report persistence, `report:<iphash>` 30/min scoped limit) is implemented, reviewed, verified and committed on the branch (`feat: add phase 4 attempt and report persistence`, 2026-11-16) — see §11 and §14. WP3 (deterministic evaluator) is NOT started.** The dedicated implementation branch is `feat/phase-4-learning-intelligence` (created from `main` @ `30d3424`; WP1 + WP2 are committed there; nothing pushed, merged or deployed).** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IMPLEMENTATION-COMPLETE, merged into `main` via PR #4, and DEPLOYED TO PRODUCTION (https://qa-practice-lab.pages.dev, Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, schema_version 9) on 2026-11-16 — see §11. P3-M9 (hardening, reset & Phase 3 exit audit — per-IP rate limits, bounded cleanup sweeps, local demo reset, exit audit doc) is complete; the deployment was performed with user approval and the smoke suite passed against production. Phase 4 has started: the plan is written and, on 2026-11-16, consolidated from eight milestones to exactly three and had its five planning decisions resolved: `docs/phase-4-learning-intelligence-plan.md` ("Phase 4 — Learning & Bug-Hunt Intelligence", milestones P4-M1 → P4-M2 → P4-M3). **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`) on 2026-11-16 — see §11 and §14. P4-M1 WP2 (migration 0010 `db/migrations/0010_hunt_attempts.sql`, `schema_version` → 10, attempts/report persistence, `report:<iphash>` 30/min scoped limit) is implemented, reviewed, verified and committed on the branch (`feat: add phase 4 attempt and report persistence`, 2026-11-16) — see §11 and §14. P4-M1 WP3 (the deterministic §6.4 bug-report evaluator, `src/server/reportQuality.ts`, synchronous in the POST report path — score/feedback persisted, `hunt_attempts.best_quality_score` running max, sticky `discovered`, inside the same all-or-nothing D1 batch) is implemented, reviewed, verified and committed on the branch (`feat: evaluate phase 4 bug reports`, 2026-11-16) — see §11 and §14.** The dedicated implementation branch is `feat/phase-4-learning-intelligence` (created from `main` @ `30d3424`; WP1 + WP2 + WP3 are committed there; nothing pushed, merged or deployed).** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-16.
 
 ## 2. Product principles
@@ -170,7 +170,7 @@ migrated D1 database, and the Pages preview serves the production build and Func
 
 Phase 2 exit criteria were verified locally on 2026-11-14: a learner can navigate twelve learning
 tracks, search and filter the scenario catalog, open a structured guide, and read scenario detail
-pages. Phase 3 is complete, merged and deployed; Phase 4 has started (2026-11-16, `docs/phase-4-learning-intelligence-plan.md`; three milestones P4-M1 → P4-M2 → P4-M3 after the same-day consolidation) — P4-M1 WP1 is committed as the branch baseline and P4-M1 WP2 is implemented, reviewed, verified and committed on the branch; WP3 remains. Phases 5–10 remain unstarted.
+pages. Phase 3 is complete, merged and deployed; Phase 4 has started (2026-11-16, `docs/phase-4-learning-intelligence-plan.md`; three milestones P4-M1 → P4-M2 → P4-M3 after the same-day consolidation) — P4-M1 WP1 is committed as the branch baseline and P4-M1 WP2 is implemented, reviewed, verified and committed on the branch; P4-M1 WP3 (the deterministic §6.4 evaluator) is implemented, reviewed, verified and committed on the branch as `feat: evaluate phase 4 bug reports`. Phases 5–10 remain unstarted.
 
 ## 10. Repository shape (current after Phase 2)
 
@@ -241,7 +241,8 @@ qa-practice-lab/
 │   ├── server/practice.ts             # P3-M7 practice-mode routes + P3-M8 hunts list, exact 20/IP/UTC-day cap
 │   │                                  # (Phase 4 WP2: hunt start ensures the live in_progress attempt)
 │   ├── server/attempts.ts             # P4-M1 WP2 attempt lifecycle + GET attempt / GET attempts history
-│   ├── server/reports.ts              # P4-M1 WP2 structured bug-report validation + POST report
+│   ├── server/reports.ts              # P4-M1 WP2/WP3 structured bug-report validation + POST report
+│   ├── server/reportQuality.ts        # P4-M1 WP3 deterministic §6.4 evaluator (pure; server-only)
 │   ├── server/hunts.ts                # P3-M7→M8 hunt registry (code, not data; scenarioId wiring)
 │   ├── server/defects.ts              # P3-M7→M8 defect registry + isDefectActive() (server-resolved)
 │   ├── shared/health.ts               # shared response type
@@ -277,9 +278,12 @@ qa-practice-lab/
     │                                  # reset, idempotency, guest+account compatibility, forged ids
     ├── server/hunt-set.test.ts        # P3-M8 defect set: both branches per defect, whole-set reset,
     │                                  # two-learner isolation, per-IP daily cap, hunt catalogue
-    ├── server/attempts.test.ts        # P4-M1 WP2: migration 0010 (fresh + 0001-0009 upgrade),
+    ├── server/report-quality.test.ts # P4-M1 WP3: unit suite for the §6.4 evaluator — every check,
+    │                                  # boundaries, verdict bands, determinism, no-leakage lint
+    ├── server/attempts.test.ts        # P4-M1 WP2+WP3: migration 0010 (fresh + 0001-0009 upgrade),
     │                                  # FKs/checks/partial unique index, cascade, attempt lifecycle
-    │                                  # + idempotency, report validation/ownership, rate limiting
+    │                                  # + idempotency, report validation/ownership, rate limiting,
+    │                                  # WP3 evaluation persistence/best-score/sticky-discovery
     ├── server/hardening.test.ts       # P3-M9: migration 0009 (fresh + upgrade paths), body-size
     │                                  # guard, rate limits (mutate/login/checkout), sweep authz
     │                                  # + bounded idempotent deletion, hunt cap atomicity
@@ -345,6 +349,21 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-16 — Phase 4 P4-M1 WP3 reviewed, reconciled & committed: deterministic bug-report evaluator
+
+- **Scope:** P4-M1 WP3 only — the deterministic bug-report evaluator (plan §6.4 rubric), wired into the POST report path. **No P4-M2 functionality** (no hints, reveal, report UI, scoring UI, `/progress`) was implemented; nothing pushed, merged, PR'd or deployed; WP1 and WP2 commits untouched (no amend). Production D1 remains `schema_version` 9; migration 0010 stays applied only to the local D1; `schema_version` remains **10** — **no migration was required** (0010 already carries `quality_score`, `feedback`, `best_quality_score`, `discovered`).
+- **Git safety (all expectations met):** branch `feat/phase-4-learning-intelligence`; HEAD `968d144` (`feat: add phase 4 attempt and report persistence`); working tree clean at session start; no reset, restore, stash, clean, branch switch, push, merge or deploy occurred.
+- **Evaluator (`src/server/reportQuality.ts`, pure, server-only):** plan §6.4 exactly — ten checks (`title-present` 10 · `environment-present` 10 · `steps-present` 15 · `steps-quality` 10 · `expected-present` 8 · `actual-present` 8 · `expected-actual-distinct` 7 · `severity-valid` 5 · `priority-valid` 5 · `finding` 22), integer score 0–100, verdict bands ≥80 `solid` · 50–79 `needs-work` · <50 `incomplete`. No AI, network, clock, randomness or hint penalties; no client-supplied score/feedback/discovery is consulted (unknown body keys, including spoofed `qualityScore`/`feedback`/`discovered`/`evaluation`, are ignored by validation — asserted by test). Feedback messages describe the *report* only; none names the fault location, an answer shape, or a finding-check term (lint-asserted over every message). Explicit input/output types; labelled checks `{id, label, passed, message}`; curated finding-check term groups live in the module (`FINDING_GROUPS`, exported for the server and its test suite only) with one shared normalization pipeline (case-fold, NFKD diacritics strip, punctuation → token boundaries, whitespace collapse) and token-boundary, synonym-tolerant matching — `researcher` never matches `search`. Finding evidence is title + steps + expected + actual only; environment/preconditions mention-matching awards nothing (tested). Inspection found **no internal inconsistency in §6.4**; under-specified points are documented deterministic choices (placeholder set + repeated-single-character + all-identical-tokens rules; Jaccard distance ≥ 0.6 for token disjointness — the "≥ 60% token disjoint" reading; newline/inline numbered-marker step counting; any digit/quoted string/URL-like path as the concrete token; enum re-validation case-insensitively; Jaccard/distinct applied to trimmed input). Discovery is possible only via the finding check — a near-perfect report with no finding-group vocabulary scores 78 and does NOT award `discovered` (tested).
+- **Persistence & atomicity:** the evaluator runs synchronously after validation, before the D1 batch. Report insert binds the computed score and `JSON.stringify([{id, passed, message}])` (10 checks — far under the 16 KB cap). The attempt stamp computes `best_quality_score` as a **running maximum** and `discovered` as **sticky** (`CASE WHEN discovered = 1 OR :new = 1 THEN 1 ELSE 0`) in SQL inside the same all-or-nothing batch — neither can race a concurrent submission, and retry leaves both consistent. `revealed` attempts stay `revealed`; only the first `submitted_at` is kept; `customer_id` semantics unchanged (submit-time, signed-in active accounts only). A failed batch leaves neither report nor attempt update — asserted both for a clean attempt and for an already-scored one (prior row byte-identical after rollback).
+- **Best score & sticky discovery:** best is the max across the attempt's submissions (strong→weak keeps 100; weak→strong raises 10→100; revealed attempts keep their scores). `discovered` once earned never reverts (strong→weak→weak stays discovered).
+- **Response safety:** `201 { attempt, report, evaluation }` (contract: `evaluation` is now a required member of `ReportSubmissionResponse` — additive). No defect ids, attempt/report/database ids, finding-check terms, group definitions, evaluator internals, hint/reveal content, or solution material in the payload (asserted, including the no-leakage lint). Client bundle grep: zero defect ids (exact case), zero evaluator internals (`evaluateReport`, `FINDING_GROUPS`, …), and no finding-group fingerprint terms; the four content-word coincidences (`accumulation`, `insufficient`, `not yours`, `another account`) are verified learner-facing copy from the Phase 3 scenario catalogue/WP1 curriculum, not the evaluator.
+- **WP2 placeholders (removed):** `quality_score=0`/`feedback='[]'`/absent evaluation are gone; the submission path now always evaluates synchronously. `attempts.test.ts` updated accordingly (201 payload keys now `['attempt','evaluation','report']`; persisted `quality_score=100` with all ten checks passing for the canonical full-quality report; `feedback` JSON parses to ten passed checks).
+- **Verification (executed, not assumed):** `tests/server/report-quality.test.ts` — **53 tests, all green** (every check independently, boundaries 9/10 title, 120/121, 40-char exactly, 2-step paths, numbered markers, quote/path/digit concrete tokens, placeholder matrix, verdict-band edges 80/79/50/45, 100/100 per hunt, per-hunt isolation with exclusive-term fixtures, synonym/normalization/case/punctuation variants, environment-only masking, junk-salad acceptance scoped to curated-term gaming, determinism across fixtures, leakage lint). `tests/server/attempts.test.ts` — **48 tests, all green** (incl. the new WP3 block: persistence of computed score/feedback, client-spoofed evaluator fields ignored, best-score retention both directions, sticky discovery, discovery below 50, high score without discovery (78, not discovered), failed validation persists nothing, failed batch atomic rollback — clean and already-scored, revealed stays revealed, cross-session isolation, payload leak assertions). **Total: 459 tests green** (393 → +66). `npm run check` clean (lint → typecheck → test); `npm run build` passes; production bundle re-greped as above; local D1 verified on `schema_version` 10 (`node:sqlite` read of the `.wrangler` state); migrations unchanged (`git status` shows none); no production contact.
+- **Documentation:** `PROJECT_STATE.md` and `README.md` updated truthfully (WP3 status; placeholders gone; no evaluation UI until P4-M2). Plan reconciled with a dated "WP3 implemented" note (§P4-M1, after the WP2 note) — migration-free wiring, running-max/sticky-in-SQL design, finding-check rules, the documented deterministic choices for under-specified §6.4 points (Jaccard ≥ 0.6 reading; step counting; concrete-token rule; placeholder rules), and the removal of the WP2 placeholders. Three-milestone structure unchanged; WP1/WP2 historical records preserved; README repo-shape and status sections updated.
+- **Commit:** WP3 reviewed and committed in this turn as **`feat: evaluate phase 4 bug reports`** (exact hash via `git log -1`; this file is part of that commit). No amendment of WP1 (`5210ebb`) or WP2 (`968d144`) occurred. No push, merge, PR or deployment occurred.
+- **Not verified / outstanding:** no browser verification (no UI ships in WP3 — evaluation results and attempt state are API-only, rendered in P4-M2); the 375/768/1024/1440 both-themes pass is a P4-M2 concern; production D1 remains at `schema_version` 9 (0010 unapplied remotely); dark-theme spot check still outstanding (pre-existing).
+- **Exact next action:** **P4-M2 — Complete Bug-Hunt Learning Experience** (hint ladder & gated reveal backend, the learner-facing bug-report form with evaluation feedback, hint/reveal/attempt-status UI; plan §6.2 / P4-M2) — in a fresh session, only on explicit maintainer instruction. Do not start P4-M2 without instruction; do not push, merge or deploy without approval.
 
 ### 2026-11-16 — Phase 4 P4-M1 WP2 review, reconciliation & branch commit
 
@@ -1841,24 +1860,30 @@ decisions; Phase 4 requires explicit instruction.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete, merged into `main` via PR #4, and deployed to production on 2026-11-16 at https://qa-practice-lab.pages.dev** (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; merged commit `1f0847f`). The P3-M1 … P3-M9 milestones are done and verified: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`). Phase 4 **has** started: **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`, see §11). P4-M1 WP2 (migration `db/migrations/0010_hunt_attempts.sql` — `schema_version` → 10, `src/server/attempts.ts` + `src/server/reports.ts`, `practice.ts` attempt creation, `report:<iphash>` 30/min scoped limit) is implemented, reviewed, verified and committed on the branch (`feat: add phase 4 attempt and report persistence`, see §11)**. WP3 (deterministic evaluator) is **not** started. The implementation branch `feat/phase-4-learning-intelligence` is **local-only — nothing has been pushed, merged or deployed**. Production D1 remains `schema_version` 9 — migration 0010 is applied only to the local D1. Read `docs/phase-4-learning-intelligence-plan.md` before acting, and do not start WP3 without explicit instruction. The deployment (D1 create + remote migrations + Pages project + deploy) is recorded in §11; the recommended maintenance sweep cadence is documented there. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 3 (commerce app) is **implementation-complete, merged into `main` via PR #4, and deployed to production on 2026-11-16 at https://qa-practice-lab.pages.dev** (Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9; merged commit `1f0847f`). The P3-M1 … P3-M9 milestones are done and verified: P3-M1 (domain foundation), P3-M2 (storefront catalogue UI), P3-M3 (session-keyed shopping cart), P3-M4 (checkout & orders — atomic D1 placement, simulated payments, idempotency), P3-M5 (synthetic customers & auth simulation), P3-M6 (inventory depth — staff restock, exactly-once cancellation), P3-M7 (bug-hunt engine v1), P3-M8 (seven deterministic defects, scenario wiring, hunt-start cap) and P3-M9 (hardening, reset & Phase 3 exit audit — rate limits, bounded cleanup sweeps, local demo reset, `docs/phase-3-exit-audit.md`). Phase 4 **has** started: **P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as the branch baseline (`feat: complete phase 4 curriculum foundation`, see §11). P4-M1 WP2 (migration `db/migrations/0010_hunt_attempts.sql` — `schema_version` → 10, `src/server/attempts.ts` + `src/server/reports.ts`, `practice.ts` attempt creation, `report:<iphash>` 30/min scoped limit) is implemented, reviewed, verified and committed on the branch (`feat: add phase 4 attempt and report persistence`, see §11). P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — `src/server/reportQuality.ts`, synchronous scoring in the POST report path, persisted score/feedback, running-max `best_quality_score`, sticky `discovered`) is implemented, reviewed, verified and committed on the branch (`feat: evaluate phase 4 bug reports`, see §11)**. The implementation branch `feat/phase-4-learning-intelligence` is **local-only — nothing has been pushed, merged or deployed**. Production D1 remains `schema_version` 9 — migration 0010 is applied only to the local D1. Read `docs/phase-4-learning-intelligence-plan.md` before acting; the next milestone is **P4-M2 — Complete Bug-Hunt Learning Experience**, which must not start without explicit maintainer instruction. The deployment (D1 create + remote migrations + Pages project + deploy) is recorded in §11; the recommended maintenance sweep cadence is documented there. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
 
-## 14. Phase 4 — Learning & Bug-Hunt Intelligence (P4-M1 WP1 committed; WP2 reviewed, verified & committed; WP3 not started)
+## 14. Phase 4 — Learning & Bug-Hunt Intelligence (P4-M1 WP1 + WP2 + WP3 implemented, verified & committed; P4-M1 complete)
 
 Status as of 2026-11-16: **the Phase 4 plan exists — `docs/phase-4-learning-intelligence-plan.md` —
 and P4-M1 WP1 (scenario curriculum enrichment) is implemented, reviewed, verified and committed as
 the branch baseline (`feat: complete phase 4 curriculum foundation`, `5210ebb`, 2026-11-16 —
 it succeeds `30d34241ba39424a4356c58eec8f566aa0ddb3d5`) — WP1: 358 tests green. **P4-M1 WP2 is
 implemented, reviewed, verified and committed on the branch** (`feat: add phase 4 attempt and
-report persistence`, 2026-11-16 — resolve the exact hash with `git log`; the
+report persistence`, `968d144`, 2026-11-16 — the
 WP2 implementation review/commit details are in §11): migration
 `db/migrations/0010_hunt_attempts.sql` (`schema_version` → 10), `src/server/attempts.ts` +
 `src/server/reports.ts` (+ `src/shared/learning.ts`), hunt-start attempt creation (idempotent),
 `report:<iphash>` 30/min scoped limit — **393 tests green**, `npm run check` clean, production
-build passes, local D1 on schema 10. WP3 (deterministic evaluator) is NOT started. Nothing has
-been pushed, merged or deployed; production D1 remains `schema_version` 9 — migration 0010 is
-applied only to the local D1.**
-Implementation of the remaining work packages requires explicit instruction.
+build passes, local D1 on schema 10. **P4-M1 WP3 is implemented, reviewed, verified and committed
+on the branch** (`feat: evaluate phase 4 bug reports`, 2026-11-16 — exact hash via `git log`; review
+details in §11): `src/server/reportQuality.ts` (pure deterministic §6.4 evaluator, 53 unit tests),
+synchronous evaluation inside the POST report path in the same all-or-nothing D1 batch —
+`quality_score`/`feedback` persisted, `best_quality_score` running maximum in SQL, `discovered`
+sticky in SQL — **459 tests green**, `npm run check` clean, production build passes, **no
+migration** (0010 carries the columns; `schema_version` stays 10), local D1 verified on schema 10.
+Nothing has been pushed, merged or deployed; production D1 remains `schema_version` 9 — migration
+0010 is applied only to the local D1.**
+Implementation of P4-M2 and later work packages requires explicit instruction.
 
 **2026-11-16 — milestone consolidation (planning only):** Phase 4 was consolidated from eight
 milestones (P4-M1…P4-M8) to **exactly three** (P4-M1 → P4-M2 → P4-M3). This was a restructuring,
@@ -1937,13 +1962,27 @@ same request path.** **Update (review turn, same day): WP2 was reviewed, reconci
 committed as `feat: add phase 4 attempt and report persistence`; it was never merged, pushed or
 deployed.**
 
+**2026-11-16 — P4-M1 WP3 implemented on the branch (see §11):** `src/server/reportQuality.ts`
+(the pure deterministic §6.4 evaluator: ten checks / 100 points, verdict bands
+≥80 `solid` · 50–79 `needs-work` · <50 `incomplete`, no AI/network/clock/randomness/hint
+penalties; curated per-hunt finding-check term groups matched after one shared normalization
+pipeline with token boundaries and synonym tolerance; finding evidence confined to title + steps +
+expected + actual); wired synchronously into `POST …/report` in the same all-or-nothing D1 batch —
+persisted `quality_score`/`feedback`, `hunt_attempts.best_quality_score` as running maximum in
+SQL, sticky `discovered` in SQL, revealed attempts stay revealed; client-supplied evaluator fields
+ignored; `201 { attempt, report, evaluation }`. Unit suite `tests/server/report-quality.test.ts`
+(**53 tests**), `tests/server/attempts.test.ts` extended with a WP3 integration block
+(**48 tests**; total **459 green**); `npm run check` clean; `npm run build` passes; client bundle
+verified to contain zero defect ids and zero evaluator internals; **no migration** — the WP2
+placeholders (`quality_score=0`, empty feedback) are **removed**. **Update (this turn): WP3
+reviewed, reconciled and committed as `feat: evaluate phase 4 bug reports`; never merged, pushed
+or deployed.**
+
 ### Exact next action
 
-Begin **P4-M1 WP3** in a fresh OpenCode session: `src/server/reportQuality.ts` (pure deterministic
-evaluator; rubric §6.4; wired into the POST report path, replacing the WP2 placeholder in the
-same request path — stamps `quality_score`, `feedback`, `hunt_attempts.best_quality_score` and
-sticky `discovered` inside the same D1 batch as the insert; unit suite
-`tests/server/report-quality.test.ts`; integration: submit→evaluate flow, best-score retention,
-discovered stickiness, rollback semantics). WP3 requires explicit maintainer instruction to start.
-Do not start P4-M2 before P4-M1 (WP1–WP3) is verified and committed. Do not push, merge, PR or
-deploy anything without explicit instruction.
+Begin **P4-M2 — Complete Bug-Hunt Learning Experience** in a fresh OpenCode session (plan §6.2 /
+P4-M2): WP1 hint ladder & gated reveal backend (compiled registries, `hint_mask` levels 1–3,
+server-side reveal 403/POST give-up path), WP2 bug-report form + evaluation feedback UI, WP3
+hint/reveal/attempt-status surfaces — with `ui-ux-pro-max` loaded first for the UI packages.
+P4-M1 is complete (WP1–WP3 verified and committed). Do not start P4-M2 without explicit maintainer
+instruction; do not push, merge, PR or deploy anything without explicit instruction.

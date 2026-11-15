@@ -1,4 +1,4 @@
-// Attempt lifecycle for the Phase 4 learning intelligence (P4-M1 WP2).
+// Attempt lifecycle for the Phase 4 learning intelligence (P4-M1 WP2/WP3).
 //
 // Endpoints (all resolved from the caller's `mpl_session` cookie; attempt
 // ids are never accepted from the client):
@@ -25,7 +25,11 @@
 //   fact) to the latest attempt for (session, hunt).
 // - Statuses: in_progress → submitted (report persisted, WP2) or revealed
 //   (explicit confirmed give-up, P4-M2). `submitted` never goes backwards in
-//   this milestone. discovered, once 1, is sticky and never reset here.
+//   this milestone. discovered, once 1, is sticky and never reset here
+//   (WP3 stamps it from the evaluation, sticky in SQL).
+// - best_quality_score is the running maximum across the attempt's
+//   submissions (WP3, stamped in SQL inside the report batch); it is NULL
+//   until the first evaluation lands.
 // - customer_id is stamped at report submission time when the browser is
 //   signed in (mirroring orders.customer_id; ON DELETE SET NULL). Starting a
 //   hunt while signed in does not stamp, and signing in never retroactively
@@ -179,25 +183,45 @@ export async function resolveAttemptForSubmission(
 }
 
 /**
+ * Result of one deterministic evaluation, as needed by the attempt stamp.
+ * Mirrors the fields of ReportEvaluationResult the stamp consumes.
+ */
+export interface SubmissionEvaluationStamp {
+  score: number
+  discovered: boolean
+}
+
+/**
  * Stamps the attempt after its report row has been staged, in the same D1
  * batch as the report insert (all-or-nothing). in_progress → submitted;
  * revealed stays revealed (giving up is never a completion); submitted
  * stays submitted. Only the first submitted_at is kept; any existing
  * customer_id binding is preserved.
+ *
+ * `best_quality_score` becomes the running maximum across submissions and
+ * `discovered` is sticky (once 1 it never returns to 0) — both computed in
+ * SQL inside the same statement so the update is atomic and cannot race a
+ * concurrent submission on the same attempt.
  */
 export function submissionStatements(
   attemptId: number,
   customerId: number | null,
   now: string,
+  evaluation: SubmissionEvaluationStamp,
 ) {
+  const discovered = evaluation.discovered ? 1 : 0
   return {
     sql: `UPDATE hunt_attempts
           SET status = CASE WHEN status = 'in_progress' THEN 'submitted' ELSE status END,
               submitted_at = COALESCE(submitted_at, ?),
               customer_id = COALESCE(customer_id, ?),
+              best_quality_score = CASE
+                WHEN best_quality_score IS NULL OR best_quality_score < ? THEN ?
+                ELSE best_quality_score END,
+              discovered = CASE WHEN discovered = 1 OR ? = 1 THEN 1 ELSE 0 END,
               updated_at = ?
           WHERE id = ?`,
-    binds: [now, customerId, now, attemptId],
+    binds: [now, customerId, evaluation.score, evaluation.score, discovered, now, attemptId],
   }
 }
 

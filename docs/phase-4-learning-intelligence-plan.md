@@ -518,7 +518,112 @@ the original **P4-M1**, **P4-M2** and **P4-M3**.
 > All other Phase 4 requirements are unchanged. The three-milestone structure is
 > unchanged; WP3 remains the immediate next work package after WP2 is committed.
 
-1. **ID/title:** P4-M1 — Learning Foundation, Attempts & Evaluation.
+> **2026-11-16 — WP3 implemented (as-built behaviour; it supersedes the sketch
+> wording below where they differ):**
+>
+> **Pure evaluator.** `src/server/reportQuality.ts` ships the exact §6.4 rubric
+> — ten checks, 100 points total (`title-present` 10, `environment-present` 10,
+> `steps-present` 15, `steps-quality` 10, `expected-present` 8,
+> `actual-present` 8, `expected-actual-distinct` 7, `severity-valid` 5,
+> `priority-valid` 5, `finding` 22), verdict bands ≥80 `solid` · 50–79
+> `needs-work` · <50 `incomplete`. The module is pure: no AI, no network, no
+> clock, no randomness; same input always produces the same output; fully
+> explicit types; emits labelled checks `{id, label, passed, message}` with
+> learner-safe messages that describe the report, never the fault location.
+> `report:<iphash>` limit, validation and ownership rules are unchanged from
+> WP2. **No new migration** — 0010 already carries `quality_score`, `feedback`,
+> `best_quality_score` and `discovered`; `schema_version` stays 10.
+>
+> **Evaluation flow.** `POST …/report` runs the evaluator synchronously after
+> validation, before the D1 batch. The report row stores the computed
+> `quality_score` and the JSON feedback checklist (`[{id, passed, message}]`,
+> ≤ 16 KB — 10 checks, far under the cap). The attempt stamp is computed in
+> SQL inside the same all-or-nothing batch: `in_progress → submitted`
+> (revealed/submitted stay as they are), first `submitted_at` only,
+> submit-time `customer_id`, **`best_quality_score` = running maximum across
+> this attempt's submissions** and **`discovered` sticky in SQL**
+> (`CASE WHEN discovered = 1 OR :new = 1 THEN 1 ELSE 0`) — neither can race a
+> concurrent submission, and a retry leaves both consistent. A failed batch
+> leaves nothing behind (asserted by test). The WP2 `quality_score=0` /
+> empty-feedback placeholders are **removed**.
+>
+> **Response.** `201 { attempt, report, evaluation }` — `evaluation` is now
+> always present (`{ score, verdict, checks[] }`); `report.qualityScore` and
+> `report.feedback` carry the real values. The client contributes nothing to
+> the evaluation: any `qualityScore`, `feedback`, `discovered` or `evaluation`
+> keys in the request body are ignored as unknown keys by validation (asserted
+> by test — a spoofed `qualityScore: 100` on a weak report persists score 10).
+> No defect ids, no attempt/report ids, no finding-check terms, no evaluator
+> internals in the payload (asserted).
+>
+> **Finding check (as built).** Per-hunt curated groups live in
+> `reportQuality.ts` (`FINDING_GROUPS`), matched after one shared
+> normalization pipeline (case-folded, diacritics stripped NFKD, punctuation →
+> token boundaries, whitespace collapsed) with **token-boundary, synonym-
+> tolerant matching** — `researcher` never matches `search`. Matching covers
+> the **finding fields only** (title + steps + expected + actual); an
+> environment line mentioning a group term awards nothing. Groups are curated
+> to behaviour-area vocabulary (e.g. `description`, `keyword`, `quantity`,
+> `remaining stock`, `line total`, `customer name`, `another account`) rather
+> than fault-location vocabulary; gaming is accepted and documented (§14).
+> The §6.4 phrase "thin, pure-keyword junk without the behaviour context
+> fails" is honored by construction: junk lacking every curated term fails
+> the check in every hunt (tested), junk built only from curated terms passes
+> the check but fails the presence/placeholder/distinct/quality checks
+> honestly (tested, score 73/needs-work). Finding is **not** derivable from a
+> high score — a near-perfect report with no group vocabulary scores 78 and
+> does **not** award `discovered` (tested).
+>
+> **Documented deterministic choices (§6.4 under-specified points).**
+> 1. *Placeholder titles:* "not a placeholder" is implemented as a curated
+>    placeholder set (`test`, `lorem ipsum`, …) plus repeated-single-character
+>    detection and an all-identical-tokens rule (≥3 tokens). Deterministic;
+>    no scoring rules outside §6.4 were invented.
+> 2. *Token disjointness* for `expected-actual-distinct`: Jaccard distance
+>    over token sets (`1 − |A∩B| / |A∪B| ≥ 0.6`). §6.4 required "≥ 60% token
+>    disjoint" without naming the formula; this is the symmetric reading.
+>    Identical-after-normalization fails unconditionally (tested, incl.
+>    punctuation-only variants).
+> 3. *Discrete-step counting* splits on newlines and inline numbered markers
+>    (`1.` `2)` `3:` `step 4-`), never on decimals or versions.
+> 4. *Concrete token* in `steps-quality` is any digit (numbered steps
+>    therefore qualify), a quoted string, or a URL-like path.
+> 5. *Severity/priority* are enum-validated case-insensitively by the
+>    evaluator (validation already enforces them, so the 10 points are
+>    guaranteed for API-submitted reports — defense in depth).
+> 6. `expected-actual-distinct` fails when either side normalises to nothing,
+>    and when normalized strings are identical (tested, incl. punctuation-only
+>    variants).
+> 7. *Environment present* requires ≥ 8 chars and ≥ 1 curated term from a
+>    small browser/OS/device/build/practice-shop list (case-insensitive).
+>
+> **Tests.** `tests/server/report-quality.test.ts` (new, 53 tests): every
+> check independently, boundaries (10/9, 120/121, 40 chars exactly, 2-step
+> split), placeholder junk, verdict-band edges (80/79/50/45), 100/100 in all
+> seven hunts, per-hunt group isolation (exclusive-term fixtures), synonym/
+> normalization cases, environment-only mention negatives, junk negatives,
+> Jaccard boundary, determinism (repeat evaluation), label/id/message shape,
+> and a no-leakage lint asserting no defect id and no finding-group term
+> appears in any feedback message. WP2's `attempts.test.ts` extended with a
+> WP3 integration block (score/feedback persisted; spoofed client fields
+> ignored; best-score retention strong→weak and weak→strong; sticky
+> discovery; discovery below 50; high score without discovery; failed
+> validation persists nothing; failed D1 batch rolls back fully — including
+> on an already-scored attempt; revealed attempts stay revealed; cross-session
+> isolation; no defect ids/internal column names in payloads). **459 tests
+> green** (393 → +66), `npm run check` clean, `npm run build` passes, local
+> D1 on `schema_version` 10.
+>
+> **Deviations / notes:** no migration was required. `evaluation` became a
+> required member of `ReportSubmissionResponse` (additive contract change;
+> WP2's field was optional). The FEEDBACK_MAX constant's doc comment now
+> reflects the §6.4 check count (10). `FINDING_GROUPS` is exported for the
+> server and its test suite only — client code must never import
+> `reportQuality.ts`.
+>
+> All other Phase 4 requirements are unchanged. The three-milestone structure
+> is unchanged; the next work package after WP3 is P4-M2 (not started).
+
 2. **Objective:** the platform can describe what a learner is practicing, persist
    their attempts and reports, determine finding status, and evaluate report quality
    using transparent deterministic rules. Concretely: scenario curriculum enrichment
@@ -1121,7 +1226,7 @@ vocabulary). Old M8 depended on all — P4-M3 WP3 depends on all.
 
 | Endpoint | Milestone | Type | Notes |
 |---|---|---|---|
-| `POST /api/v1/practice/hunts/:huntId/report` | P4-M1 (WP2 storage → WP3 evaluation) | Write, `report:<iphash>` 30/min + 120/min backstop | As built (WP2): `201 { attempt, report }` with placeholder `qualityScore: 0`/empty feedback; `401 session_required` without a live session; no `409` (no conflict condition in the contract). Returns evaluation since WP3. |
+| `POST /api/v1/practice/hunts/:huntId/report` | P4-M1 (WP2 storage → WP3 evaluation) | Write, `report:<iphash>` 30/min + 120/min backstop | As built (WP3): `201 { attempt, report, evaluation }` — score/verdict/checks persisted; `401 session_required` without a live session; no `409` (no conflict condition in the contract). |
 | `GET /api/v1/practice/hunts/:huntId/attempt` | P4-M1 (WP2) | Read | As built: 404-free learner-safe attempt state (`{ status: 'none', … }` shape when none exists); `400`/`404` only for malformed/unknown hunt ids. |
 | `GET /api/v1/practice/attempts` | P4-M1 (WP2) | Read | As built: ≤50 rows, newest first; session-scoped plus customer-bound when signed in. |
 | `GET /api/v1/practice/progress` | P4-M3 (WP1) | Read | Aggregate; session + bound customer rows. |

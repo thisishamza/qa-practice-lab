@@ -1,4 +1,4 @@
-// Shared contracts for Phase 4 learning intelligence (P4-M1 WP2).
+// Shared contracts for Phase 4 learning intelligence (P4-M1 WP1–WP3).
 // Consumed by the Hono API (src/server/attempts.ts, src/server/reports.ts)
 // and, in later milestones, the browser client. Nothing here carries defect
 // identifiers, hint content, reveal content, finding-check terms or
@@ -21,14 +21,14 @@ export type ReportPriority = 'p1' | 'p2' | 'p3' | 'p4'
 /** How reproducibly the defect was observed. */
 export type ReportReproducibility = 'always' | 'sometimes' | 'once'
 
-/** One deterministic evaluator check result (populated from WP3 on). */
+/** One deterministic evaluator check result. */
 export interface ReportFeedbackItem {
   id: string
   passed: boolean
   message: string
 }
 
-/** A full evaluator verdict (populated from WP3 on; absent in WP2). */
+/** A full evaluator verdict (score 0–100, plan §6.4 rubric). */
 export interface ReportEvaluation {
   score: number
   verdict: 'solid' | 'needs-work' | 'incomplete'
@@ -90,9 +90,8 @@ export interface BugReportView {
   priority: ReportPriority
   reproducibility: ReportReproducibility
   /**
-   * Deterministic rule-based score 0–100. WP2 stores the placeholder 0 and
-   * leaves `feedback` empty; WP3 populates the real evaluation synchronously
-   * in this same response path. Never model-generated.
+   * Deterministic rule-based score 0–100, computed server-side by the
+   * §6.4 evaluator. Never model-generated; the client can never influence it.
    */
   qualityScore: number
   feedback: ReportFeedbackItem[]
@@ -102,6 +101,6 @@ export interface BugReportView {
 export interface ReportSubmissionResponse {
   attempt: AttemptView
   report: BugReportView
-  /** Present from WP3 on; absent in WP2. */
-  evaluation?: ReportEvaluation
+  /** The synchronous §6.4 evaluation of this submission. */
+  evaluation: ReportEvaluation
 }
