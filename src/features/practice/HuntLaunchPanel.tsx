@@ -15,6 +15,7 @@ import { usePracticeSession } from './usePracticeSession'
 import { Button } from '../../components/ui/Button'
 import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
+import { BugReportForm } from './BugReportForm'
 
 export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
   const { loadState, mode, hunt, busy, actionError, startHunt, resetSession } =
@@ -126,6 +127,17 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
           ) : null}
         </>
       )}
+      {activeThisHunt && scenario.huntId ? (
+        <div className="bug-report-block">
+          <h3>File a report</h3>
+          <p className="panel-note">
+            Found something? Write the report while it is in front of you. It is stored for
+            this practice session and evaluated on the server by deterministic rules — no AI,
+            nothing leaves your session.
+          </p>
+          <BugReportForm huntId={scenario.huntId} />
+        </div>
+      ) : null}
     </div>
   )
 }

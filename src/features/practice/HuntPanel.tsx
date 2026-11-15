@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { usePracticeSession } from './usePracticeSession'
 import { fetchPracticeHunts } from './api'
-import { BugReportExport } from './BugReportExport'
+import { BugReportForm } from './BugReportForm'
 import { Button } from '../../components/ui/Button'
 import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
@@ -210,10 +210,11 @@ export function HuntPanel() {
             <div className="bug-report-block">
               <h3>File a report</h3>
               <p className="panel-note">
-                Found something? Write the report while it is in front of you. It is exported as a
-                local markdown file — the lab does not receive it.
+                Found something? Write the report while it is in front of you. It is stored for
+                this practice session and evaluated on the server by deterministic rules — no AI,
+                nothing leaves your session.
               </p>
-              <BugReportExport />
+              <BugReportForm huntId={hunt.id} />
             </div>
           ) : null}
         </div>

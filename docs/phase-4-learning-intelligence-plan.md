@@ -978,6 +978,82 @@ the original **P4-M4**, **P4-M5** and **P4-M6**.
 > the 400/401 paths instead. The 21 placeholder scenarios remain unchanged and
 > non-runnable. See PROJECT_STATE.md §11 for the dated entry.
 >
+> **2026-11-16 — WP2 implemented (this note records the as-built behaviour; it
+> supersedes the sketch wording below where they differ):**
+>
+> **Structured report panel.** `src/features/practice/BugReportForm.tsx` (replacing
+> the internals of `BugReportExport.tsx`, which is removed) renders on both wired
+> hunt panels — `HuntPanel` (/practice) and `HuntLaunchPanel` (scenario detail) —
+> while a hunt is active for the browser session. Nine fields: title (≤200),
+> environment (≤200), preconditions (optional, ≤1000), steps (≤4000), expected and
+> actual (≤2000 each), severity (critical/high/medium/low with impact-based option
+> copy), priority (p1–p4; independent of severity — never derived) and
+> reproducibility (always/sometimes/once, defaulting to always, matching the
+> server default). Every field carries a persistent visible label and an explicit
+> `(required)`/`(optional)` marker; placeholders are hints only. Length caps
+> mirror the server (`REPORT_FIELD_LIMITS` in `src/lib/reportForm.ts`); blur-time
+> inline validation; the server stays authoritative.
+>
+> **Validation & accessibility.** Client-side validation short-circuits before
+> the network; on any failure (client-side or server-side) focus moves to a
+> linked error summary (`role="alert"`, `tabIndex={-1}`, `ReportErrorSummary`)
+> whose entries name the field and move focus to its control. Inline errors use
+> `aria-invalid` + `aria-describedby`. Server 400 `fields` are rendered beside
+> their fields and in the summary; unknown server field keys are dropped. 401,
+> 404, 429 and unexpected 5xx/network failures surface as a concise, learner-safe
+> summary message — raw exceptions, D1 errors and internals never render (429
+> shows the server message verbatim; no invented retry duration).
+>
+> **Submission & duplicate protection.** `POST /api/v1/practice/hunts/:huntId/report`
+> via a typed `submitReport` client in `features/practice/api.ts` (`PracticeApiError`
+> gained optional per-field `fields`). The client sends exactly the nine
+> client-allowed keys — no score, feedback, discovery, hunt-id or attempt-id
+> fields can be smuggled. A ref-guard blocks re-submit while one is in flight
+> (plus the controller's own `inFlight` check, unit-tested). Ownership resolves
+> from the cookie session server-side; missing/expired sessions surface as
+> `401 session_required`. Failed submissions never clear the form — the
+> learner's text is preserved byte-for-byte.
+>
+> **Evaluation view.** `ReportEvaluationView` renders the server response
+> verbatim: score /100 (mono), verdict tag (Solid ≥80 · Needs work 50–79 ·
+> Incomplete <50 — reusing the `Tag` vocabulary), the 10-check pass/improve
+> checklist with icon + text (never colour alone, `.sr-only` pass/fail cues),
+> an explicit report-quality vs. finding-the-defect explainer (discovery follows
+> solely from the finding evidence in title/steps/expected/actual; a high score
+> does not imply discovery) and the `attempt.discovered` state. Nothing is
+> recomputed in the browser. "Revise and resubmit" restores the form with the
+> text intact (best score is kept server-side); failures render no evaluation.
+>
+> **Download.** `reportMarkdown()` in `src/lib/reportForm.ts` generates the file
+> from the *submitted* report plus the server evaluation: submitted fields, the
+> three enums, the rule-based score/verdict and learner-safe check feedback.
+> User text is escaped (`&`/`<`/`>`, backslashes, backticks, heading-like lines
+> neutralised) so it cannot alter the document or inject markup; no ids, defect
+> data, finding-check terms or evaluator internals can appear (check ids are
+> never rendered; only labels and messages). Filename
+> `bug-report-<slug>-<yyyy-mm-dd>.md`; the date comes from the server-stamped
+> `createdAt`. Downloading never creates another report.
+>
+> **Testing & verification.** `tests/lib/report-form.test.ts` (validation,
+> submission flow with injected transport, error mapping, markdown/filename/leak
+> checks) and `tests/practice/bug-report-form.test.tsx` (static markup of form,
+> summary, evaluation view, hunt-panel placement; client API tests in
+> `tests/practice/api.test.ts`). Unit/markup level only for interaction paths —
+> Node environment, no DOM renderer. Browser probe against the production build
+> (system Chrome over CDP, both themes × 375/768/1024/1440 px): 32/32 checks
+> pass — submit, incomplete verdict on junk, solid verdict on a complete report,
+> download content/filename and leak checks, blocked-network failure keeps the
+> text, zero horizontal overflow, focus into the summary and back to fields,
+> zero console errors.
+>
+> **Deviations/limitations.** The plan sketched the evaluation panel loosely;
+> it is `ReportEvaluationView.tsx` (naming only). The `BugReportExport` name is
+> removed outright (no compatibility shim — the repo removed aliases in M8).
+> The 21 placeholder scenarios remain non-runnable. WP3 (hint/reveal UI, attempt
+> status) is **not** started. The download labels the evaluation as
+> rule-based/no-AI honestly, as required. See PROJECT_STATE.md §11 for the
+> dated entry.
+>
 
 1. **ID/title:** P4-M2 — Complete Bug-Hunt Learning Experience.
 2. **Objective / expected outcome:** learners can independently investigate defects,

@@ -37,12 +37,15 @@ P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — pl
 and structured bug-report persistence with a scoped 30/minute report rate limit) and
 P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
 a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
-no AI), and P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
+no AI), P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
 reveal as server-side API endpoints — unlocked only by a submitted report or an explicit
-confirmed give-up) are implemented, reviewed and committed on the implementation branch;
-production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (evaluation
-UI, hint/reveal UI, progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-the evaluator's UI lands in P4-M2 WP2/WP3 and everything after WP1 is **not** implemented.
+confirmed give-up) and P4-M2 WP2 (the structured bug-report UI — labelled form, inline
+validation with a linked error summary, server-side submission, an evaluation result view
+and a downloadable markdown report — rendered on the wired hunt panels) are implemented,
+reviewed and committed on the implementation branch;
+production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (hint/reveal UI,
+progress) is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+only P4-M2 WP3 (hint/reveal UI) and P4-M3 remain **not** implemented.
 
 ## What you can do now
 
@@ -52,11 +55,11 @@ the evaluator's UI lands in P4-M2 WP2/WP3 and everything after WP1 is **not** im
 | `/tracks` | Browse the twelve testing disciplines |
 | `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
 | `/scenarios` | Search and filter every scenario by track, difficulty, mode, status, category, and hunt availability |
-| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel |
+| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel (and the structured report form while the hunt is active) |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | No-persistence progress preview, clearly labelled as sample data |
-| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts, local bug-report export), planned practice formats and safety boundaries |
+| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -194,6 +197,10 @@ src/server/practice.ts     Practice-mode routes (/api/v1/practice/*) + the 20/IP
 src/server/attempts.ts     Phase 4 attempt lifecycle + GET /practice/attempts (bounded history)
 src/server/reports.ts      Phase 4 structured bug-report validation + POST .../report
 src/server/reportQuality.ts  Phase 4 deterministic §6.4 report evaluator (pure; server-only)
+src/lib/reportForm.ts      Phase 4 bug-report form logic (validation, submission flow, markdown download)
+src/features/practice/BugReportForm.tsx        Phase 4 structured report form (WP2)
+src/features/practice/ReportEvaluationView.tsx Phase 4 evaluation result view (WP2)
+src/features/practice/ReportErrorSummary.tsx   Phase 4 linked error summary (WP2)
 src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
 src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
@@ -426,7 +433,7 @@ Bug-hunt mode (P3-M8):
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
 
-Phase 4 practice learning (P4-M1 WP2 + WP3; API-only — nothing is rendered in the UI yet):
+Phase 4 practice learning (P4-M1 WP2 + WP3; rendered by the P4-M2 WP2 UI on the hunt panels):
 
 - `POST /api/v1/practice/hunts/:huntId/report` — submit a structured bug report. Body:
   `{ title, environment, preconditions?, steps, expected, actual, severity, priority,
@@ -465,6 +472,23 @@ Phase 4 practice learning (P4-M1 WP2 + WP3; API-only — nothing is rendered in 
   cascade-delete with their practice session (orders precedent): guest progress is exactly as
   durable as the session's 7-day TTL. The `/progress` page still shows labelled sample data.
 
+  **P4-M2 WP2 (rendered).** The wired hunt panels (`/practice` and the scenario launch panel)
+  carry a **structured report form** while a hunt is active: labelled fields (title, environment,
+  optional preconditions, steps, expected, actual, severity — impact-based — and an independent
+  priority, plus reproducibility), persistent required/optional markers, inline validation on blur,
+  a linked error summary that takes focus on a failed submit (each entry names its field and moves
+  focus to the control), duplicate-submission protection, and server per-field errors rendered
+  beside their fields. The submitted report is evaluated synchronously and the result view shows
+  the server's score (out of 100), the verdict band (≥80 solid · 50–79 needs work · below 50
+  incomplete), per-check pass/improve feedback and an explicit
+  **report quality vs. finding the defect** explainer (discovery follows solely from the finding
+  evidence in title/steps/expected/actual; a high score does not imply discovery). The evaluation
+  is rule-based and says so — no AI, nothing is estimated in the browser. The report can be
+  revised and resubmitted (best score is kept) or downloaded as markdown generated from the
+  submitted report plus the safe, learner-facing feedback — never from hidden evaluator state;
+  no ids, defect data or evaluator internals appear in the file. A failed submission keeps the
+  learner's text. Hint/reveal rendering is P4-M2 WP3 and is **not** implemented yet.
+
 Phase 4 learning experience (P4-M2 WP1; API-only — nothing is rendered in the UI yet):
 
 - `POST /api/v1/practice/hunts/:huntId/hints` — request one progressive hint, three levels per
@@ -499,9 +523,10 @@ Phase 4 learning experience (P4-M2 WP1; API-only — nothing is rendered in the 
 | `security-object-access` | `hunt-authz-001` | access control on order detail |
 
 Wiring both directions: wired scenario pages carry a **Bug-hunt exercise** launch panel
-(start/reset in place); `/practice` lists the hunts with start/switch/reset and a **local
-bug-report export** (the report is generated in your browser as a markdown download — nothing
-is uploaded, stored or graded); the scenario catalogue cards show a **Bug-hunt exercise** badge,
+(start/reset in place) and, while the hunt is active, the **structured bug-report panel**;
+`/practice` lists the hunts with start/switch/reset and the same report panel for the active
+hunt (submission persists the report, evaluates it and offers a markdown download); the scenario
+catalogue cards show a **Bug-hunt exercise** badge,
 the status filter includes `Ready`, and `/scenarios?hunt=available` deep-links the seven wired
 scenarios.
 
@@ -509,7 +534,7 @@ scenarios.
 into an intentionally broken state (the banner turns amber and names the hunt). One defect is
 active; it is deterministic and reproducible. Nothing about the hunt is stored anywhere but your
 own `practice_sessions` row, other browsers never share it, and `reset` always returns the shop
-to clean behaviour. Work out what the defect is, gather evidence, file your local report, and
+to clean behaviour. Work out what the defect is, gather evidence, file your report, and
 reset. Defect ids, expected/actual details and repro steps are deliberately **not** exposed to
 the learner; they live in `docs/bug-hunt-catalogue.md` for maintainers.
 
@@ -638,10 +663,11 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 ## Known constraints
 
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
-  bug-hunt exercises (see above); hunt attempts and submitted bug reports now persist
-  server-side (session-scoped, API-only — reports are evaluated by the deterministic §6.4
-  rubric but nothing is rendered in the UI yet); the progress page still shows labelled sample data and says so. Phase 4 (P4-M1 WP1,
-  WP2 and WP3 implemented and committed on the branch; P4-M2 and the rest planned) addresses exactly this — see
+  bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
+  server-side (session-scoped) and are evaluated by the deterministic §6.4
+  rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI (hint/reveal UI is
+  WP3, progress is P4-M3; both unimplemented); the progress page still shows labelled sample data and says so. Phase 4
+  (P4-M1 WP1–WP3 and P4-M2 WP1–WP2 implemented and committed on the branch) addresses exactly this — see
   `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
