@@ -73,6 +73,15 @@ For designing, building, reviewing, or fixing interfaces — starting with Phase
 
 - Cloudflare now recommends Workers with static assets over Pages, and Hono deprecates `hono/cloudflare-pages` in v5. Pages is a deliberate Phase 1/project decision; revisit before upgrading Hono or if Pages blocks a later phase.
 
+## Token-efficient workflow
+
+- **One milestone per session.** Do not carry a whole phase across one conversation; end each milestone with `npm run check` + its browser verification and a committed or documented state, then start fresh next time.
+- **PROJECT_STATE.md is the handoff.** Read its §1 snapshot and the latest §11 entry; that is the authoritative context. Inspect only files relevant to the task — never re-read the whole codebase to "re-orient".
+- **Narrow prompts.** One milestone per request with explicit scope and non-goals (see the M4–M8 prompts). Avoid open-ended "review and fix everything" requests — they turn into repo-wide dumps.
+- **Check once, not per file.** Run `npm run check` once at the end of a change; run the single relevant test file alone when iterating.
+- **Small tool output.** Filter command output (`tail`, `grep`); do not paste whole stylesheets/files into context when a section will do.
+- **No marathon sessions.** If a task spans multiple milestones, finish one, update PROJECT_STATE.md, and continue in a new session instead of compacting your way through it.
+
 ## Workflow
 
 - Work on one phase/vertical slice at a time. **The Phase 2.5 redesign is complete (M1–M8). Await explicit instruction for what comes next: either optional M9 polish, or Phase 3 (commerce practice app), which remains paused until the user approves resuming it**, per `docs/phase-2.5-ui-ux-audit.md` and the M8 progress-log entry.

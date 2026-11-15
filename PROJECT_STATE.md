@@ -245,6 +245,20 @@ phase starts.
 
 ## 11. Progress log
 
+### 2026-11-15 — OpenCode token-efficiency configuration (tooling only)
+
+- **No application code, content, tests, or Git history changed.** This turn inspected and tuned the OpenCode configuration for this project's workflow before Phase 3 begins.
+- **Documentation preservation:** this optimization was recorded on the `docs/opencode-workflow-optimization` branch and merged into `main` via PR #3 (https://github.com/thisishamza/qa-practice-lab/pull/3). The change reviewed there is this section plus the `AGENTS.md` "Token-efficient workflow" section under `## Workflow`.
+- **Inspection:** the project has no `opencode.json(c)`; the global config at `~/.config/opencode/opencode.json` contained only one local MCP server (`rea`). No model or provider configuration exists in files — the model (Inkling 2 Small Free via OpenRouter) is chosen in the TUI and is untouched. `~/.config/opencode/service.json` (OpenCode's own service registration) was deliberately not read or modified.
+- **Change:** merged into the global config (after a timestamped backup at `~/.config/opencode/opencode.json.bak-20261115T131319Z`):
+  - `$schema: https://opencode.ai/config.json` (editor validation only)
+  - `compaction: { auto: true, keep: { tokens: 8000 }, buffer: "20%" }` — automatic compaction on, ~8k tokens of recent conversation retained beside the summary instead of the 15k default, and 20% of the model window kept free instead of the 15% default (applies to every model; compacts at 80% full).
+- **Verification:** `mcp.rea` preserved byte-for-byte and asserted programmatically; the merged file re-parses; no other settings were touched.
+- **AGENTS.md:** added a "Token-efficient workflow" section (one milestone per session, PROJECT_STATE.md handoff, narrow prompts, check-once discipline, small tool output, no marathon sessions). No useful instruction was removed; the section overlaps deliberately with nothing that already exists.
+- **Backups:** the original global config is retained at `~/.config/opencode/opencode.json.bak-20261115T131319Z`.
+- **Known limitations:** compaction is lossy by design — if a session grows long, starting a fresh one is still cheaper and cleaner. The compaction config is user-level (all projects); if a project-only scope is preferred later, move the `compaction` block into a project `opencode.json` instead.
+- **Next:** Phase 3 (commerce practice app) remains paused awaiting explicit instruction.
+
 ### 2026-11-15 — Redesign M8: final consistency, remaining pages and design audit
 
 - **Checkpoint before this milestone:** the M7 diff contained exactly the eight expected files (`ProgressPage`, `PracticePage`, `HealthStatus.tsx`, `styles/{workspace,components,pages}.css`, `AGENTS.md`, `PROJECT_STATE.md`). `npm run check` and `npm run build` were re-run on the M7 state, then M7 was committed as **`c200095`** (`feat: redesign progress and practice experience`, 8 files, +529/−546). Nothing pushed. M1 `b84b210`, M2 `d77a446`, M3 `c89ced0`, M4 `d94f3b1`, M5 `16222ad`, M6 `c1867e9` untouched.
