@@ -264,7 +264,7 @@ phase starts.
   - `npm run build` — passed. Final: JS **383.32 kB** (116.54 kB gzip), CSS **51.61 kB** (11.20 kB gzip). Versus M7: **−0.16 kB JS, −3.15 kB CSS**. No dependency changes.
   - Regression probes vs fresh build: **121/121** (M3/M4), **66/66** (M5), **83/83** (M6), plus M7 workspace/error-state checks — all pass. No console or page errors.
   - Screenshots of the redesigned Track Detail and 404 at 375/1024/1440 in both themes live in `/tmp/opencode/m8-*.png`, not in the repo.
-- **Branch / latest commit:** `feat/phase-2.5-redesign`; M8 changes uncommitted at report time (`git status`: 6 modified files, nothing untracked). Latest commits: `c200095` (M7), `c1867e9` (M6). Nothing pushed.
+- **Branch / latest commit:** `feat/phase-2.5-redesign`; M8 was committed after verification as **`5c4a959`** (`feat: redesign track detail, 404 and final consistency audit`, 8 files, +159/−223). Latest commits: `5c4a959` (M8), `c200095` (M7). Nothing pushed. The Phase 2.5 redesign (M1–M8) is complete on this branch, ready to merge into `main`.
 - **Known limitations / outstanding:**
   - Route error boundary and route-level error UI remain undone (assigned to M7 in the audit, not delivered; a candidate for M9 polish alongside Playwright + axe committed tests).
   - `ErrorState` remains exported but unreferenced; by design until an async surface exists.
