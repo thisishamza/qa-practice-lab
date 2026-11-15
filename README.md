@@ -13,16 +13,18 @@ The redesign makes the interface a precise, consistent "test bench": self-hosted
 JetBrains Mono, a tile of design tokens, honest status labels, and no demo data disguised as real.
 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
-the single commerce practice domain. **P3-M1 (domain foundation) is implemented on the
-`feat/phase-3-commerce-practice` branch:** a D1 catalogue schema (categories, products, inventory)
-with deterministic synthetic seed data, a `schema_version` of 2, and a read-only `/api/v1`
-catalogue API. The storefront UI, cart, checkout, synthetic auth, inventory depth, and the
-clean/bug-hunt modes are planned milestones (see `docs/phase-3-commerce-practice-plan.md`) and do
-not exist yet.
+the single commerce practice domain. **P3-M1 (domain foundation) and P3-M2 (storefront catalogue
+UI) are implemented on the `feat/phase-3-commerce-practice` branch:** a D1 catalogue schema
+(categories, products, inventory) with deterministic synthetic seed data, a `schema_version` of 2,
+a read-only `/api/v1` catalogue API with search, and a working `/shop` storefront with
+URL-driven search, filtering, sorting and pagination. The cart, checkout, synthetic auth,
+inventory depth, and the clean/bug-hunt modes are planned milestones (see
+`docs/phase-3-commerce-practice-plan.md`) and do not exist yet.
 
 The interface is complete; the exercises are not. All catalog scenarios are labelled placeholders.
-No storefront, cart, authentication, bug-hunt mode, SQL playground, performance runner, or
-security challenge exists yet.
+The storefront is the first real practice surface: it is fully functional, but it has **no cart,
+no checkout, no authentication, no bug-hunt mode, and no persistence** yet. No SQL playground,
+performance runner, or security challenge exists yet.
 
 ## What you can do now
 
@@ -37,6 +39,8 @@ security challenge exists yet.
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | No-persistence progress preview, clearly labelled as sample data |
 | `/practice` | Live health check plus the planned practice formats and safety boundaries |
+| `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
+| `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 
 Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
 saved; the progress page shows labelled sample data and says so.
@@ -94,7 +98,7 @@ src/app/                   Router and route composition
 src/components/layout/     App shell: top bar, sidebar, mobile navigation
 src/components/ui/         Reusable badges, states, callouts, icons, theme provider
 src/data/                  Typed tracks, categories, scenarios, guides, demo data
-src/features/              Track, catalog, guide, and health components
+src/features/              Track, catalog, guide, health and shop components
 src/lib/                   Catalog filtering, labels, navigation, theme hooks
 src/pages/                 Route-level pages
 src/styles/                Design tokens and layered CSS
@@ -123,6 +127,8 @@ wrangler.jsonc             Pages config + D1 binding + compatibility date
   `src/data/scenarios.ts`, guides in `src/data/guides.ts`, and tracks in `src/data/tracks.ts`;
   pages only read from those modules.
 - Filtering and search live in `src/lib/catalog.ts` and are unit-tested independently of React.
+  The storefront's URL-driven catalogue state (query, category, sort, page) lives in
+  `src/lib/shop.ts` with the same conventions.
 - Styling is plain CSS split across `src/styles/` and imported by `global.css`. There is no CSS
   framework. Files load in this order: tokens, base, layout, components, pages. Because all rules
   have similar specificity, a later file wins ties, so responsive overrides for layout primitives
@@ -145,7 +151,9 @@ The Meridian Outfitters catalogue API is mounted under `/api/v1`:
 - `GET /api/v1/products` — paginated active products. Query params: `page` (≥1, default 1),
   `perPage` (1–48, default 12; larger values are capped, not rejected), `category` (category
   slug; unknown slugs match zero rows), `sort` (`newest` default | `name` | `price_asc` |
-  `price_desc`). Response: `{ data, page, perPage, total, totalPages }`.
+  `price_desc`), `q` (case-insensitive search over product name, description and category name;
+  LIKE wildcards in the query are treated literally). Response:
+  `{ data, page, perPage, total, totalPages }`.
 - `GET /api/v1/products/:slug` — a single active product, or a `404` `{ error: "not_found" }`
   envelope.
 - `GET /api/v1/categories` — all eight categories ordered by `sortOrder`.
@@ -192,9 +200,9 @@ build limits, D1 daily reads/writes and per-invocation query limits).
 
 - All catalog scenarios are placeholders. There is no exercise execution, scoring, or saved
   progress; the progress page shows labelled sample data and says so.
-- The commerce practice application exists only as its P3-M1 foundation. The catalogue API and
-  seed data are real, but there is no storefront, no cart, checkout, authentication, bug-hunt
-  mode, or persistence of learner progress.
+- The storefront catalogue is real and backed by the API, but it has **no cart, no checkout, no
+  authentication, no bug-hunt mode, and no learner persistence** — product pages are read-only and
+  labelled as a practice storefront. Prices and stock are synthetic seed data.
 - Six of the twelve learning tracks do not yet have a dedicated guide; they link to the closest
   guide or mark one as scheduled.
 - The project intentionally uses **Cloudflare Pages Functions**. Current Cloudflare guidance

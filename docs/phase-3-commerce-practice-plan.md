@@ -52,7 +52,8 @@ verification, multi-tenant/social features, design-system rewrites, any Phase 4+
 
 | Milestone | Endpoints | Type |
 |---|---|---|
-| M1 (done) | `GET /api/v1/products` (page, perPage≤48, category, sort) · `GET /api/v1/products/:slug` · `GET /api/v1/categories` | Read-only |
+| M1 (done) | `GET /api/v1/products` (page, perPage≤48, category, sort, `q` since M2) · `GET /api/v1/products/:slug` · `GET /api/v1/categories` | Read-only |
+| M2 (done) | No new endpoints (read-only); `q` search added to `/api/v1/products` | Read-only |
 | M3 | `GET /api/v1/cart` · `POST /api/v1/cart/items` · `PATCH /api/v1/cart/items/:id` · `DELETE /api/v1/cart/items/:id` | Session cart |
 | M4 | `POST /api/v1/checkout` · `GET /api/v1/orders` · `GET /api/v1/orders/:id` | Orders |
 | M5 | `POST /api/v1/auth/login` · `POST /api/v1/auth/logout` · `GET /api/v1/auth/me` | Synthetic auth |
@@ -126,20 +127,25 @@ milestone, `PROJECT_STATE.md` updated in the same turn.
 - **Acceptance:** migration applies cleanly on fresh local D1; list/detail/categories work;
   inactive products hidden; unknown slug → 404 envelope; `schemaVersion` reports `2`.
 
-### P3-M2 — Storefront catalogue UI
+### P3-M2 — Storefront catalogue UI *(implemented; see PROJECT_STATE §12)*
 
 - **Purpose:** learners can browse, search, filter and open products — the surface manual UI
   testing needs.
-- **Scope:** new `/shop` zone inside `AppShell`: catalogue grid (product cards, mono meta,
-  stock tags), URL-driven filter/sort/pagination (mirror `src/lib/catalog.ts` pattern),
-  product detail `/shop/:slug`, empty/error/loading states, fetch against `/api/v1/*`.
-- **Dependencies:** M1. **Backend:** none (reads M1 API). **Database:** none.
+- **Scope:** `/shop` and `/shop/products/:slug` inside `AppShell`: catalogue grid (product
+  cards, mono meta, stock tags), URL-driven search/filter/sort/pagination (mirror
+  `src/lib/catalog.ts` pattern), product detail, empty/error/loading states, fetch against
+  `/api/v1/*`.
+- **Dependencies:** M1. **Backend:** small justified extension — `GET /api/v1/products` gained
+  an optional `q` parameter (case-insensitive match on name, description and category name;
+  LIKE wildcards escaped; bind-parameter only) because the storefront purpose requires search
+  and the M1 API had none. **Database:** none.
 - **Frontend changes:** new pages + feature components, reuse tokens/primitives; text-first
   cards (no icon package, no product photography yet — layout and typography carry the design).
 - **Acceptance:** routes render inside shell; both themes; 375/768/1024/1440; one `h1`; no
-  overflow; deep links work; API down → `ErrorState` with retry.
-- **Testing:** component-level vitest where sensible + Playwright/Chrome probe; reuse existing
-  probe patterns. **Risks:** duplicate filter logic — extract shared helpers; watch bundle size.
+  overflow; deep links work; API down → `ErrorState` with retry. ✅ verified 2026-11-15.
+- **Testing:** unit tests (`tests/lib/shop.test.ts`, `tests/shop/api.test.ts`,
+  `tests/shop/views.test.tsx`) + `tests/server/catalogue.test.ts` search coverage + Playwright/Chrome
+  probe. **Risks:** duplicate filter logic — extracted shared helpers instead.
 
 ### P3-M3 — Cart
 

@@ -156,6 +156,87 @@ describe('GET /api/v1/products', () => {
   })
 })
 
+describe('GET /api/v1/products?q= (search)', () => {
+  it('matches on product name, case-insensitively', async () => {
+    const body = (await (await request('/api/v1/products?q=tent')).json()) as {
+      data: Array<{ name: string }>
+      total: number
+    }
+    expect(body.total).toBe(2)
+    expect(body.data.map((p) => p.name)).toEqual(
+      expect.arrayContaining(['Ridgeline 2-Person Tent', 'Halcyon 4-Season Tent']),
+    )
+
+    const upper = (await (await request('/api/v1/products?q=TENT')).json()) as {
+      total: number
+    }
+    expect(upper.total).toBe(2)
+  })
+
+  it('matches on description', async () => {
+    const body = (await (await request('/api/v1/products?q=vestibules')).json()) as {
+      data: Array<{ slug: string }>
+      total: number
+    }
+    expect(body.total).toBe(1)
+    expect(body.data[0]?.slug).toBe('ridgeline-2-person-tent')
+  })
+
+  it('matches on category name', async () => {
+    const body = (await (await request('/api/v1/products?q=camping')).json()) as {
+      data: Array<{ categorySlug: string }>
+      total: number
+    }
+    expect(body.total).toBe(5)
+    expect(body.data.every((p) => p.categorySlug === 'camping')).toBe(true)
+  })
+
+  it('returns an empty page for queries with no matches', async () => {
+    const response = await request('/api/v1/products?q=zzzz-no-such-product')
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      data: unknown[]
+      total: number
+      totalPages: number
+    }
+    expect(body).toMatchObject({ total: 0, totalPages: 0 })
+    expect(body.data).toEqual([])
+  })
+
+  it('treats LIKE wildcards in the query literally', async () => {
+    for (const pattern of ['%', '_', '%%', 'tent%']) {
+      const response = await request(`/api/v1/products?q=${encodeURIComponent(pattern)}`)
+      expect(response.status).toBe(200)
+      const body = (await response.json()) as { total: number }
+      // No product text contains a literal '%' or '_' wildcard position, and
+      // 'tent%' must not behave as a prefix wildcard.
+      expect(body.total).toBe(pattern === 'tent%' ? 0 : 0)
+    }
+  })
+
+  it('combines with the category filter', async () => {
+    const body = (await (
+      await request('/api/v1/products?q=tent&category=camping')
+    ).json()) as { total: number }
+    expect(body.total).toBe(2)
+
+    const none = (await (
+      await request('/api/v1/products?q=tent&category=hiking')
+    ).json()) as { total: number }
+    expect(none.total).toBe(0)
+  })
+
+  it('combines with sort and pagination metadata', async () => {
+    const body = (await (
+      await request('/api/v1/products?q=tent&sort=price_asc&perPage=1&page=2')
+    ).json()) as { page: number; perPage: number; total: number; data: Array<{ priceCents: number }> }
+    expect(body.page).toBe(2)
+    expect(body.perPage).toBe(1)
+    expect(body.total).toBe(2)
+    expect(body.data[0]?.priceCents).toBe(34999)
+  })
+})
+
 describe('GET /api/v1/products/:slug', () => {
   it('returns the product for a known slug', async () => {
     const response = await request('/api/v1/products/ridgeline-2-person-tent')

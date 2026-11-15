@@ -56,6 +56,16 @@ const PRODUCT_SELECT = `
   JOIN inventory i ON i.product_id = p.id
 `
 
+function parseSearchQuery(raw: string | undefined): string | undefined {
+  const query = raw?.replace(/\s+/g, ' ').trim().slice(0, 80)
+  return query || undefined
+}
+
+/** Escape LIKE wildcards so user input matches literally. Pairs with `ESCAPE '\'`. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
 function parseBoundedInt(
   raw: string | undefined,
   fallback: number,
@@ -110,12 +120,20 @@ catalogueRoutes.get('/products', async (c) => {
   const perPage = parseBoundedInt(c.req.query('perPage'), 12, 1, 48)
   const category = parseCategorySlug(c.req.query('category'))
   const sort = parseSort(c.req.query('sort'))
+  const query = parseSearchQuery(c.req.query('q'))
 
   const conditions = ['p.active = 1']
   const bindings: string[] = []
   if (category) {
     conditions.push('c.slug = ?')
     bindings.push(category)
+  }
+  if (query) {
+    conditions.push(
+      `(p.name LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\')`,
+    )
+    const pattern = `%${escapeLike(query)}%`
+    bindings.push(pattern, pattern, pattern)
   }
   const where = conditions.join(' AND ')
 

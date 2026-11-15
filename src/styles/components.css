@@ -1739,3 +1739,263 @@
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
+
+/* Shop — Meridian Outfitters storefront ----------------------------------- */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: var(--card-pad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color var(--transition);
+}
+
+.product-card:hover {
+  border-color: var(--border-strong);
+}
+
+.product-card h3 {
+  font-size: var(--text-h3);
+  line-height: var(--leading-h3);
+}
+
+.product-card h3 a {
+  color: var(--ink-strong);
+  text-decoration: none;
+}
+
+.product-card h3 a:hover {
+  color: var(--link);
+}
+
+.product-description {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}
+
+.product-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.product-price {
+  color: var(--ink-strong);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.stock-tag {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.stock-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.stock-in_stock {
+  color: var(--run-ink);
+}
+
+.stock-low_stock {
+  color: var(--warn-ink);
+}
+
+.stock-out_of_stock {
+  color: var(--ink-muted);
+}
+
+.stock-out_of_stock .stock-dot {
+  background: transparent;
+  border: 1.5px solid var(--ink-subtle);
+}
+
+/* Shop toolbar ------------------------------------------------------------ */
+
+.shop-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.7rem;
+}
+
+.shop-search {
+  min-width: 0;
+}
+
+.shop-category-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: var(--control-h);
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--text-meta);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--link-hover);
+}
+
+/* Product detail aside ---------------------------------------------------- */
+
+.product-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: var(--card-pad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.product-buy-price {
+  color: var(--ink-strong);
+  font-size: 1.75rem;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.product-buy-currency {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.05em;
+}
+
+.product-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 4.5rem;
+}
+
+/* Pagination -------------------------------------------------------------- */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pagination-page {
+  display: grid;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: border-color var(--transition);
+}
+
+.pagination-page:hover {
+  border-color: var(--border-strong);
+}
+
+.pagination-page.is-current {
+  border-color: var(--action);
+  background: var(--action);
+  color: var(--action-ink);
+  font-weight: var(--weight-semibold);
+}
+
+.pagination-step {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--link);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.pagination-step:hover {
+  color: var(--link-hover);
+}
+
+.pagination-step.is-disabled {
+  color: var(--ink-subtle);
+}
+
+.pagination-flip {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 760px) {
+  .shop-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-aside {
+    position: static;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
+  }
+}

@@ -10,6 +10,8 @@ import { PracticePage } from '../pages/PracticePage'
 import { ProgressPage } from '../pages/ProgressPage'
 import { ScenarioDetailPage } from '../pages/ScenarioDetailPage'
 import { ScenariosPage } from '../pages/ScenariosPage'
+import { ShopPage } from '../pages/ShopPage'
+import { ShopProductPage } from '../pages/ShopProductPage'
 import { TracksPage } from '../pages/TracksPage'
 import { TrackDetailPage } from '../pages/TrackDetailPage'
 
@@ -28,6 +30,8 @@ export function App() {
             <Route path="guides/:guideId" element={<GuideDetailPage />} />
             <Route path="progress" element={<ProgressPage />} />
             <Route path="practice" element={<PracticePage />} />
+            <Route path="shop" element={<ShopPage />} />
+            <Route path="shop/products/:slug" element={<ShopProductPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

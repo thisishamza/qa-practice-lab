@@ -9,7 +9,7 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation) is implemented and verified; P3-M2 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified. **The approved Phase 2.5 redesign is COMPLETE (M1–M8) and merged into `main` via PR #2 (https://github.com/thisishamza/qa-practice-lab/pull/2). Phase 3 (commerce practice app) is IN PROGRESS on `feat/phase-3-commerce-practice` — P3-M1 (domain foundation) and P3-M2 (storefront catalogue UI) are implemented and verified; P3-M3 through P3-M9 are planned, not started.** M9 (optional polish) is not started and only on request.
 - **Last updated:** 2026-11-15.
 
 ## 2. Product principles
@@ -147,7 +147,7 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 
 Phase 3 is in progress on `feat/phase-3-commerce-practice`. The approved plan and milestone
 sequence (P3-M1 … P3-M9) lives in `docs/phase-3-commerce-practice-plan.md`; see §12 for status.
-P3-M1 (domain foundation) is implemented and verified on that branch.
+P3-M1 (domain foundation) and P3-M2 (storefront catalogue UI) are implemented and verified on that branch.
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
 | 6. Database lab | Isolated SQLite/WASM database playground and SQL exercises | Arbitrary learner SQL is isolated from platform D1 and resettable |
@@ -194,12 +194,14 @@ qa-practice-lab/
 │   ├── features/
 │   │   ├── catalog/                   # ScenarioCard, ScenarioFilterBar
 │   │   ├── guides/                    # GuideCard
+│   │   ├── shop/                      # ProductCard, ProductDetail, ProductStates,
+│   │   │                              # ShopFilterBar, Pagination, api (catalogue client)
 │   │   ├── system/                    # HealthStatus
 │   │   └── tracks/                    # TrackCard
 │   ├── lib/                           # catalog filtering, labels, navigation, route management, theme
-│   ├── pages/                         # 11 route-level pages (dashboard … about, not found)
+│   ├── pages/                         # route-level pages (dashboard … about, shop, shop product, 404)
 │   ├── server/app.ts                  # testable Hono app, basePath /api
-│   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1)
+│   ├── server/catalogue.ts            # Phase 3 catalogue routes (/api/v1, incl. q search)
 │   ├── shared/health.ts               # shared response type
 │   ├── shared/commerce.ts             # shared catalogue contracts (Phase 3)
 │   ├── styles/                        # tokens, base, layout, components, workspace, pages, global
@@ -211,15 +213,18 @@ qa-practice-lab/
 └── tests/
     ├── data/content.test.ts           # content integrity and non-runnable guarantees
     ├── lib/catalog.test.ts            # filtering, search, counts, URL-param state, sorting
+    ├── lib/shop.test.ts               # storefront URL-state, price formatting, labels
     ├── helpers/fake-d1.ts             # node:sqlite-backed D1 harness (applies real migrations)
-    ├── server/catalogue.test.ts       # /api/v1 catalogue API against the seeded schema
-    └── server/health.test.ts
+    ├── server/catalogue.test.ts       # /api/v1 catalogue API against the seeded schema (incl. q search)
+    ├── server/health.test.ts
+    └── shop/                          # storefront API client (stubbed fetch) + SSR markup tests
 ```
 
 Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
 `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, and a
-catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"), and nothing
-else.
+catch-all 404. Redesign M2 added one utility route, `/about` ("About this build"). Phase 3
+(P3-M2) added `/shop` and `/shop/products/:slug` — both render inside `AppShell` and fetch
+the real `/api/v1` catalogue.
 
 Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
 approved redesign plan. No application source was touched.
@@ -253,6 +258,77 @@ persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Phase 3 P3-M2: storefront catalogue UI
+
+- **Branch / commit before work:** `feat/phase-3-commerce-practice` @ `0841783` (P3-M1), tree
+  clean; `main` untouched; nothing pushed. All changes land in the milestone commit at the end
+  of this turn (hash in final report).
+- **API extension (justified, in agreed scope):** `GET /api/v1/products` gained an optional
+  `q` parameter — case-insensitive (SQLite ASCII) match on `p.name`, `p.description` and
+  `c.name`, `%q%` pattern with `ESCAPE '\'` and LIKE wildcards (`%`, `_`, `\`) escaped in user
+  input; the value is trimmed to 80 chars after whitespace collapse. Bind-parameter only;
+  out-of-format input simply matches zero rows. 7 new search tests in
+  `tests/server/catalogue.test.ts` (matches on name/description/category, case-insensitivity,
+  wildcard literalness, combination with category/sort/pagination, no-match empty page).
+  Without this, the storefront's required search would have been frontend-only and misleading.
+- **Routes:** `/shop` (catalogue) and `/shop/products/:slug` (detail), both inside `AppShell`.
+  Sidebar Workspace section gained a `Shop` item (new inline `shop` shopping-bag icon added to
+  the existing inline SVG set; no icon package).
+- **Catalogue page:** heading + introduction, honesty mono-line (“Fictional practice
+  storefront · API-backed catalogue · no checkout”), 12-up product grid
+  (`minmax(260px, 1fr)`), each card = one h3 title link (stable
+  `/shop/products/:slug`), 2-line description, price (`Intl.NumberFormat` USD), category meta,
+  stock pill with dot + text label (`In stock` / `Low stock` / `Out of stock`, never colour
+  alone). Controls: labelled search (`#shop-search-input`, icon, ×-clear, Escape clears,
+  200 ms debounce → `replace`), category select fed by `/api/v1/categories`, sort select
+  (Newest / Name A–Z / Price: low→high / high→low), Clear-all (disabled when idle), result
+  count in `aria-live="polite"`, pagination with prev/numbered/next as real links
+  (`aria-current="page"`), out-of-range `?page=` renders an honest “beyond the end of the
+  catalogue” recovery state linking to page 1.
+- **URL-driven state (mirrors `src/lib/catalog.ts`):** `?q=&category=&sort=&page=`; unknown or
+  invalid values fall back to defaults (verified by unit tests, incl. `category=Travel`
+  lower-casing and SQL-ish input falling back to `all`); defaults are omitted from the URL;
+  refresh preserves state; Back/Forward step through facet/sort/page changes; search typing is
+  debounced with `replace`. Detail links are stable slugs.
+- **Product detail page:** breadcrumb (Dashboard → Shop → product), PageHeader h1 = product
+  name, category fact links back to `/shop?category=<slug>`, `FactList` (Category link +
+  catalogue code = slug, shown as a teaching aid for the API), sticky purchase aside with
+  price, currency, stock pill, and a “Practice storefront” Callout stating the catalogue is
+  fictional with cart/checkout explicitly not implemented (no fake cart/CTA anywhere).
+  Loading → `LoadingState` (one h1 kept), unknown/inactive slug → `EmptyState` + “Back to the
+  shop”, fetch/HTTP failure → `ErrorState` (`role="alert"`) + “Try again”.
+- **Fetch layer (`src/features/shop/api.ts`):** `fetchProducts` / `fetchProduct` /
+  `fetchCategories` with `Accept: application/json`, `AbortSignal` support, typed
+  `ShopApiError` carrying `status`; 404 on the detail endpoint maps to `null` (not-found)
+  rather than an exception. Requests are keyed to the URL query string with derived loading
+  state (no synchronous `setState` in effects; continuation-based updates); `categories`
+  fetch is separate, and a categories failure degrades to an inline `role="alert"` note with
+  retry while products still render. No duplicate requests; Back/Forward is handled by the
+  URL being the source of truth.
+- **Verification:** `npm run check` — **passed** (ESLint clean; all three TS projects clean;
+  **98/98 tests**, was 57; +41 new). `npm run build` — passed: JS **396.62 kB** (120.09 kB
+  gzip, +13.30 raw vs P3-M1), CSS **55.45 kB** (11.68 kB gzip, +3.84 raw); no new runtime
+  dependencies. `tsconfig.app.json` now includes `tests/shop/views.test.tsx`;
+  `tsconfig.functions.json` excludes it; vitest include glob widened to `.tsx`. Browser probe
+  (Playwright/`channel: chrome` vs fresh production build on port **8789**, after confirming
+  8788 was untouched): **70/70 checks pass** — deep links, refresh persistence, Back/Forward,
+  debounce, all filters/sort/pagination paths, empty/error/out-of-range/not-found states and
+  their recovery actions, both themes × 375/768/1024/1440 (no overflow, exactly one h1),
+  h1 focus after client-side nav, visible 2 px focus ring on card links, sidebar `Shop` entry
+  with `aria-current="page"`, all 11 pre-existing routes + deep links still 200, no
+  unexpected console errors. Screenshots in `/tmp/opencode/p3m2-*.png` (not committed).
+- **Known limitations:** storefront is read-only — no cart, checkout, auth, bug-hunt mode or
+  persistence (P3-M3+); product cards are text-first (no photography/icon package yet);
+  `sort=newest` remains `id DESC` (seeded `created_at` is a constant); search is LIKE-based
+  and name/description/category only; the API has no `SKU` field so the detail page shows the
+  slug as “Catalogue code” instead; `npm run check` covers render markup via SSR string
+  assertions, not DOM interaction (Playwright probe is not committed, same convention as
+  Phase 2/2.5).
+- **Git:** milestone committed as `feat: implement e-commerce storefront catalogue` (hash
+  recorded in the final report). `main` untouched, nothing pushed.
+- **Next exact action:** STOP. Await instruction to start **P3-M3 (cart)** per the plan; do not
+  begin it without approval.
 
 ### 2026-11-15 — Phase 3 kickoff: branch, plan (P3-M1…P3-M9) and P3-M1 domain foundation
 
@@ -697,8 +773,8 @@ the bug-hunt engine architecture, the API surface, scenario sketch and free-tier
 
 | Milestone | Title | Status |
 |---|---|---|
-| P3-M1 | Commerce domain foundation (schema, seed, read-only catalogue API) | **Done & verified 2026-11-15** (this branch) |
-| P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | Planned |
+| P3-M1 | Commerce domain foundation (schema, seed, read-only catalogue API) | **Done & verified 2026-11-15** (this branch, `0841783`) |
+| P3-M2 | Storefront catalogue UI (`/shop`, filters, detail) | **Done & verified 2026-11-15** (this branch) |
 | P3-M3 | Cart (session-keyed, server-side totals) | Planned |
 | P3-M4 | Checkout & orders (fake payments, transactional stock decrement) | Planned |
 | P3-M5 | Synthetic customers & auth simulation (roles, ownership) | Planned |
@@ -713,19 +789,35 @@ P3-M1 detail: migration `db/migrations/0002_commerce_domain.sql` (tables `catego
 (`page`, `perPage` ≤ 48, `category`, `sort=newest|name|price_asc|price_desc`),
 `GET /api/v1/products/:slug` (active only, 404 envelope otherwise), `GET /api/v1/categories`;
 `/api/v1/*` inherits the global `no-store`/`nosniff` middleware; all parameters are bound, never
-interpolated. 16 new tests in `tests/server/catalogue.test.ts` (57/57 suite green). Verified
-end-to-end against the production build on a separate local port (8789) because 8788 was in use
-by another local process; the user's servers were not touched.
+interpolated. 16 new tests in `tests/server/catalogue.test.ts`. Verified end-to-end against the
+production build on a separate local port (8789) because 8788 was in use by another local
+process; the user's servers were not touched.
 
-Known limitations: no storefront UI yet (M2); no images (text-first cards planned); catalogue
-`LIKE`-free — no search endpoint until M2 decides it needs one; `sort=newest` is `id DESC`
-because seeded `created_at` is a constant.
+P3-M2 detail: storefront UI on top of the M1 API — routes `/shop` (catalogue: 12-per-page grid,
+URL-driven `?q=&category=&sort=&page=` with safe fallbacks, refresh/Back/Forward persistence)
+and `/shop/products/:slug` (detail: price, stock status from the API, category deep link back
+to the filtered catalogue, breadcrumb). `GET /api/v1/products` gained an optional `q` parameter
+(case-insensitive match on name/description/category name; LIKE wildcards escaped; bound
+parameters only) — the only API change; 7 new search tests (23/23 in `catalogue.test.ts`).
+Loading/empty/error/out-of-range/not-found states are all implemented and verified in both
+themes at 375/768/1024/1440 via a Playwright/Chrome probe (70/70 checks, production build on
+port 8789). 41 new tests total (98/98 suite green); `npm run check` and `npm run build` clean;
+no new runtime dependencies. One icon added to the inline SVG set (`shop`, shopping bag); no
+icon package. `tsconfig` split adjusted so `tests/shop/views.test.tsx` type-checks under the
+app project (JSX + DOM lib) and is excluded from the functions project; vitest glob widened
+to `.tsx`.
 
-Next recommended milestone: **P3-M2 — storefront catalogue UI** (requires explicit instruction;
-do not start without approval).
+Known limitations: no cart/checkout/auth/bug-hunt/persistence yet (P3-M3+); no product
+photography or icon package; `sort=newest` is `id DESC` because seeded `created_at` is a
+constant; the API has no `SKU` field — the detail page shows the slug as “Catalogue code”
+instead; storefront search is LIKE-based (no full-text index, fine at 42 products); SSR
+string-markup tests assert rendering, browser probes cover interaction and are not committed.
+
+Next recommended milestone: **P3-M3 — cart** (requires explicit instruction; do not start
+without approval).
 
 ## 13. Resume prompt
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation) is done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M2 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved and **complete (M1–M8)**. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **all eight redesign milestones are implemented, verified, and recorded; M9 (optional polish) is not started and only on explicit request.** Phase 3 (commerce app) is **approved and in progress on `feat/phase-3-commerce-practice`: P3-M1 (domain foundation) and P3-M2 (storefront catalogue UI) are done and verified; see §12 and `docs/phase-3-commerce-practice-plan.md`. Do not start P3-M3 until the user explicitly instructs it.** Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

@@ -72,6 +72,7 @@ export type IconName =
   | 'grid'
   | 'panel-left'
   | 'reset'
+  | 'shop'
 
 export interface GettingStarted {
   summary: string
