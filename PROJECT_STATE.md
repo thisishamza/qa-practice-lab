@@ -9,8 +9,8 @@
 - **Reference points:** Practice Software Testing and its bug-hunting mode are inspiration for the breadth and learning flow. Build an original product and original scenarios; do not copy their content, branding, or implementation.
 - **Primary deployment target:** Cloudflare Pages + Pages Functions/Workers + D1, using free tiers initially.
 - **Development assistant:** OpenCode with OpenRouter free models. AI is a developer productivity tool, not a runtime dependency for the lab.
-- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. Phase 3 (commerce practice app) has not started.
-- **Last updated:** 2026-11-14.
+- **Current status:** Phase 2 (app shell, learning tracks, scenario catalog, and guides) complete and verified locally. **The approved Phase 2.5 redesign is in progress: M1 (design foundations — tokens, self-hosted fonts, base type, focus) is complete and verified. M2 has not started.** Phase 3 (commerce practice app) remains paused.
+- **Last updated:** 2026-11-15.
 
 ## 2. Product principles
 
@@ -141,6 +141,8 @@ These are platform ceilings, not a promise of capacity; check official docs agai
 | 0. Product/architecture | Scope, safety, platform decisions, resumable state | This file exists and the MVP boundary is agreed as the working baseline |
 | 1. Repository foundation | Scaffold React/Vite/TypeScript, Hono Pages Functions, Wrangler, D1 migration setup, lint/typecheck/test scripts, CI-ready scripts | App runs locally; `/api/health` works locally; D1 migration applies; Pages preview works |
 | 2. App shell & guides | Navigation, track catalog, scenario template, guide content structure | Learner can browse tracks and open a structured guide |
+| 2.5. UI/UX audit & redesign planning | Evaluate the Phase 2 interface, choose a visual direction, and plan a component/page redesign | `docs/phase-2.5-ui-ux-audit.md` exists with evidence, tokens, page plans, accessibility plan, and milestones; implementation approved by the user |
+| 2.6. UI/UX redesign implementation | Execute the approved milestones M1–M8 in order (M9 optional) | Every approved milestone is implemented, verified, and recorded; Phase 3 resumes only on explicit instruction |
 | 3. Commerce practice app | Synthetic catalog/cart/checkout, clean mode, bug-hunt mode, reset | UI scenarios can be completed and known defects are reproducible |
 | 4. API & identity lab | REST API, OpenAPI, sample collection, synthetic auth/roles, negative authZ cases | API learners can exercise positive/negative cases and inspect documented contracts |
 | 5. Async/microservice lab | Job/outbox model, status polling, retries, idempotency, webhooks, failure injection | Learners can observe and test asynchronous state transitions safely |
@@ -164,6 +166,8 @@ qa-practice-lab/
 ├── AGENTS.md
 ├── PROJECT_STATE.md
 ├── README.md
+├── docs/
+│   └── phase-2.5-ui-ux-audit.md      # audit + redesign plan (no code changes)
 ├── package.json / package-lock.json   # v0.2.0
 ├── index.html                         # includes the pre-paint theme bootstrap
 ├── vite.config.ts / vitest.config.ts
@@ -206,12 +210,75 @@ Routes implemented in Phase 2: `/`, `/tracks`, `/tracks/:trackId`, `/scenarios`,
 `/scenarios/:scenarioId`, `/guides`, `/guides/:guideId`, `/progress`, `/practice`, and a
 catch-all 404.
 
+Phase 2.5 added only `docs/phase-2.5-ui-ux-audit.md`; it contains the audit evidence and the
+approved redesign plan. No application source was touched.
+
+Redesign M1 changed existing files only (`src/styles/tokens.css`, `base.css`, `components.css`,
+`layout.css`, `src/main.tsx`, `src/lib/theme.ts`, `index.html`, `eslint.config.js`,
+`package.json`/`package-lock.json`). It added no routes, pages, content, or source directories.
+IBM Plex Sans and JetBrains Mono are devDependencies whose variable woff2 files are bundled by Vite.
+
 Planned but intentionally not created yet: a commerce practice application, practice APIs,
 persistence for learner progress, accounts, `db/seed`, `contracts/openapi`,
 `examples/playwright`, `examples/postman`, and `docs/guides` exports. Add them only when their
 phase starts.
 
 ## 11. Progress log
+
+### 2026-11-15 — Redesign M1: design foundations (tokens, fonts, base type, focus)
+
+- **Completed:** The first approved redesign milestone, scoped to foundations only. No routes, pages, content, interactions, or scenario statuses changed. All 24 scenarios remain non-runnable placeholders and demo progress remains labelled sample data.
+- **Baseline verification (before any edit):**
+  - `npm run check` **failed at lint** with 143 errors in 7 vendored files under `.opencode/skills/*/scripts/*.cjs` (`no-undef`, `no-require-imports`, `no-unused-vars`). No app-source lint errors.
+  - `npm run typecheck` — passed; `npm test` — passed (3 files / 30 tests). The failure was tooling scope, not application code.
+  - Fixed by adding `.opencode/**` to the ESLint ignores (the 172 tracked skill files are vendored guidance, not app source).
+- **Token system:** rewrote `src/styles/tokens.css` in three documented layers:
+  - **Primitives:** slate/blue/run/amber/red/workspace-night palettes, font stacks, nine type roles (`--text-display/h1/h2/h3/body/prose/meta/micro/code` with leading tokens), weights, space 4–64 px, radii 4/8/12/16, overlay-only shadows, motion/easing, focus ring, z-index.
+  - **Semantic:** `--canvas`, `--surface(-raised/-sunken/-selected)`, `--ink/-ink-strong/-ink-muted/-ink-subtle`, `--border(-strong)`, `--action(-hover/-ink)`, `--link(-hover)`, `--focus`, `--run/-soft/-ink`, `--warn/-soft/-ink`, `--danger/-soft/-ink`, `--code-bg/-ink`; light palette applied as approved (`#F6F7F8`, `#0F1B2D` action, `#1D4ED8` link/focus, `#15803D` run, `#92400E` warn, `#B42318` danger, `#7C8697` control boundary).
+  - **Compatibility:** all old names (`--bg`, `--muted`, `--line`, `--accent*`, `--cyan`, `--success*`, `--warning*`, `--info*`, `--shadow-*`, layout widths) remain for one migration step. `--accent` maps to the near-black action; links in `base.css` and `.card-foot-link` use `--link`; `--cyan` maps to link.
+  - **Dark theme:** `[data-theme="dark"]` now uses the same workspace palette (`#0B1220` canvas, `#111A2B` surface, `#E6EBF5` ink, `#9DB8FF` link/focus, `#4ADE80` run, `#5A6C8C` control boundary) and overrides the compatibility values that are not dynamic (notably `--muted-strong` and `--surface-3`).
+  - **Workspace scope:** `[data-surface="workspace"]` sets `color-scheme: dark` and the full technical palette. Compatibility aliases are deliberately redeclared inside the scope because custom properties resolve where they are declared; without that, a workspace nested in light mode would inherit light `--accent`/`--line`/`--muted` values.
+- **Fonts:** added `@fontsource-variable/ibm-plex-sans@5.3.0` and `@fontsource-variable/jetbrains-mono@5.3.0` as devDependencies; imported their `wght.css` before `global.css`; set exact variable family names (`"IBM Plex Sans Variable"`, `"JetBrains Mono Variable"`) with system fallbacks. `font-display: swap` and unicode-range subsetting come from Fontsource. No CDN or runtime third-party request.
+- **Base type and focus:** body is 16 px / 1.65 with the new sans stack; body radial gradients removed; `h1/h2/h3` use the token scale (32/22/17 px, weight 600, `text-wrap: balance`); links use `--link`; `:focus-visible` is `2px solid var(--focus)` with `2px` offset; selection uses the focus colour; inline code/kbd use semantic surfaces and a ≥12 px mono label; `forced-colors` guard added; reduced-motion handling retained.
+- **Theme chrome:** added `color-scheme` and a `theme-color` meta (`#f6f7f8` light / `#0b1220` dark), kept in sync by both the pre-paint bootstrap and `applyTheme` via a new `THEME_COLORS` export.
+- **Small compatibility fixes caused by the palette remap:** neutralised the indigo brand mark (fixed slate chip with white text), moved `.card-foot-link` to `--link`, and corrected dark `--muted-strong` so inactive navigation/fact labels remain legible (`#C9D2E3`).
+- **Files changed:** `src/styles/tokens.css`, `src/styles/base.css`, `src/styles/components.css` (card-foot-link only), `src/styles/layout.css` (brand mark only), `src/main.tsx`, `src/lib/theme.ts`, `index.html`, `eslint.config.js`, `package.json`, `package-lock.json`; documentation: `PROJECT_STATE.md`, `AGENTS.md`. No route/page/data/feature files changed; no commit created.
+- **Commands and verification:**
+  - `npm run check` — **passed**: ESLint clean (baseline 143 → 0 after the scope fix), all three TypeScript projects clean, 3 test files / 30 tests passing.
+  - `npm run build` — passed: JS 373.73 kB (112.80 kB gzip), CSS 48.56 kB (11.28 kB gzip). Baseline Phase 2 was JS 373.62 kB (112.74 kB gzip) and CSS 37.15 kB (7.25 kB gzip): **+0.11 kB JS, +11.41 kB raw / +4.03 kB gzip CSS**, plus 12 emitted woff2 files (260 KB on disk). Only the two latin files are fetched at runtime (45.71 kB Plex Sans + 40.40 kB JetBrains Mono = 86.11 kB); other subsets stay unrequested.
+  - Token contrast script — **40/40 audited pairs pass** in light, dark, and workspace values, including body/secondary text, control borders (3:1), action/action-ink, link/focus, run/warn/danger on soft backgrounds, selected surfaces, and code text. `--ink-subtle` was darkened from `#6B7688` to `#5C677A` because the original failed on `--surface-sunken` (4.02:1).
+  - Production preview + Playwright/Chrome — 40 screenshots across seven routes at 1440/1024/768/375 (plus dark at 1440/375). No console or page errors, no horizontal overflow at any tested width (20/20 route checks at 768/1024 plus the 1440/375 sweep), exactly one `h1` per route, and the skip link is the first tab stop with a 2 px `#1D4ED8` ring at 2 px offset. Theme toggle updates both `data-theme` and the `theme-color` meta. A synthetic workspace probe confirmed `color-scheme: dark`, `--link` `#9DB8FF`, inverted action `#E6EBF5` with `#0B1220` text, and unchanged light text outside the scope.
+  - Font probe — `document.fonts` reports six Plex and six Mono faces with only the latin faces `loaded`; computed body font starts with `"IBM Plex Sans Variable"`. No preload links were added: Vite emits hashed font URLs, the self-hosted CSS is already render-blocking/same-origin, and Fontsource ships `font-display: swap`, so preload would not survive a stable-URL requirement without duplicating binaries. Fallback metric overrides are also deferred.
+- **Outstanding / deliberately deferred:**
+  - Component-level type sizes are still legacy: 168 dashboard nodes and 238 catalog nodes render below 14 px at 1440 (sidebar labels 10.2 px, brand 11.2–11.5 px, badges ~10.6 px, env pill). M2/M3 replace these with the 12/14 px roles; M1 only established the base and tokens.
+  - Dashboard hero `h1` remains 53.6 px at 1440 with `-0.035em` tracking and radial gradients until M4; the tokens already define the 40 px display role and the `-0.02em` limit.
+  - Badges/pills, category hues, card shadows, input/select boundaries (still `--line`), and remaining `--accent` link hovers are component migrations for M3–M5. Several component weights (650–800) currently clamp to the variable fonts' 700 maximum and will be normalised with the type roles.
+  - Font licence texts (SIL OFL 1.1) are not copied into `public/`; surface them on the About/build page or ship the licence files before any deployment.
+  - No browser tests are committed; M8 owns Playwright + axe coverage. The M1 capture/probe scripts live in `/tmp`.
+- **Blockers:** none.
+- **Next exact action:** Stop and await instruction. On approval, start **M2 — shell, navigation, search, route management** (`AGENTS.md` next-task), run `npm run check` first, and do not start M3 in the same change.
+
+### 2026-11-15 — Phase 2.5 UI/UX audit and redesign plan (no code changes)
+
+- **Completed:** A full audit of the Phase 2 interface and a redesign plan, recorded in `docs/phase-2.5-ui-ux-audit.md`. All ten routes, the shared shell, every UI/feature component, all five stylesheets (2,681 CSS lines), the typed content, and the installed `ui-ux-pro-max` skill were inspected. The production build was served locally and measured with Playwright/Chrome at 375, 768, 1024, and 1440 px in both themes, including focus, scroll, filter, and dialog probes.
+- **Chosen direction (user-approved in principle):** **C. Hybrid** — light-first learning interface with a dark technical workspace for API/SQL/logs/debugging. Dark theme adopts the same workspace palette. Concept: **"The Test Bench"** — precision typography, hairline rules, one accent family, mono data labels, no gradients/card shadows.
+- **Primary findings:**
+  - **Fonts never load:** `document.fonts.size === 0`, zero font requests, and Inter/JetBrains Mono measure identically to the fallback. Typography is OS-dependent.
+  - **Type is undersized and fragmented:** 33 distinct sizes (26 under 16 px); badges 10.56 px, track fact labels 9.92 px; body 15 px; guide prose 14.72 px at ~89 characters per line.
+  - **Boundaries fail contrast:** `--line` is 1.21–1.58:1 in light and 1.33–1.48:1 in dark (3:1 required for UI boundaries).
+  - **Generic SaaS identity:** indigo/cyan gradients, 12 arbitrary track hues, 152 pill elements, 84 card shadows, 3 pills per scenario card (72 on the catalog page).
+  - **Duplication:** dashboard repeats 12/24/6 three times across 3,120 px (6,739 px at 375 px); facts repeat in detail headers and asides; demo disclaimers repeat four+ times.
+  - **Navigation/state:** top-bar search is a link with a fake `/` shortcut; filters are local `useState` (Back returns 24 cards); no scroll restoration (1600 → 140 px); focus falls to `<body>` after navigation; category cards link unfiltered.
+  - **Mobile/tablet:** catalog 7,631 px at 375 px; guide TOC and facts render after the article below 1180 px (TOC at 2,581 px); drawer focus escapes (7th Tab), background not inert, no return focus; topbar/text targets 20–35 px.
+  - **States:** `LoadingState`/`ErrorState` unused, no route error boundary, health error exposes `npm run db:migrate:local` and port 8788.
+- **Proposed system (documented, not applied):** IBM Plex Sans + JetBrains Mono (self-hosted, decision pending); 16 px base with 9 type roles; near-black action, run-green status, amber in-design, slate planned; `--border-strong #7C8697` (3.4–3.7:1) for controls; dark workspace `#0B1220`/`#111A2B` with `#5A6C8C` boundaries; `data-surface="workspace"` scoping; 4/8/12/16 radii; overlay-only shadows; no new UI library or icon package.
+- **Plan:** eight milestones — (M1) tokens/fonts/base/focus, (M2) shell/nav/search/drawer/route focus, (M3) primitives/cards, (M4) dashboard/tracks, (M5) catalog/filters/scenario detail, (M6) guides/reading/TOC, (M7) progress/practice workspace/404/states, (M8) accessibility/responsive verification/tests. M9 polish is optional.
+- **Files changed:** `docs/phase-2.5-ui-ux-audit.md` (new), `PROJECT_STATE.md` (this entry, snapshot, roadmap, repo shape), `AGENTS.md` (current-state/next-task alignment).
+- **No application code, styles, content, dependencies, or routes were changed.** No commits were made.
+- **Commands executed:** `npm run build` (existing `dist/` used for the audit), `npx wrangler pages dev dist --port 8788`, `/api/health` → `200` (`version 0.2.0`, `database ok`, `schemaVersion 1`), Playwright capture and probes (48 screenshots, per-route metrics, contrast math, keyboard/drawer/filter/scroll checks). `npm run check` was **not** rerun because no source changed; run it at the start of M1.
+- **Measured verification highlights:** no horizontal overflow at any tested width; one `h1` per route; theme toggle persisted; body text contrast passes; all scenario cards remain non-runnable.
+- **Blockers:** awaiting approval of the eight decisions in §12 of the audit (fonts, icon strategy, IA/content restructuring, dark-theme mapping, dev-chrome removal, progress/demo treatment, browser-test tooling, real top-bar search).
+- **Next exact action:** User reviews `docs/phase-2.5-ui-ux-audit.md` and approves or amends the direction and decisions. On approval, start **M1 — design foundations (tokens, fonts, base type, focus)** and run `npm run check` first. **Do not start Phase 3** and do not implement later milestones before M1 is verified.
 
 ### 2026-11-14 — Repo hygiene: ignore Python cache artifacts
 
@@ -346,4 +413,4 @@ phase starts.
 
 Paste this into the next OpenCode/ChatGPT session after placing this file at the repository root:
 
-> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete; resume at Phase 3 (commerce practice app) and work only on one phase/vertical slice at a time. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.
+> Read `PROJECT_STATE.md` and `AGENTS.md` first. Inspect the repository and reconcile the files with actual code and tests. Phase 2 is complete and the redesign is approved. Phase 2.5 produced `docs/phase-2.5-ui-ux-audit.md`; **redesign M1 (tokens, self-hosted IBM Plex Sans/JetBrains Mono, base type, focus, theme-color) is complete and verified, and M2 has not started.** Continue with **M2 — shell, navigation, search, route management** only after explicit instruction, then proceed through M3 primitives → M4 dashboard/tracks → M5 catalog → M6 guides → M7 progress/practice/404 → M8 accessibility/verification. Do not start Phase 3 (commerce app) until the approved redesign milestones are complete. Keep the app compatible with Cloudflare Pages + Pages Functions/Workers + D1 free tiers. Do not expose shared D1 to arbitrary user SQL, do not accept arbitrary external performance-test targets, and do not execute user code server-side. After every meaningful work turn, update `PROJECT_STATE.md` immediately with files changed, decisions, verification run, blockers, and the next exact action. Provide the updated file in the same turn.

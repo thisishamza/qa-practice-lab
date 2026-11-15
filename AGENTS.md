@@ -3,6 +3,7 @@
 ## Current repo state
 
 - **Phase 2 (app shell, learning tracks, scenario catalog, guides) is implemented.** Phase 3 and later are not started.
+- **The approved Phase 2.5 redesign is in progress: M1 is complete and verified.** The audit/milestone plan lives in `docs/phase-2.5-ui-ux-audit.md`; read it before UI work. M1 delivered the three-layer token system, self-hosted IBM Plex Sans + JetBrains Mono, 16 px base type with nine roles, token focus rings, workspace scoping, and theme-color sync. **M2 (shell/navigation/search) has not started.**
 - Stack: React 19 + TypeScript + Vite 7, React Router, Hono on Cloudflare Pages Functions, Cloudflare D1, Wrangler.
 - The interface is real; the exercises are not. All 24 catalog scenarios are non-runnable placeholders, and progress/activity data on the dashboard and progress page is labelled demo data.
 - No commerce app, auth, bug-hunt mode, SQL playground, performance runner, or security lab exists yet. Do not infer them from the roadmap.
@@ -17,6 +18,7 @@
 - `npm run build` — typecheck then production build into `dist/`.
 - `npm run preview` — build then serve the production output + Functions on `:8788`.
 - Single test file: `npx vitest run tests/server/health.test.ts`
+- ESLint ignores `dist`, `node_modules`, `.wrangler`, `coverage`, and `.opencode/**` (vendored skill scripts are not app source).
 - Never create remote Cloudflare resources, run `--remote` migrations, or deploy in this phase.
 
 ## Architecture
@@ -34,7 +36,9 @@
 - Typed learning content lives in `src/data` (`types.ts`, `tracks.ts`, `scenarios.ts`, `guides.ts`, `categories.ts`, `demo.ts`). Update content there, not inside page components.
 - Pure, testable logic lives in `src/lib` (`catalog.ts` filtering, `labels.ts`, `navigation.ts`, theme helpers/hooks). Keep data transformations out of JSX where practical.
 - Styling is hand-written CSS in `src/styles/{tokens,base,layout,components,pages}.css`, imported by `global.css`. There is no Tailwind. Prefer design tokens, and be careful with cascade order: a later, equal-specificity rule wins across files.
-- Themes use `document.documentElement.dataset.theme`, the `qa-practice-lab-theme` storage key, and the inline bootstrap in `index.html`. Keep the bootstrap and `ThemeProvider` in sync.
+- `tokens.css` is layered: primitives → semantic → temporary compatibility aliases. Light is the default; `[data-theme="dark"]` uses the workspace palette; `[data-surface="workspace"]` applies it to a subtree. Custom properties resolve where declared, so compatibility aliases are redeclared inside the workspace scope — keep that duplication if you add aliases.
+- Fonts are self-hosted through `@fontsource-variable/*` devDependencies, imported in `src/main.tsx` before `global.css`. The family names end in `" Variable"`; keep them identical in `tokens.css` or the font silently falls back. Fonts use `font-display: swap`; there are no preload links because Vite emits hashed URLs.
+- Themes use `document.documentElement.dataset.theme`, the `qa-practice-lab-theme` storage key, and the inline bootstrap in `index.html`. Keep the bootstrap, `ThemeProvider`, `applyTheme`, and the `theme-color` meta (`#f6f7f8` / `#0b1220`) in sync.
 - Sidebar collapse uses the `qa-practice-lab-sidebar-collapsed` storage key.
 - Scenario placeholders must stay `runnable: false` with a non-`ready` status until a phase actually implements the exercise. Do not make demo progress look persisted.
 
@@ -71,6 +75,6 @@ For designing, building, reviewing, or fixing interfaces — starting with Phase
 
 ## Workflow
 
-- Work on one phase/vertical slice at a time. **Next task is Phase 3 — commerce practice app**, not yet started.
+- Work on one phase/vertical slice at a time. **M1 of the approved redesign is complete and verified; the next task is M2 (shell, navigation, search, route management) only after explicit instruction**, per `docs/phase-2.5-ui-ux-audit.md`. Phase 3 (commerce practice app) is paused until the approved redesign milestones are complete.
 - For any UI/design/review work, first invoke the `ui-ux-pro-max` skill via the `skill` tool — see "UI/UX Pro Max skill" above. Do not start Phase 3 interface work without it.
 - Update `PROJECT_STATE.md` in the same turn as any code/plan change: status, decisions, files changed, commands/tests run, blockers, exact next action, progress log.
