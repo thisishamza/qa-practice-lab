@@ -267,3 +267,56 @@
     align-items: flex-start;
   }
 }
+/* Progress page: note + tracked-features list ----------------------------- */
+
+.progress-note {
+  max-width: 72ch;
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}
+
+.tracked-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tracked-list li {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.tracked-list li:first-child {
+  border-top: 0;
+}
+
+.tracked-index {
+  flex: 0 0 auto;
+  color: var(--ink-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tracked-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.tracked-copy strong {
+  color: var(--ink-strong);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+}
+
+.tracked-copy span {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}

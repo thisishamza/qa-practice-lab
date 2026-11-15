@@ -2,14 +2,114 @@
  * Workspace scope — dark technical panels inside either theme.
  *
  * The palette itself lives in tokens.css under [data-surface="workspace"].
- * This file is the scaffold for workspace-specific component patterns
- * (console, log, query and request/response panels). It intentionally
- * contains no feature styles yet: those arrive with the milestones that
- * build the API, SQL and logs surfaces (M6/M7 and Phase 3+).
- *
- * Rules for future additions, per The Test Bench direction:
- * - Always rendered inside [data-surface="workspace"]; never re-declare colors
- *   here, only structure.
- * - Monospace body, 1px header strip with a mono label.
- * - No gradients, no shadows; depth comes from surface steps only.
+ * Components in this file are the only workspace-specific patterns; they are
+ * always rendered inside that scope. Structure only — never re-declare the
+ * palette here. No gradients, no shadows; depth comes from surface steps.
  */
+
+.workspace-panel {
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.workspace-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.workspace-title {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workspace-status {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.workspace-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ink-subtle);
+}
+
+.workspace-status-ok .workspace-dot {
+  background: var(--run);
+}
+
+.workspace-status-error .workspace-dot {
+  background: var(--warn);
+}
+
+.workspace-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.workspace-line {
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+  line-height: 1.55;
+}
+
+.workspace-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem 1.5rem;
+}
+
+.workspace-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.workspace-key {
+  color: var(--ink-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-value {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.workspace-body .button {
+  align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+  .workspace-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
