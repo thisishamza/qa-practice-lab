@@ -47,6 +47,12 @@ export const primaryNav: NavItem[] = [
     description: 'Same-origin request console',
   },
   {
+    label: 'Database',
+    to: '/database',
+    icon: 'database',
+    description: 'SQL playground on a practice dataset',
+  },
+  {
     label: 'Practice',
     to: '/practice',
     icon: 'practice',
