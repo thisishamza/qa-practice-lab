@@ -355,3 +355,35 @@ plus one environment note: `wrangler pages dev` exposes `cf-connecting-ip` local
 production acceptance) were authorized for this release only; their recorded outcome is in
 `PROJECT_STATE.md` §11. This addendum changes no verdict above — it records the hardening that shipped
 between the audit commit and the release.
+
+## Production outcome (2026-11-16, recorded after the addendum)
+
+The authorized release was executed and **passed**:
+
+- **Merged:** PR #5 (`feat/phase-4-learning-intelligence` → `main`), merge commit
+  `ac53fd0e371aa233fb48520dd819f5d86520a27f` (12 commits, mergeable `clean`, no CI workflows in repo).
+- **Merged-main verification:** `npm run check` clean; 733/733 tests green; `npm run build` passes.
+- **Production migration:** `npx wrangler d1 migrations apply qa-practice-lab-db --remote` —
+  `0010_hunt_attempts.sql` applied; `migrations list --remote` → "No migrations to apply!";
+  `/api/health` → `schemaVersion: "10"`.
+- **Deployment:** `npx wrangler pages deploy dist --branch main` — deployment
+  `0b1cd31b.qa-practice-lab.pages.dev`; production alias `https://qa-practice-lab.pages.dev` serves
+  it; deployed from merged `main` (`ac53fd0`).
+- **Production acceptance: all checks pass.** Raw HTTP (cookieless): `403 reveal_locked`
+  (content-free), `401 session_required`, empty-session `/progress` → all-`none` zeroed payload,
+  `400`/`404` envelopes, `413` on a ~40 KB body, 7 runnable hunts + curriculum, zero defect ids;
+  headers `no-store`/`nosniff` on API responses. Browser (system Chrome over CDP, fresh profile):
+  **64/64** — full guest journey (start → ladder skip 409 → ordered hints → error summary →
+  report → evaluation view → reveal unlocked in-place), give-up journey (cancel → zero requests →
+  `403`; confirm → 200; give-up then `/progress` shows `status: "revealed"`, `discovered: false`),
+  signed-in attribution banner, placeholders unavailable, `/about#evaluation` focus, both themes ×
+  375/768/1024/1440 px (one h1, zero overflow each), zero unexpected console errors. Bundle leak
+  scan clean (deployed bytes verified).
+- **Rollback:** previous deployment `99ef81ca-c8c2-44bc-ba9b-69f4f627e982` (commit `1f0847f`) remains
+  available; 0010 is additive so the old build runs unchanged against `schema_version` 10. Rollback
+  was not needed.
+
+**Removes the audit's limitation §7.1 (deployment pending).** Remaining limitations are unchanged in
+substance: no committed browser runner; Firefox/WebKit untested; fixed-window rate limits; unbounded
+aggregate scan; session-bound guest progress; two synthetic smoke attempts/reports/give-ups now exist
+in the production D1 tied to anonymous sessions (cascade-delete after 7 days via the staff sweep).

@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 9).
+> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -18,7 +18,7 @@ JetBrains Mono, a tile of design tokens, honest status labels, and no demo data 
 Phase 3 builds **Meridian Outfitters**, an original fictional outdoor & home goods store used as
 the single commerce practice domain. **P3-M1 through P3-M9 are implemented and merged to `main`;
 the app is deployed at https://qa-practice-lab.pages.dev:** a D1 catalogue schema with deterministic synthetic
-seed data (`schema_version` 9), a `/api/v1` catalogue API with search, a working `/shop`
+seed data (`schema_version` 10), a `/api/v1` catalogue API with search, a working `/shop`
 storefront, a session-based cart with server-calculated totals, a practice checkout that places
 a simulated order in one atomic database transaction with idempotency protection, synthetic
 customer sign-in, staff-only inventory management with exactly-once cancellation, a
@@ -33,26 +33,34 @@ tracked server-side only for the practice session (or, when signed in, for the s
 account) — there is **no permanent learner account persistence**: guest progress expires with the
 practice session and never transfers to an account. No SQL playground, performance
 runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
-hints, structured bug reports with deterministic evaluation, and real progress tracking) is
-implementation-complete on the branch (not deployed): P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
+hints, structured bug reports with deterministic evaluation, and real progress tracking) is merged
+to `main` (PR #5) and deployed to production; the Phase 4 scope includes:
+P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
 P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — plus server-side hunt-attempt
-and structured bug-report persistence with a scoped 30/minute report rate limit) and
+and structured bug-report persistence with a scoped 30/minute report rate limit),
 P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
 a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
-no AI), P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
+no AI),
+P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
 reveal as server-side API endpoints — unlocked only by a submitted report or an explicit
-confirmed give-up), P4-M2 WP2 (the structured bug-report UI — labelled form, inline
+confirmed give-up),
+P4-M2 WP2 (the structured bug-report UI — labelled form, inline
 validation with a linked error summary, server-side submission, an evaluation result view
-and a downloadable markdown report — rendered on the wired hunt panels) and P4-M2 WP3
+and a downloadable markdown report — rendered on the wired hunt panels),
+P4-M2 WP3
 (the hint ladder UI (sequential three-level disclosures), the "Show the solution" give-up
 WAI-modal confirm dialog, the gated reveal panel (expected/actual/root cause/reproduction/
 verification/concepts) and attempt-status chips on the hunt cards — cancel makes no
-request; the report path unlocks the reveal in-place after submission) are implemented,
-reviewed and committed on the implementation branch;
-production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
-is recorded in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard), P4-M3 WP2 (scoring transparency + recommended completion path) and P4-M3 WP3 (the Phase 4 exit audit) are all implemented and committed on the branch** — **Phase 4 is implementation-complete and NOT DEPLOYED**; see
-[docs/phase-4-exit-audit.md](docs/phase-4-exit-audit.md) for the audit verdict and release-readiness notes.
+request; the report path unlocks the reveal in-place after submission),
+P4-M3 WP1 (the progress
+API and the real `/progress` dashboard — owner-scoped aggregate, guest-session durability or
+signed-in customer attribution),
+P4-M3 WP2 (scoring transparency at `/about#evaluation` + the recommended
+completion path on `/practice` with live completion state) and
+P4-M3 WP3 (the Phase 4 exit audit).
+See [docs/phase-4-exit-audit.md](docs/phase-4-exit-audit.md) for the audit verdict and the
+release addendum (independent review fixes + route-level code splitting that shipped with
+the release: initial JS 538.57 → 370.33 kB, gzip 156.15 → 114.62 kB).
 
 ## What you can do now
 
@@ -666,27 +674,33 @@ Do not expose the platform D1 binding as a user-facing SQL console.
 
 ## Deployment status
 
-**Production is deployed** at https://qa-practice-lab.pages.dev (deployed 2026-11-16):
+**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16):
 Cloudflare Pages project `qa-practice-lab` (production branch `main`) and D1 database
-`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 9. `/api/health` reports
+`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 10. `/api/health` reports
 the deployed schema version.
 
 How it was set up (and how to reproduce or re-deploy):
 
 1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
-2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009.
-   Verified before applying: the remote database contained no application tables/data.
-   (Migration `0010_hunt_attempts.sql`, added in Phase 4 WP2, ships in the repository but has
-   NOT been applied to production; production remains `schema_version` 9 until the next approved
-   deployment.)
+2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009,
+   then 0010 for the Phase 4 release. 0010 was applied to production on 2026-11-16 (additive-only:
+   two new tables, three indexes/constraints, `schema_version` → 10; no backfills; production
+   health now reports `schemaVersion: "10"`).
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
-   step was required (verified via `/api/health` → `schemaVersion: "9"`).
-4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "9"`; place a practice
-   order and cancel it; reset via `/practice`; run one staff sweep
-   (`POST /api/v1/admin/maintenance/sweep`) and confirm `deleted` counts are 0 on an idle
-   deployment. The full smoke checklist passed on 2026-11-16 — see `PROJECT_STATE.md` §11.
+   step was required (verified via `/api/health` → `schemaVersion: "10"`). The Phase 4 release
+   deployed commit `ac53fd0` (merge of PR #5) on 2026-11-16; the deployment-specific URL is
+   https://0b1cd31b.qa-practice-lab.pages.dev.
+4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "10"`; staged smoke of the
+   Phase 4 journey passed on production (hunt start → ladder gating 409 → ordered hint unlock →
+   report → deterministic evaluation → reveal unlock/lock → `/progress` attribution banners;
+   give-up does not grant discovery; both themes × 375/768/1024/1440 px; zero unexpected console
+   errors — recorded in `PROJECT_STATE.md` §11). The maintenance sweep remains operator-invoked.
+5. **Rollback:** the previous production deployment (`99ef81ca-c8c2-44bc-ba9b-69f4f627e982`,
+   commit `1f0847f`) is still available; redeploy it to roll back code. Migration 0010 is
+   additive-only, so the rolled-back application runs unchanged against `schema_version` 10; the
+   two new tables simply sit unused. Do not drop them and do not attempt a destructive down-migration.
 5. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
    the operator's choosing (at least weekly; daily during active classes). With a staff
    session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
@@ -703,10 +717,7 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
   server-side (session-scoped) and are evaluated by the deterministic §6.4
   rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI and the
-  hint/reveal UI ships in the P4-M2 WP3 UI; P4-M3 WP1 (progress API + real /progress) is
-  implemented on the branch — only P4-M3 WP2/WP3 remain);
-  Phase 4
-  (P4-M1 WP1–WP3 and P4-M2 WP1–WP3 implemented and committed on the branch) addresses exactly this — see
+  hint/reveal UI ships in the P4-M2 WP3 UI; Phase 4 (all milestones P4-M1..P4-M3) is merged to `main` and deployed to production; see
   `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
