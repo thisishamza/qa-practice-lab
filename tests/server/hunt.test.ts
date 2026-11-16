@@ -87,16 +87,35 @@ const DESCRIPTION_ONLY_TERM = 'vestibules'
 const NAME_TERM = 'trekking'
 
 describe('hunt and defect registries (code, not data)', () => {
-  it('ships the full P3-M8 hunt set whose defects all exist in the defect registry', () => {
-    expect(HUNTS.length).toBe(10)
+  it('ships the UI hunt set plus the SQL hunt set, each correctly wired', () => {
+    const uiHunts = HUNTS.filter((hunt) => hunt.kind !== 'sql')
+    const sqlHunts = HUNTS.filter((hunt) => hunt.kind === 'sql')
+    expect(uiHunts.length).toBe(10)
+    expect(sqlHunts.map((hunt) => hunt.id)).toEqual([
+      'hunt-db-001',
+      'hunt-db-002',
+      'hunt-db-003',
+      'hunt-db-004',
+      'hunt-db-005',
+      'hunt-db-006',
+      'hunt-db-007',
+      'hunt-db-008',
+    ])
+    expect(HUNTS.length).toBe(18)
     expect(new Set(HUNTS.map((hunt) => hunt.id)).size).toBe(HUNTS.length)
     for (const hunt of HUNTS) {
       expect(hunt.id).toMatch(/^[a-z0-9][a-z0-9-]{2,63}$/)
+      expect(hunt.scenarioId).toBeTruthy()
+    }
+    for (const hunt of uiHunts) {
       expect(hunt.defectIds.length).toBeGreaterThan(0)
       for (const defectId of hunt.defectIds) {
         expect(findDefect(defectId), `${hunt.id} references missing ${defectId}`).not.toBeNull()
       }
-      expect(hunt.scenarioId).toBeTruthy()
+    }
+    // SQL hunts carry no UI defect — their defect is a server-side data delta.
+    for (const hunt of sqlHunts) {
+      expect(hunt.defectIds).toEqual([])
     }
   })
 

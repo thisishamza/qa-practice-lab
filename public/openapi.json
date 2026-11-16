@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "QA Practice Lab — Meridian Outfitters Practice API",
-    "version": "1.0.0",
-    "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`) or, for the `mpl_customer` surface, `Authorization: Bearer <token>` minted by `POST /api/v1/auth/token` (SHA-256-hashed at rest, 15-900 s clamped TTL, one-time display). When a Bearer header is presented it wins over the cookie; roles always come from the stored customer row. An expired Bearer token answers 401 `token_expired`; other Bearer failures answer 401 `unauthorized`.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min) and practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day).\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.",
+    "version": "1.1.0",
+    "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`) or, for the `mpl_customer` surface, `Authorization: Bearer <token>` minted by `POST /api/v1/auth/token` (SHA-256-hashed at rest, 15-900 s clamped TTL, one-time display). When a Bearer header is presented it wins over the cookie; roles always come from the stored customer row. An expired Bearer token answers 401 `token_expired`; other Bearer failures answer 401 `unauthorized`.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min), practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day) and SQL evaluation (`rate_limited`, 30/min); `POST /api/v1/sql/evaluate` accepts up to 1 MB of JSON.\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.",
     "contact": {
       "name": "QA Practice Lab",
       "url": "/about"
@@ -53,945 +53,6 @@
     }
   ],
   "paths": {
-    "/api/v1/products": {
-      "get": {
-        "operationId": "listProducts",
-        "tags": [
-          "catalogue"
-        ],
-        "summary": "List products",
-        "description": "Page-based catalogue listing. Out-of-range `page`/`perPage` values are clamped, not rejected; unknown `sort` values fall back to `newest`; an unknown `category` slug simply matches zero rows. `q` matches name, description and category name case-insensitively; LIKE wildcards are treated literally.",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "1-based page number. Clamped to ≥ 1 and ≤ 10000; non-integer values fall back to 1.",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 10000,
-              "default": 1
-            }
-          },
-          {
-            "name": "perPage",
-            "in": "query",
-            "required": false,
-            "description": "Page size. Clamped to 1–48; non-integer values fall back to 12.",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 48,
-              "default": 12
-            }
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "description": "Category slug filter (lower-cased, ≤ 64 chars). An unknown slug yields an empty result set with `total: 0`, not an error.",
-            "schema": {
-              "type": "string",
-              "maxLength": 64
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "description": "Sort order. Unknown values fall back to `newest`.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "newest",
-                "name",
-                "price_asc",
-                "price_desc"
-              ],
-              "default": "newest"
-            }
-          },
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "description": "Search text (≤ 80 chars after trimming). Matches product name, description and category name; `%`, `_` and `\\` are matched literally.",
-            "schema": {
-              "type": "string",
-              "maxLength": 80
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A page of products with server-computed pagination metadata.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/products/{slug}": {
-      "get": {
-        "operationId": "getProduct",
-        "tags": [
-          "catalogue"
-        ],
-        "summary": "Get one product",
-        "description": "Case-insensitive slug lookup over active products. The slug must match `^[a-z0-9-]{1,80}$` after lower-casing; anything else answers 404, like a well-formed slug that does not exist.",
-        "parameters": [
-          {
-            "name": "slug",
-            "in": "path",
-            "required": true,
-            "description": "Product slug, e.g. `canvas-tote-bag`.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[a-z0-9-]{1,80}$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The product.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Product"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown or malformed slug. Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/categories": {
-      "get": {
-        "operationId": "listCategories",
-        "tags": [
-          "catalogue"
-        ],
-        "summary": "List categories",
-        "description": "All catalogue categories in display order.",
-        "responses": {
-          "200": {
-            "description": "The full category list.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/cart": {
-      "get": {
-        "operationId": "getCart",
-        "tags": [
-          "cart"
-        ],
-        "summary": "Read the current cart",
-        "description": "Returns the cart belonging to the caller's `mpl_session` cookie. An anonymous or unknown browser answers an empty cart (`itemCount: 0`) and clears any stale cookie. Prices, stock and totals are always recomputed server-side from the catalogue and inventory at read time.",
-        "responses": {
-          "200": {
-            "description": "The current cart (possibly empty).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CartResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "clearCart",
-        "tags": [
-          "cart"
-        ],
-        "summary": "Remove every line from the cart",
-        "description": "Deletes all lines in the caller's cart. Idempotent: an empty or missing cart answers the same empty-cart payload.",
-        "responses": {
-          "200": {
-            "description": "The (now empty) cart.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CartResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      }
-    },
-    "/api/v1/cart/items": {
-      "post": {
-        "operationId": "addCartItem",
-        "tags": [
-          "cart"
-        ],
-        "summary": "Add a product to the cart",
-        "description": "Adds `quantity` units of a product by slug. Prices and totals are recomputed server-side; the client sends only `{ slug, quantity }`. Mints the `mpl_session` cookie on first use (the first cart mutation creates the anonymous practice session). Lines are only accepted up to available stock.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CartItemAddRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated cart.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CartResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Malformed body, missing/invalid slug, or quantity outside 1–99 (integer). Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No active product with that slug. Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Stock guard rejected the add. Error codes: `out_of_stock` (product has none left) or `insufficient_stock` (would exceed remaining/line cap; the response carries `availableStock`, `maxQuantity` and, where relevant, `currentQuantity`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InsufficientStockError"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      }
-    },
-    "/api/v1/cart/items/{id}": {
-      "patch": {
-        "operationId": "updateCartItem",
-        "tags": [
-          "cart"
-        ],
-        "summary": "Set a line's quantity",
-        "description": "Replaces the quantity of one cart line. `id` is the line's numeric id as returned by `GET /api/v1/cart`; it must be a positive integer. Quantity must be an integer 1–99 and within available stock.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Cart line id (positive integer, no leading zero).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[1-9][0-9]{0,15}$"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CartItemUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The updated cart.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CartResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Malformed line id, body, or quantity. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Quantity exceeds fulfillable stock or the line cap. Error code: `insufficient_stock`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InsufficientStockError"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      },
-      "delete": {
-        "operationId": "deleteCartItem",
-        "tags": [
-          "cart"
-        ],
-        "summary": "Remove one line from the cart",
-        "description": "Deletes a single line by id. Idempotent only in the sense that a missing line answers 404; it is not silently ignored.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Cart line id (positive integer, no leading zero).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[1-9][0-9]{0,15}$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The updated cart.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CartResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Malformed line id. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      }
-    },
-    "/api/v1/checkout": {
-      "get": {
-        "operationId": "getCheckoutSummary",
-        "tags": [
-          "checkout"
-        ],
-        "summary": "Read the checkout summary",
-        "description": "Cart-derived checkout summary: the same lines as `GET /api/v1/cart` plus a `checkoutable` flag. `checkoutable` is true only when the cart is non-empty and every line is fulfillable. An anonymous browser answers an empty, non-checkoutable summary.",
-        "responses": {
-          "200": {
-            "description": "The checkout summary.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckoutSummary"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "operationId": "placeOrder",
-        "tags": [
-          "checkout"
-        ],
-        "summary": "Place a simulated order",
-        "description": "Places the order for the caller's cart. Payment is a deterministic simulation (`approved` places the order, `declined` places nothing); nothing is really paid for or shipped. The order is computed server-side from the catalogue and inventory — the client never dictates prices or totals. Placement is atomic (all-or-nothing) and idempotent: send an `Idempotency-Key` header (or `idempotencyKey` in the body) matching `^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$`; a replay with the same key and the same payload re-answers the recorded outcome (HTTP 201, `Idempotent-Replay: true` response header). Reusing a key for a different payload answers 409. Successful placements return the immutable order confirmation with status 201.",
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "description": "Client-generated idempotency key. 8–128 chars: letters, digits, dashes, underscores; must start with a letter or digit. One is generated server-side when absent.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CheckoutRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Order placed (or the recorded outcome replayed). The body is the immutable order confirmation. When this response replays a previous submission, the `Idempotent-Replay: true` header is set.",
-            "headers": {
-              "Idempotent-Replay": {
-                "description": "Set to `true` only when this response replays a previously recorded idempotency outcome.",
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "true"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed (per-field `fields` map included), or the idempotency key is malformed. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorWithFields"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The idempotency key was already used for a different payload. Error code: `idempotency_conflict`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The order cannot be placed. Error codes: `empty_cart` (nothing to buy / no live session), `payment_declined` (the simulated decline; cart and stock untouched), `cart_unavailable` (one or more lines cannot be fulfilled; carries a `lines` array of `{ slug, name, reason, availableStock }`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/Error"
-                    },
-                    {
-                      "$ref": "#/components/schemas/CartUnavailableError"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many order attempts from this network (30 placements/IP/minute, counted including invalid payloads). Error code: `rate_limited`. `Retry-After` header included. The shared per-IP mutation budget also applies.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds until the oldest counted attempt ages out of the fixed window.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          }
-        }
-      }
-    },
-    "/api/v1/orders": {
-      "get": {
-        "operationId": "listOrders",
-        "tags": [
-          "orders"
-        ],
-        "summary": "List the session's orders",
-        "description": "The caller's order history, newest first, at most 50 entries. Scoped to the practice session; a signed-in customer's account history lives at `GET /api/v1/account/orders`. An anonymous browser answers an empty list.",
-        "responses": {
-          "200": {
-            "description": "The session's orders.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrderListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/orders/{reference}": {
-      "get": {
-        "operationId": "getOrder",
-        "tags": [
-          "orders"
-        ],
-        "summary": "Get an order confirmation",
-        "description": "Immutable order snapshot, readable only by the practice session that placed it (or, when signed in, the customer account that owns it — see `GET /api/v1/account/orders/{reference}`). Unknown references, foreign references and malformed references answer the identical envelope where applicable: existence is never revealed.",
-        "parameters": [
-          {
-            "name": "reference",
-            "in": "path",
-            "required": true,
-            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
-            "schema": {
-              "type": "string",
-              "pattern": "^ORD-[0-9A-F]{16}$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The order confirmation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Malformed reference. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/orders/{reference}/cancel": {
-      "post": {
-        "operationId": "cancelOrder",
-        "tags": [
-          "orders"
-        ],
-        "summary": "Cancel a placed order",
-        "description": "Transitions `placed → cancelled` exactly once and restores stock exactly once, atomically. Safe to retry: a repeat call replays the already-cancelled order (HTTP 200) without restoring stock twice. Authorization mirrors the read policy: the practice session that placed the order, or the signed-in customer that owns it. Unknown, foreign and unauthorised references alike answer 404. Cancelling mints nothing and accepts no body.",
-        "parameters": [
-          {
-            "name": "reference",
-            "in": "path",
-            "required": true,
-            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
-            "schema": {
-              "type": "string",
-              "pattern": "^ORD-[0-9A-F]{16}$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The cancelled (or already-cancelled) order.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Malformed reference. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      }
-    },
-    "/api/v1/auth/accounts": {
-      "get": {
-        "operationId": "listDemoAccounts",
-        "tags": [
-          "auth"
-        ],
-        "summary": "List the synthetic demo accounts",
-        "description": "Safe directory of the fictional training accounts (name, email, role, status) for the sign-in screen. Never carries password material. The demo passwords are documented in the lab README; they are not secrets and are only useful against this synthetic environment.",
-        "responses": {
-          "200": {
-            "description": "The demo accounts.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DemoAccountListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/login": {
-      "post": {
-        "operationId": "login",
-        "tags": [
-          "auth"
-        ],
-        "summary": "Sign in a synthetic demo account",
-        "description": "Authenticates a synthetic demo account. On success the browser receives (or keeps) a `mpl_session` practice-session cookie and a fresh `mpl_customer` customer-session cookie (8h TTL, bound to the practice session). Unknown emails and wrong passwords answer the identical 401 `invalid_credentials` envelope; the unknown-email path still performs a password verification against a dummy hash so timing does not enumerate accounts. Five failed attempts per IP per UTC minute lock further attempts with 429 `login_rate_limited` (a successful sign-in clears the budget). Suspended accounts answer 403 `account_suspended`. This is a training simulation — there is no registration, password reset, MFA or external identity provider.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Signed in. Sets/refreshes the `mpl_session` and `mpl_customer` cookies (HttpOnly, SameSite=Strict, Path=/, `Secure` over HTTPS).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing or malformed email/password. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The account exists but is suspended. Error code: `account_suspended`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Five failed attempts from this IP in the current UTC minute. Error code: `login_rate_limited`. `Retry-After` header included.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds until the window resets.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          }
-        }
-      }
-    },
-    "/api/v1/auth/token": {
-      "post": {
-        "operationId": "mintApiToken",
-        "tags": [
-          "auth"
-        ],
-        "summary": "Mint a synthetic practice API token",
-        "description": "Re-authenticates a synthetic demo account (same verification, same dummy-hash timing equalization and the same 5-failures/IP/UTC-minute budget as POST /api/v1/auth/login — the counter is shared, deliberately) and issues an opaque 256-bit practice API token, returned once in the 201 body. Only the token's SHA-256 hash is stored server-side. Send it as `Authorization: Bearer <token>` anywhere this contract accepts the `mpl_customer` cookie; when both are present the Bearer token wins. There is no refresh and no renewal — minting again is the only path. Sign-out revokes every token bound to the account. `expiresInSeconds` is clamped server-side to 15-900 (default 900). Suspended accounts answer 403.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TokenRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Token minted. The raw token appears in this response exactly once and is never stored or returned again.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiTokenResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing or malformed email/password, or an expiresInSeconds that is not a finite number. Error code: `invalid_request`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The account exists but is suspended. Error code: `account_suspended`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Five failed attempts from this IP in the current UTC minute (shared with sign-in). Error code: `login_rate_limited`. `Retry-After` header included.",
-            "headers": {
-              "Retry-After": {
-                "description": "Seconds until the window resets.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          }
-        }
-      }
-    },
-    "/api/v1/auth/logout": {
-      "post": {
-        "operationId": "logout",
-        "tags": [
-          "auth"
-        ],
-        "summary": "Sign out",
-        "description": "Deletes the caller's `mpl_customer` customer session (if any) and clears the cookie. Also revokes every practice API token bound to the account (customer-scoped, deliberately broad and documented — signing out anywhere signs out everywhere). Idempotent: a guest answers `{ \"ok\": true }` too. The anonymous practice session (`mpl_session`) is unaffected.",
-        "responses": {
-          "200": {
-            "description": "Signed out (or was never signed in).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OkResponse"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
-          }
-        }
-      }
-    },
-    "/api/v1/auth/me": {
-      "get": {
-        "operationId": "getAuthMe",
-        "tags": [
-          "auth"
-        ],
-        "summary": "Read the signed-in customer",
-        "description": "The signed-in synthetic customer's profile. Identical payload to `GET /api/v1/account`. Requires the `mpl_customer` cookie; a guest answers 401, a suspended account answers 403.",
-        "security": [
-          {
-            "customerCookie": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The signed-in customer's profile.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in (or the customer session is unknown/expired/bound to another practice session). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/account": {
       "get": {
         "operationId": "getAccount",
@@ -1332,83 +393,36 @@
         }
       }
     },
-    "/api/v1/practice/hunts": {
-      "get": {
-        "operationId": "listPracticeHunts",
-        "tags": [
-          "practice"
-        ],
-        "summary": "List the registered practice hunts",
-        "description": "Learner-safe list of the bug-hunt exercises available in this deployment: hunt id, title, summary, the wired catalogue scenario id and curriculum metadata. Never carries internal identifiers, hint content or reveal content. Read-only; no session required.",
-        "responses": {
-          "200": {
-            "description": "The registered hunts, in registry order.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HuntListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/practice/session": {
-      "get": {
-        "operationId": "getPracticeSession",
-        "tags": [
-          "practice"
-        ],
-        "summary": "Read the current practice mode",
-        "description": "Whether the caller's practice session is in `clean` or `bug_hunt` mode, and (in bug-hunt mode) the learner-safe hunt summary. An anonymous or unknown browser answers clean mode. Read-only; mints nothing.",
-        "responses": {
-          "200": {
-            "description": "The current practice session state.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PracticeSessionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/practice/hunts/{huntId}/start": {
+    "/api/v1/admin/maintenance/sweep": {
       "post": {
-        "operationId": "startPracticeHunt",
+        "operationId": "runMaintenanceSweep",
         "tags": [
-          "practice"
+          "admin"
         ],
-        "summary": "Enter bug-hunt mode for a hunt",
-        "description": "Re-stamps the caller's live practice session into bug-hunt mode for the given hunt (restarting the same hunt is idempotent and does not consume the daily cap). Takes no body. Unknown hunt ids answer 404. Hunt starts are capped at 20 per IP per UTC day (`hunt_start_cap_reached`); the cap is an abuse control, not a security boundary. Also ensures an in-progress attempt exists for the (session, hunt) pair.",
-        "parameters": [
+        "summary": "Delete expired rows (staff-only, operator use)",
+        "description": "Operator-invoked bounded cleanup: deletes expired practice sessions, expired customer sessions, stale hunt-start cap rows and dead rate-limit buckets (≤ 100 rows per table per call). Idempotent. Inventory adjustments and order cancellations are never deleted. Not part of the learner exercise surface; there is no cron on Pages Functions. Requires the synthetic staff role.",
+        "x-internal": true,
+        "security": [
           {
-            "name": "huntId",
-            "in": "path",
-            "required": true,
-            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
-            }
+            "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
           "200": {
-            "description": "Bug-hunt mode is now active for the caller's session.",
+            "description": "How many rows were deleted, per table.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                  "$ref": "#/components/schemas/MaintenanceSweepResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Malformed hunt id. Error code: `invalid_request`.",
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1417,8 +431,98 @@
               }
             }
           },
-          "404": {
-            "description": "No such hunt. Error code: `hunt_not_found`.",
+          "403": {
+            "description": "Signed in, but not an active staff account. Error codes: `account_suspended`, `staff_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/accounts": {
+      "get": {
+        "operationId": "listDemoAccounts",
+        "tags": [
+          "auth"
+        ],
+        "summary": "List the synthetic demo accounts",
+        "description": "Safe directory of the fictional training accounts (name, email, role, status) for the sign-in screen. Never carries password material. The demo passwords are documented in the lab README; they are not secrets and are only useful against this synthetic environment.",
+        "responses": {
+          "200": {
+            "description": "The demo accounts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoAccountListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in a synthetic demo account",
+        "description": "Authenticates a synthetic demo account. On success the browser receives (or keeps) a `mpl_session` practice-session cookie and a fresh `mpl_customer` customer-session cookie (8h TTL, bound to the practice session). Unknown emails and wrong passwords answer the identical 401 `invalid_credentials` envelope; the unknown-email path still performs a password verification against a dummy hash so timing does not enumerate accounts. Five failed attempts per IP per UTC minute lock further attempts with 429 `login_rate_limited` (a successful sign-in clears the budget). Suspended accounts answer 403 `account_suspended`. This is a training simulation — there is no registration, password reset, MFA or external identity provider.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in. Sets/refreshes the `mpl_session` and `mpl_customer` cookies (HttpOnly, SameSite=Strict, Path=/, `Secure` over HTTPS).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed email/password. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account exists but is suspended. Error code: `account_suspended`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1428,10 +532,10 @@
             }
           },
           "429": {
-            "description": "The daily hunt-start cap for this IP was reached. Error code: `hunt_start_cap_reached`. `Retry-After` header included.",
+            "description": "Five failed attempts from this IP in the current UTC minute. Error code: `login_rate_limited`. `Retry-After` header included.",
             "headers": {
               "Retry-After": {
-                "description": "Seconds until the UTC day rolls over.",
+                "description": "Seconds until the window resets.",
                 "schema": {
                   "type": "integer"
                 }
@@ -1451,21 +555,21 @@
         }
       }
     },
-    "/api/v1/practice/session/reset": {
+    "/api/v1/auth/logout": {
       "post": {
-        "operationId": "resetPracticeSession",
+        "operationId": "logout",
         "tags": [
-          "practice"
+          "auth"
         ],
-        "summary": "Return the session to clean mode",
-        "description": "Non-destructively re-stamps the caller's live session to clean mode (cart, orders and the customer binding are preserved). Mints a fresh clean session when the browser has none. Takes no body. Never counts against the hunt-start cap.",
+        "summary": "Sign out",
+        "description": "Deletes the caller's `mpl_customer` customer session (if any) and clears the cookie. Also revokes every practice API token bound to the account (customer-scoped, deliberately broad and documented — signing out anywhere signs out everywhere). Idempotent: a guest answers `{ \"ok\": true }` too. The anonymous practice session (`mpl_session`) is unaffected.",
         "responses": {
           "200": {
-            "description": "Clean mode is now active.",
+            "description": "Signed out (or was never signed in).",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                  "$ref": "#/components/schemas/OkResponse"
                 }
               }
             }
@@ -1475,6 +579,728 @@
           },
           "429": {
             "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "getAuthMe",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Read the signed-in customer",
+        "description": "The signed-in synthetic customer's profile. Identical payload to `GET /api/v1/account`. Requires the `mpl_customer` cookie; a guest answers 401, a suspended account answers 403.",
+        "security": [
+          {
+            "customerCookie": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The signed-in customer's profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired/bound to another practice session). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/token": {
+      "post": {
+        "operationId": "mintApiToken",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Mint a synthetic practice API token",
+        "description": "Re-authenticates a synthetic demo account (same verification, same dummy-hash timing equalization and the same 5-failures/IP/UTC-minute budget as POST /api/v1/auth/login — the counter is shared, deliberately) and issues an opaque 256-bit practice API token, returned once in the 201 body. Only the token's SHA-256 hash is stored server-side. Send it as `Authorization: Bearer <token>` anywhere this contract accepts the `mpl_customer` cookie; when both are present the Bearer token wins. There is no refresh and no renewal — minting again is the only path. Sign-out revokes every token bound to the account. `expiresInSeconds` is clamped server-side to 15-900 (default 900). Suspended accounts answer 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token minted. The raw token appears in this response exactly once and is never stored or returned again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed email/password, or an expiresInSeconds that is not a finite number. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account exists but is suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Five failed attempts from this IP in the current UTC minute (shared with sign-in). Error code: `login_rate_limited`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the window resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/cart": {
+      "get": {
+        "operationId": "getCart",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Read the current cart",
+        "description": "Returns the cart belonging to the caller's `mpl_session` cookie. An anonymous or unknown browser answers an empty cart (`itemCount: 0`) and clears any stale cookie. Prices, stock and totals are always recomputed server-side from the catalogue and inventory at read time.",
+        "responses": {
+          "200": {
+            "description": "The current cart (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearCart",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Remove every line from the cart",
+        "description": "Deletes all lines in the caller's cart. Idempotent: an empty or missing cart answers the same empty-cart payload.",
+        "responses": {
+          "200": {
+            "description": "The (now empty) cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items": {
+      "post": {
+        "operationId": "addCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Add a product to the cart",
+        "description": "Adds `quantity` units of a product by slug. Prices and totals are recomputed server-side; the client sends only `{ slug, quantity }`. Mints the `mpl_session` cookie on first use (the first cart mutation creates the anonymous practice session). Lines are only accepted up to available stock.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartItemAddRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body, missing/invalid slug, or quantity outside 1–99 (integer). Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active product with that slug. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Stock guard rejected the add. Error codes: `out_of_stock` (product has none left) or `insufficient_stock` (would exceed remaining/line cap; the response carries `availableStock`, `maxQuantity` and, where relevant, `currentQuantity`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientStockError"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items/{id}": {
+      "patch": {
+        "operationId": "updateCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Set a line's quantity",
+        "description": "Replaces the quantity of one cart line. `id` is the line's numeric id as returned by `GET /api/v1/cart`; it must be a positive integer. Quantity must be an integer 1–99 and within available stock.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cart line id (positive integer, no leading zero).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartItemUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed line id, body, or quantity. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Quantity exceeds fulfillable stock or the line cap. Error code: `insufficient_stock`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientStockError"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Remove one line from the cart",
+        "description": "Deletes a single line by id. Idempotent only in the sense that a missing line answers 404; it is not silently ignored.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cart line id (positive integer, no leading zero).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed line id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "List categories",
+        "description": "All catalogue categories in display order.",
+        "responses": {
+          "200": {
+            "description": "The full category list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout": {
+      "get": {
+        "operationId": "getCheckoutSummary",
+        "tags": [
+          "checkout"
+        ],
+        "summary": "Read the checkout summary",
+        "description": "Cart-derived checkout summary: the same lines as `GET /api/v1/cart` plus a `checkoutable` flag. `checkoutable` is true only when the cart is non-empty and every line is fulfillable. An anonymous browser answers an empty, non-checkoutable summary.",
+        "responses": {
+          "200": {
+            "description": "The checkout summary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSummary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "placeOrder",
+        "tags": [
+          "checkout"
+        ],
+        "summary": "Place a simulated order",
+        "description": "Places the order for the caller's cart. Payment is a deterministic simulation (`approved` places the order, `declined` places nothing); nothing is really paid for or shipped. The order is computed server-side from the catalogue and inventory — the client never dictates prices or totals. Placement is atomic (all-or-nothing) and idempotent: send an `Idempotency-Key` header (or `idempotencyKey` in the body) matching `^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$`; a replay with the same key and the same payload re-answers the recorded outcome (HTTP 201, `Idempotent-Replay: true` response header). Reusing a key for a different payload answers 409. Successful placements return the immutable order confirmation with status 201.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Client-generated idempotency key. 8–128 chars: letters, digits, dashes, underscores; must start with a letter or digit. One is generated server-side when absent.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed (or the recorded outcome replayed). The body is the immutable order confirmation. When this response replays a previous submission, the `Idempotent-Replay: true` header is set.",
+            "headers": {
+              "Idempotent-Replay": {
+                "description": "Set to `true` only when this response replays a previously recorded idempotency outcome.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (per-field `fields` map included), or the idempotency key is malformed. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorWithFields"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key was already used for a different payload. Error code: `idempotency_conflict`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The order cannot be placed. Error codes: `empty_cart` (nothing to buy / no live session), `payment_declined` (the simulated decline; cart and stock untouched), `cart_unavailable` (one or more lines cannot be fulfilled; carries a `lines` array of `{ slug, name, reason, availableStock }`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CartUnavailableError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many order attempts from this network (30 placements/IP/minute, counted including invalid payloads). Error code: `rate_limited`. `Retry-After` header included. The shared per-IP mutation budget also applies.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the oldest counted attempt ages out of the fixed window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "tags": [
+          "orders"
+        ],
+        "summary": "List the session's orders",
+        "description": "The caller's order history, newest first, at most 50 entries. Scoped to the practice session; a signed-in customer's account history lives at `GET /api/v1/account/orders`. An anonymous browser answers an empty list.",
+        "responses": {
+          "200": {
+            "description": "The session's orders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{reference}": {
+      "get": {
+        "operationId": "getOrder",
+        "tags": [
+          "orders"
+        ],
+        "summary": "Get an order confirmation",
+        "description": "Immutable order snapshot, readable only by the practice session that placed it (or, when signed in, the customer account that owns it — see `GET /api/v1/account/orders/{reference}`). Unknown references, foreign references and malformed references answer the identical envelope where applicable: existence is never revealed.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
+            "schema": {
+              "type": "string",
+              "pattern": "^ORD-[0-9A-F]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order confirmation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed reference. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{reference}/cancel": {
+      "post": {
+        "operationId": "cancelOrder",
+        "tags": [
+          "orders"
+        ],
+        "summary": "Cancel a placed order",
+        "description": "Transitions `placed → cancelled` exactly once and restores stock exactly once, atomically. Safe to retry: a repeat call replays the already-cancelled order (HTTP 200) without restoring stock twice. Authorization mirrors the read policy: the practice session that placed the order, or the signed-in customer that owns it. Unknown, foreign and unauthorised references alike answer 404. Cancelling mints nothing and accepts no body.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
+            "schema": {
+              "type": "string",
+              "pattern": "^ORD-[0-9A-F]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cancelled (or already-cancelled) order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed reference. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/attempts": {
+      "get": {
+        "operationId": "listAttempts",
+        "tags": [
+          "practice"
+        ],
+        "summary": "List the caller's attempt history",
+        "description": "Bounded history (≤ 50, newest first) of the caller's attempts: session-scoped rows plus customer-bound rows when signed in. An anonymous or unknown browser answers an empty list. Never exposes internal identifiers.",
+        "responses": {
+          "200": {
+            "description": "The attempt history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts": {
+      "get": {
+        "operationId": "listPracticeHunts",
+        "tags": [
+          "practice"
+        ],
+        "summary": "List the registered practice hunts",
+        "description": "Learner-safe list of the bug-hunt exercises available in this deployment: hunt id, title, summary, the wired catalogue scenario id and curriculum metadata. Never carries internal identifiers, hint content or reveal content. Read-only; no session required.",
+        "responses": {
+          "200": {
+            "description": "The registered hunts, in registry order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HuntListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1533,24 +1359,92 @@
         }
       }
     },
-    "/api/v1/practice/attempts": {
-      "get": {
-        "operationId": "listAttempts",
+    "/api/v1/practice/hunts/{huntId}/hints": {
+      "post": {
+        "operationId": "unlockHuntHint",
         "tags": [
           "practice"
         ],
-        "summary": "List the caller's attempt history",
-        "description": "Bounded history (≤ 50, newest first) of the caller's attempts: session-scoped rows plus customer-bound rows when signed in. An anonymous or unknown browser answers an empty list. Never exposes internal identifiers.",
+        "summary": "Unlock one progressive hint",
+        "description": "Unlocks hint level 1, 2 or 3 for the caller's attempt at the hunt. Level N requires level N−1 already unlocked (`hint_level_locked`); levels cannot be skipped. Re-requesting an already-unlocked level is idempotent (200, no double count). No new level unlocks after the attempt is complete (`hint_attempt_completed`). Requires a live practice session. The hint text is served only for the requested level.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HintRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "The attempt history.",
+            "description": "The unlocked hint and the number of distinct levels used on the attempt.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AttemptHistoryResponse"
+                  "$ref": "#/components/schemas/HintResponse"
                 }
               }
             }
+          },
+          "400": {
+            "description": "`level` is not exactly 1, 2 or 3. Error code: `invalid_level` (malformed hunt id answers `invalid_request` instead).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The hint cannot be unlocked. Error codes: `hint_level_locked` (a lower level is missing) or `hint_attempt_completed` (the attempt is no longer in progress).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
           }
         }
       }
@@ -1646,96 +1540,6 @@
           },
           "413": {
             "$ref": "#/components/responses/PayloadTooLarge"
-          }
-        }
-      }
-    },
-    "/api/v1/practice/hunts/{huntId}/hints": {
-      "post": {
-        "operationId": "unlockHuntHint",
-        "tags": [
-          "practice"
-        ],
-        "summary": "Unlock one progressive hint",
-        "description": "Unlocks hint level 1, 2 or 3 for the caller's attempt at the hunt. Level N requires level N−1 already unlocked (`hint_level_locked`); levels cannot be skipped. Re-requesting an already-unlocked level is idempotent (200, no double count). No new level unlocks after the attempt is complete (`hint_attempt_completed`). Requires a live practice session. The hint text is served only for the requested level.",
-        "parameters": [
-          {
-            "name": "huntId",
-            "in": "path",
-            "required": true,
-            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/HintRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The unlocked hint and the number of distinct levels used on the attempt.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HintResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "`level` is not exactly 1, 2 or 3. Error code: `invalid_level` (malformed hunt id answers `invalid_request` instead).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No live practice session. Error code: `session_required`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No such hunt. Error code: `hunt_not_found`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The hint cannot be unlocked. Error codes: `hint_level_locked` (a lower level is missing) or `hint_attempt_completed` (the attempt is no longer in progress).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "413": {
-            "$ref": "#/components/responses/PayloadTooLarge"
-          },
-          "429": {
-            "$ref": "#/components/responses/MutateRateLimited"
           }
         }
       }
@@ -1879,6 +1683,81 @@
         }
       }
     },
+    "/api/v1/practice/hunts/{huntId}/start": {
+      "post": {
+        "operationId": "startPracticeHunt",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Enter bug-hunt mode for a hunt",
+        "description": "Re-stamps the caller's live practice session into bug-hunt mode for the given hunt (restarting the same hunt is idempotent and does not consume the daily cap). Takes no body. Unknown hunt ids answer 404. Hunt starts are capped at 20 per IP per UTC day (`hunt_start_cap_reached`); the cap is an abuse control, not a security boundary. Also ensures an in-progress attempt exists for the (session, hunt) pair.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bug-hunt mode is now active for the caller's session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed hunt id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The daily hunt-start cap for this IP was reached. Error code: `hunt_start_cap_reached`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the UTC day rolls over.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
     "/api/v1/practice/progress": {
       "get": {
         "operationId": "getProgress",
@@ -1901,36 +1780,215 @@
         }
       }
     },
-    "/api/v1/admin/maintenance/sweep": {
-      "post": {
-        "operationId": "runMaintenanceSweep",
+    "/api/v1/practice/session": {
+      "get": {
+        "operationId": "getPracticeSession",
         "tags": [
-          "admin"
+          "practice"
         ],
-        "summary": "Delete expired rows (staff-only, operator use)",
-        "description": "Operator-invoked bounded cleanup: deletes expired practice sessions, expired customer sessions, stale hunt-start cap rows and dead rate-limit buckets (≤ 100 rows per table per call). Idempotent. Inventory adjustments and order cancellations are never deleted. Not part of the learner exercise surface; there is no cron on Pages Functions. Requires the synthetic staff role.",
-        "x-internal": true,
-        "security": [
-          {
-            "customerCookie": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
+        "summary": "Read the current practice mode",
+        "description": "Whether the caller's practice session is in `clean` or `bug_hunt` mode, and (in bug-hunt mode) the learner-safe hunt summary. An anonymous or unknown browser answers clean mode. Read-only; mints nothing.",
         "responses": {
           "200": {
-            "description": "How many rows were deleted, per table.",
+            "description": "The current practice session state.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MaintenanceSweepResponse"
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/session/reset": {
+      "post": {
+        "operationId": "resetPracticeSession",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Return the session to clean mode",
+        "description": "Non-destructively re-stamps the caller's live session to clean mode (cart, orders and the customer binding are preserved). Mints a fresh clean session when the browser has none. Takes no body. Never counts against the hunt-start cap.",
+        "responses": {
+          "200": {
+            "description": "Clean mode is now active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "operationId": "listProducts",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "List products",
+        "description": "Page-based catalogue listing. Out-of-range `page`/`perPage` values are clamped, not rejected; unknown `sort` values fall back to `newest`; an unknown `category` slug simply matches zero rows. `q` matches name, description and category name case-insensitively; LIKE wildcards are treated literally.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "1-based page number. Clamped to ≥ 1 and ≤ 10000; non-integer values fall back to 1.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Clamped to 1–48; non-integer values fall back to 12.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 48,
+              "default": 12
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Category slug filter (lower-cased, ≤ 64 chars). An unknown slug yields an empty result set with `total: 0`, not an error.",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Sort order. Unknown values fall back to `newest`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "name",
+                "price_asc",
+                "price_desc"
+              ],
+              "default": "newest"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Search text (≤ 80 chars after trimming). Matches product name, description and category name; `%`, `_` and `\\` are matched literally.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of products with server-computed pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{slug}": {
+      "get": {
+        "operationId": "getProduct",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Get one product",
+        "description": "Case-insensitive slug lookup over active products. The slug must match `^[a-z0-9-]{1,80}$` after lower-casing; anything else answers 404, like a well-formed slug that does not exist.",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "description": "Product slug, e.g. `canvas-tote-bag`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,80}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The product.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown or malformed slug. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sql/evaluate": {
+      "post": {
+        "operationId": "evaluateSqlExercise",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Evaluate a submitted result set for a SQL exercise",
+        "description": "Compares a learner's submitted result envelope (`{columns, rows}` from the in-browser sandbox) against the exercise's compiled expected specification. Learner SQL is never accepted or executed server-side; comparison is result-based (multiset by default, ordered when the exercise demands it), integer-exact for cents, NULL-safe, case-insensitive for column names, and never persisted beyond the attempt stamp. Passing (score ≥ 70) stamps the caller's attempt `submitted` with the running-max score; failing leaves it `in_progress`. Per-IP scoped budget: 30/min (`rate_limited`), plus the shared mutation backstop and a 1 MB JSON cap.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlEvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The deterministic verdict: pass/fail, score 0-100, per-check feedback and the attempt lifecycle status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlEvaluateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed envelope (columns/rows caps, duplicate column names, bad cells). Error code: `invalid_request`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1939,8 +1997,18 @@
               }
             }
           },
-          "403": {
-            "description": "Signed in, but not an active staff account. Error codes: `account_suspended`, `staff_required`.",
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such exercise. Error code: `exercise_not_found`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1951,6 +2019,133 @@
           },
           "413": {
             "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/sql/exercises/{exerciseId}/start": {
+      "post": {
+        "operationId": "startSqlExercise",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Start (or resume) a SQL exercise attempt",
+        "description": "Idempotently opens the caller's live in-progress attempt for a registered SQL exercise — mirroring hunt-start idempotency. If the browser has no live practice session, a clean guest one is minted first (same semantics as a hunt start). Returns the same attempt row on re-entry; never creates a second live attempt. Unknown ids answer 404 `exercise_not_found`. Attempts on SQL exercises reuse the same attempt bookkeeping as hunts; no client may tune anything about an attempt.",
+        "parameters": [
+          {
+            "name": "exerciseId",
+            "in": "path",
+            "required": true,
+            "description": "SQL exercise id, e.g. `sql-bgn-select-01`. Must match `^sql-(bgn|int|adv)-[a-z0-9-]+-[0-9]{2}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^sql-(bgn|int|adv)-[a-z0-9-]+-[0-9]{2}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's live attempt view.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlExerciseStartResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such exercise. Error code: `exercise_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/sql/hunts/{huntId}/seed": {
+      "get": {
+        "operationId": "getSqlHuntSeed",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Load the bug-hunt sandbox delta for a SQL hunt",
+        "description": "Returns the compiled corruption delta for a registered SQL data-integrity hunt, applied in the learner's browser sandbox on top of the canonical practice snapshot. Served only to the caller whose live practice session is in bug-hunt mode for that exact hunt — clean mode answers 403 `not_hunt_mode` (unknown hunts answer 404 `not_found`; non-SQL hunts answer the same 404 so existence is never disclosed). Idempotent; writes nothing to the database. The delta is exercise content, not executable learner input.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-db-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The compiled corruption delta for this hunt (learner-safe bytes; applied client-side only).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlHuntSeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed hunt id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Live session is not in bug-hunt mode for this SQL hunt. Error code: `not_hunt_mode`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt (including non-SQL hunts). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/MutateRateLimited"
@@ -1981,7 +2176,7 @@
     },
     "responses": {
       "PayloadTooLarge": {
-        "description": "The request body declares a Content-Length over the 32 KB cap (or an invalid one). Error code: `payload_too_large`.",
+        "description": "The request body declares a Content-Length over the cap (32 KB for most routes; 1 MB for `POST /api/v1/sql/evaluate`) or an invalid one. Error code: `payload_too_large`.",
         "content": {
           "application/json": {
             "schema": {
@@ -2038,7 +2233,9 @@
           "hint_level_locked",
           "hint_attempt_completed",
           "reveal_locked",
-          "token_expired"
+          "token_expired",
+          "exercise_not_found",
+          "not_hunt_mode"
         ]
       },
       "Error": {
@@ -4056,6 +4253,141 @@
         "required": [
           "ok",
           "deleted"
+        ],
+        "additionalProperties": false
+      },
+      "SqlExerciseStartResponse": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptView"
+          }
+        },
+        "required": [
+          "attempt"
+        ],
+        "additionalProperties": false
+      },
+      "SqlEvaluateRequest": {
+        "type": "object",
+        "properties": {
+          "exerciseId": {
+            "type": "string",
+            "pattern": "^sql-(bgn|int|adv)-[a-z0-9-]+-[0-9]{2}$"
+          },
+          "columns": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "integer",
+                  "string",
+                  "null"
+                ],
+                "maxLength": 10000
+              }
+            }
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "exerciseId",
+          "columns",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "SqlEvaluateCheck": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "columns",
+              "rows",
+              "ordered"
+            ]
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "passed",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "SqlEvaluateResponse": {
+        "type": "object",
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SqlEvaluateCheck"
+            }
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "attemptStatus": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "revealed",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "passed",
+          "score",
+          "checks",
+          "feedback",
+          "attemptStatus"
+        ],
+        "additionalProperties": false
+      },
+      "SqlHuntSeedResponse": {
+        "type": "object",
+        "properties": {
+          "huntId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+          },
+          "deltaSql": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "huntId",
+          "deltaSql"
         ],
         "additionalProperties": false
       }

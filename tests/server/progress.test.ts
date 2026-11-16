@@ -15,7 +15,7 @@ import {
   summarizeProgressAttempts,
   type ProgressAttemptRow,
 } from '../../src/server/progress'
-import { HUNTS } from '../../src/server/hunts'
+import { allAttemptTargets } from '../../src/server/attemptTargets'
 import {
   createMigratedD1,
   type MigratedD1,
@@ -235,9 +235,9 @@ describe('GET /api/v1/practice/progress — no session and empty states', () => 
     expect(response.status).toBe(200)
     const body = (await response.json()) as ProgressBody
     expect(body.persistence).toBe('session')
-    expect(body.hunts).toHaveLength(HUNTS.length)
-    expect(body.hunts.map((hunt) => hunt.status)).toEqual(HUNTS.map(() => 'none'))
-    expect(body.hunts.map((hunt) => hunt.huntId)).toEqual(HUNTS.map((hunt) => hunt.id))
+    expect(body.hunts).toHaveLength(allAttemptTargets().length)
+    expect(body.hunts.map((hunt) => hunt.status)).toEqual(allAttemptTargets().map(() => 'none'))
+    expect(body.hunts.map((hunt) => hunt.huntId)).toEqual(allAttemptTargets().map((target) => target.id))
     expect(body.totals).toEqual({
       attempts: 0,
       inProgress: 0,
@@ -628,21 +628,24 @@ describe('GET /api/v1/practice/progress — learner-safe payload', () => {
       ].sort(),
     )
     for (const hunt of body.hunts) {
+      const isExercise = hunt.huntId.startsWith('sql-')
+      const base = [
+        'attempts',
+        'bestScore',
+        'discovered',
+        'hintsUsed',
+        'huntId',
+        'lastSubmittedAt',
+        'status',
+        'title',
+      ]
+      // SQL exercise entries carry no scenarioId (plain text in the UI).
       expect(Object.keys(hunt).sort()).toEqual(
-        [
-          'attempts',
-          'bestScore',
-          'discovered',
-          'hintsUsed',
-          'huntId',
-          'lastSubmittedAt',
-          'scenarioId',
-          'status',
-          'title',
-        ].sort(),
+        [...base, ...(isExercise ? [] : ['scenarioId'])].sort(),
       )
-      expect(typeof hunt.scenarioId).toBe('string')
-      expect(hunt.scenarioId.length).toBeGreaterThan(0)
+      if (!isExercise) {
+        expect(hunt.scenarioId?.length).toBeGreaterThan(0)
+      }
     }
     for (const entry of body.recent) {
       expect(Object.keys(entry).sort()).toEqual(
@@ -702,7 +705,7 @@ describe('progress aggregation — pure helpers', () => {
       row({ id: 3, status: 'in_progress', hunt_id: 'hunt-pricing-001' }),
       row({ id: 7, status: 'submitted', hunt_id: 'hunt-pricing-001', best_quality_score: 100 }),
     ])
-    expect(entries.map((entry) => entry.huntId)).toEqual(HUNTS.map((hunt) => hunt.id))
+    expect(entries.map((entry) => entry.huntId)).toEqual(allAttemptTargets().map((target) => target.id))
     const pricing = entries.find((entry) => entry.huntId === 'hunt-pricing-001')
     // Newest-first scan: id 7 (the highest id seen list order) wins the status.
     expect(pricing?.bestScore).toBe(100)

@@ -211,9 +211,11 @@
     align-items: start;
   }
 
-  .sql-editor-panel { grid-area: editor; }
-  .sql-pane-results { grid-area: results; min-width: 0; }
-  .sql-explorer-panel {
+  /* M1 grid areas only apply inside the playground's .sql-workbench grid —
+     scoping keeps the M2 exercise workbench free of phantom named areas. */
+  .sql-workbench .sql-editor-panel { grid-area: editor; }
+  .sql-workbench .sql-pane-results { grid-area: results; min-width: 0; }
+  .sql-workbench .sql-explorer-panel {
     grid-area: schema;
     position: sticky;
     top: calc(var(--topbar-h) + var(--space-4));
@@ -646,5 +648,352 @@
 @media (prefers-reduced-motion: reduce) {
   .sql-editor:focus-within {
     outline: 2px solid var(--focus);
+  }
+}
+/* Phase 6 M2 — exercises, bug hunts, hub grid -------------------------------
+ *
+ * Everything here rides existing tokens; no new palette. The exercise layout
+ * docks instructions left on wide screens and stacks below; the workbench
+ * column keeps minmax(0, 1fr) so the editor never blows out the grid.
+ * ---------------------------------------------------------------------- */
+
+.exercise-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .exercise-layout {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  }
+}
+
+.exercise-instructions .workspace-body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.exercise-qa {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body);
+  line-height: 1.55;
+}
+
+.exercise-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--ink-strong);
+  font-size: var(--text-meta);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.exercise-line {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.exercise-evidence {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--action);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-meta);
+}
+
+.exercise-note {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-meta);
+}
+
+.exercise-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.exercise-attempt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.exercise-workbench {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+}
+
+.exercise-verdict {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.exercise-verdict-pass {
+  border-color: var(--run);
+}
+
+.exercise-verdict-fail {
+  border-color: var(--danger);
+}
+
+.exercise-verdict-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.exercise-verdict-title {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-body);
+}
+
+.exercise-verdict-pass .exercise-verdict-title {
+  color: var(--run);
+}
+
+.exercise-verdict-fail .exercise-verdict-title {
+  color: var(--danger);
+}
+
+.exercise-checks {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exercise-checks li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  font-size: var(--text-meta);
+  line-height: 1.45;
+}
+
+.exercise-check-pass {
+  color: var(--ink);
+}
+
+.exercise-check-fail {
+  color: var(--danger);
+}
+
+.exercise-feedback {
+  margin: 0;
+  font-size: var(--text-meta);
+  color: var(--ink);
+}
+
+.exercise-feedback-strong {
+  font-weight: var(--weight-medium);
+  color: var(--run);
+}
+
+.exercise-learning {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.exercise-exit {
+  margin: 0;
+}
+
+/* Hub — difficulty bands ---------------------------------------------------- */
+
+.database-bands {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1.25rem;
+}
+
+.database-band {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.band-ring {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(var(--surface-raised) 55%, transparent 56%),
+    conic-gradient(var(--run) var(--band-pct, 0%), var(--surface-sunken) 0);
+}
+
+.band-ring-muted {
+  background: var(--surface-sunken);
+}
+
+.band-ring-value {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.database-band-title {
+  margin: 0;
+  font-size: var(--text-body);
+  color: var(--ink-strong);
+}
+
+.database-band-blurb,
+.database-band-note {
+  margin: 0.15rem 0 0;
+  font-size: var(--text-meta);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.database-exercises-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.filter-chip-toggle {
+  cursor: pointer;
+}
+
+.filter-chip-active,
+.filter-chip-active:hover {
+  border-color: var(--action);
+  background: var(--surface-sunken);
+  color: var(--ink-strong);
+}
+
+.filter-chip-active:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.database-hint {
+  margin: 0 0 0.75rem;
+  color: var(--ink-muted);
+  max-width: 70ch;
+  line-height: 1.5;
+}
+
+/* Hub — exercise and hunt cards ------------------------------------------- */
+
+.database-exercise-grid,
+.database-hunt-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.database-exercise-grid li,
+.database-hunt-grid li {
+  min-width: 0;
+  display: grid;
+}
+
+.database-exercise-card,
+.database-hunt-card {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  text-decoration: none;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.database-exercise-card:hover,
+.database-hunt-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.database-exercise-card:focus-visible,
+.database-hunt-card:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .database-exercise-card:hover,
+  .database-hunt-card:hover {
+    transform: none;
+  }
+}
+
+.database-exercise-card-top {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.database-exercise-title {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: var(--text-body);
+  line-height: 1.35;
+}
+
+.database-exercise-summary {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-meta);
+  line-height: 1.5;
+}
+
+.database-exercise-meta {
+  color: var(--ink-muted);
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.text-link {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .database-exercises-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

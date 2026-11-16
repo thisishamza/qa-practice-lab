@@ -45,6 +45,11 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         if (message.seedSql.trim().length > 0) {
           fresh.execAll(message.seedSql)
         }
+        // Optional bug-hunt corruption delta — applied after the canonical
+        // seed and never persisted; the delta carries its own FK handling.
+        if (message.deltaSql && message.deltaSql.trim().length > 0) {
+          fresh.execAll(message.deltaSql)
+        }
         db = fresh
         const schema = db.schema()
         post({ id: message.id, type: 'ready', sqliteVersion: db.sqliteVersion(), schema })

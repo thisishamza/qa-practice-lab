@@ -101,6 +101,14 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
   const isZero = totals.attempts === 0
   const exerciseCount = data.hunts.length
   const huntScenarioIds = new Map(data.hunts.map((hunt) => [hunt.huntId, hunt.scenarioId]))
+  // Database Testing groups the SQL exercises and SQL hunts beneath the hunt list.
+  const isDatabaseTarget = (id: string) => id.startsWith('sql-') || id.startsWith('hunt-db-')
+  const huntEntries = data.hunts.filter((entry) => !isDatabaseTarget(entry.huntId))
+  const databaseEntries = data.hunts.filter((entry) => isDatabaseTarget(entry.huntId))
+  const databaseHref = (entry: { huntId: string }): string =>
+    entry.huntId.startsWith('hunt-db-')
+      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
+      : `/database/exercises/${entry.huntId}`
 
   return (
     <div className="stack">
@@ -177,10 +185,74 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
           description="Each wired exercise with your own state — select one to open it."
         />
         <ul className="progress-exercise-list">
-          {data.hunts.map((hunt) => (
+          {huntEntries.map((hunt) => (
             <li key={hunt.huntId} className="progress-exercise">
               <div className="progress-exercise-body">
-                <Link className="progress-exercise-title" to={`/scenarios/${hunt.scenarioId}`}>
+                {hunt.scenarioId ? (
+                  <Link className="progress-exercise-title" to={`/scenarios/${hunt.scenarioId}`}>
+                    {hunt.title}
+                  </Link>
+                ) : (
+                  <span className="progress-exercise-title">{hunt.title}</span>
+                )}
+                <span className="progress-exercise-meta">
+                  {attemptCountLabel(hunt.attempts)} ·{' '}
+                  {hunt.lastSubmittedAt
+                    ? `last submitted ${formatProgressDate(hunt.lastSubmittedAt)}`
+                    : 'not submitted yet'}
+                </span>
+              </div>
+              <div className="progress-exercise-flags">
+                {hunt.discovered ? (
+                  <Tag tone="ready" icon="check">
+                    Discovered
+                  </Tag>
+                ) : (
+                  <Tag tone="neutral">Not discovered</Tag>
+                )}
+                <AttemptStatusChip status={hunt.status} bestQualityScore={hunt.bestScore} />
+                <span className="progress-exercise-stat">
+                  {hunt.bestScore !== null ? (
+                    <>
+                      <span aria-hidden="true">Best {hunt.bestScore}</span>
+                      <span className="sr-only">Best score {hunt.bestScore} out of 100</span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden="true">Best —</span>
+                      <span className="sr-only">No score yet</span>
+                    </>
+                  )}
+                </span>
+                <span className="progress-exercise-stat">
+                  {hunt.hintsUsed === 1 ? '1 hint' : `${hunt.hintsUsed} hints`}
+                </span>
+              </div>
+              {hunt.scenarioId ? (
+                <Link
+                  className="progress-exercise-go"
+                  to={`/scenarios/${hunt.scenarioId}`}
+                  aria-label={`Open the ${hunt.title} exercise`}
+                >
+                  <Icon name="chevron-right" size={16} />
+                </Link>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="content-section" aria-labelledby="database-title">
+        <SectionHeader
+          id="database-title"
+          title="Database Testing"
+          description="Your state on the SQL exercises and database bug hunts — practice happens in the isolated SQL lab."
+        />
+        <ul className="progress-exercise-list">
+          {databaseEntries.map((hunt) => (
+            <li key={hunt.huntId} className="progress-exercise">
+              <div className="progress-exercise-body">
+                <Link className="progress-exercise-title" to={databaseHref(hunt)}>
                   {hunt.title}
                 </Link>
                 <span className="progress-exercise-meta">
@@ -218,8 +290,8 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
               </div>
               <Link
                 className="progress-exercise-go"
-                to={`/scenarios/${hunt.scenarioId}`}
-                aria-label={`Open the ${hunt.title} exercise`}
+                to={databaseHref(hunt)}
+                aria-label={`Open ${hunt.title}`}
               >
                 <Icon name="chevron-right" size={16} />
               </Link>

@@ -123,7 +123,7 @@ export const learningTracks: LearningTrack[] = [
     shortName: 'Database',
     tagline: 'Verify what the interface never shows.',
     description:
-      'Inspect persisted state behind Aster Market flows. You will check constraints, referential integrity, and the data transitions caused by carts, orders, and cancellations.',
+      'Test the data layer of a commerce platform: SQL fundamentals, joins, subqueries, transactions — then reconciliation, orphan and duplicate detection, blind to the UI. Thirty-six checked exercises and eight deliberately broken snapshots live in the SQL lab.',
     difficulty: 'intermediate',
     icon: 'database',
     categoryIds: ['data', 'functional'],
@@ -133,16 +133,16 @@ export const learningTracks: LearningTrack[] = [
       'Detect orphaned or duplicated records that the UI masks.',
       'Design queries that prove a state change without assuming implementation.',
     ],
-    plannedExerciseCount: 5,
+    plannedExerciseCount: 36,
     gettingStarted: {
       summary:
-        'Start with order and line-item consistency. It teaches the query-and-compare loop used in every later database exercise.',
+        'Start with the beginner exercises and the consistency scenario — the query-and-compare loop every later exercise reuses.',
       steps: [
-        'Map the order, line-item, and product tables from the schema.',
-        'Perform a checkout, then compare expected totals with stored values.',
-        'Record any mismatch with the query and both expected and actual rows.',
+        'Open /database and skim the schema explorer: eight tables, constraints and indexes.',
+        'Complete the beginner fundamentals until the habit is second nature.',
+        'Move to the QA scenarios — reconciliation, orphans, duplicates — then the bug hunts.',
       ],
-      guideId: null,
+      guideId: 'guide-database-testing-sql',
     },
   },
   {

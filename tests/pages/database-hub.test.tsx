@@ -27,14 +27,16 @@ describe('DatabaseHubPage', () => {
     expect(markup).toContain('~120 KB')
   })
 
-  it('is honest that exercises arrive with M2', () => {
+  it('links the exercise catalogue and the database bug hunts', () => {
     const markup = render()
-    expect(markup).toContain('Phase 6 M2')
+    expect(markup).toContain('Exercises')
+    expect(markup).toContain('Database bug hunts')
+    expect(markup).toContain('/database/exercises/')
   })
 
   it('links to the track and scenario catalogue', () => {
     const markup = render()
     expect(markup).toContain('href="/tracks/database-testing"')
-    expect(markup).toContain('href="/scenarios?track=database-testing"')
+    expect(markup).toContain('href="/practice"')
   })
 })

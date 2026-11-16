@@ -92,8 +92,9 @@ export function TrackDetailPage() {
       </div>
 
       <p className="tracks-note">
-        Objectives and listed scenarios are real; exercises are not runnable yet — each
-        scenario carries its own availability status.
+        {track.id === 'database-testing'
+          ? 'Objectives, scenarios and exercises are real and runnable in the SQL lab — open /database to begin.'
+          : 'Objectives and listed scenarios are real; exercises are not runnable yet — each scenario carries its own availability status.'}
       </p>
 
       <div className="detail-layout">
@@ -187,6 +188,20 @@ export function TrackDetailPage() {
               </p>
             )}
           </div>
+
+          {track.id === 'database-testing' ? (
+            <div className="panel">
+              <h2>Database Testing lab</h2>
+              <p className="panel-note">
+                Thirty-six checked exercises and eight database bug hunts are live in the SQL lab —
+                no sign-in required.
+              </p>
+              <Link className="guide-inline" to="/database">
+                <Icon name="database" size={16} />
+                <span>Open the Database Testing lab</span>
+              </Link>
+            </div>
+          ) : null}
 
           {relatedTracks.length > 0 ? (
             <div className="panel">

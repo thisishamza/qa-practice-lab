@@ -4,7 +4,7 @@
 import type { SchemaInfo, SqlRunOutput } from '../../shared/sql'
 
 export type WorkerRequest =
-  | { id: number; type: 'reset'; seedSql: string }
+  | { id: number; type: 'reset'; seedSql: string; deltaSql?: string }
   | { id: number; type: 'run'; sql: string }
   | { id: number; type: 'schema' }
   | { id: number; type: 'close' }

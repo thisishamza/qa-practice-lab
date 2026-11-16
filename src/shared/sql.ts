@@ -88,3 +88,42 @@ export interface SchemaInfo {
   tables: SchemaTable[]
   sqliteVersion: string
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6 M2 — evaluation contracts (learner-safe).
+// The server compares these envelopes against compiled, server-only expected
+// specs (src/server/sqlExercises.ts). Learner SQL is never sent to the
+// server; only the result envelope below crosses the boundary.
+// ---------------------------------------------------------------------------
+
+/** Maximum rows accepted in an evaluation envelope (matches SQL_LIMITS). */
+export const SQL_EVALUATE_MAX_ROWS = SQL_LIMITS.maxRowsPerStatement
+/** Maximum columns accepted in an evaluation envelope. */
+export const SQL_EVALUATE_MAX_COLUMNS = 64
+/** Maximum characters accepted per cell value in an evaluation envelope. */
+export const SQL_EVALUATE_MAX_CELL = SQL_LIMITS.maxCellBytes
+
+export type SqlEvaluateCell = number | string | null
+
+export interface SqlEvaluateRequest {
+  exerciseId: string
+  columns: string[]
+  rows: SqlEvaluateCell[][]
+  truncated?: boolean
+}
+
+export interface SqlEvaluateCheck {
+  id: 'columns' | 'rows' | 'ordered'
+  passed: boolean
+  message: string
+}
+
+export interface SqlEvaluateResponse {
+  passed: boolean
+  /** 0–100. Pass threshold is 70. Computed only server-side. */
+  score: number
+  checks: SqlEvaluateCheck[]
+  feedback: string
+  /** Lifecycle status of the caller's attempt after the pass/fail stamp. */
+  attemptStatus: 'in_progress' | 'submitted' | 'revealed' | 'none'
+}

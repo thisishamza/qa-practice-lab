@@ -1,0 +1,24 @@
+-- Phase 6 M2 — SQL database testing lab.
+--
+-- INTENTIONALLY NO DDL. Phase 6 introduces no tables and alters nothing:
+-- the SQL playground's database lives only inside the learner's browser
+-- (WebAssembly SQLite), and learning state reuses the Phase 4 control
+-- plane exactly as it is:
+--
+--   - hunt_attempts  — one row per (practice_session, attemptable target);
+--                      the 36 SQL exercises use the same table as the UI
+--                      and SQL hunts, with the exercise id in hunt_id.
+--   - bug_reports    — unchanged (SQL hunts report through them).
+--   - No expected specs, delta SQL, reference solutions or hint text
+--     ever reaches D1 — those are compiled Worker code.
+--
+-- This migration exists only to keep the release train's version discipline
+-- (one migration per phase, additive-only): the only change is the
+-- app_meta schema_version bump 11 -> 12 so /api/health can distinguish
+-- deploys.
+--
+-- 0012 must be applied to production only as part of a separately approved
+-- Phase 6 release, after a pre-migration export — the same protocol as
+-- Phase 5's 0011. Local development applies it via npm run db:migrate:local.
+
+UPDATE app_meta SET value = '12', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE key = 'schema_version';

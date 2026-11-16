@@ -28,15 +28,22 @@ export class SqlClient {
   private pending = new Map<number, Pending>()
   private id = 0
   private seedSql: string | null = null
+  private deltaSql: string | null = null
   private disposed = false
   sqliteVersion: string | null = null
 
-  /** Create (or recreate) the worker and load the canonical seed database. */
-  async reset(seedSql: string): Promise<SchemaInfo> {
+  /**
+   * Create (or recreate) the worker and load the canonical seed database.
+   * When a bug-hunt delta is supplied it is applied on top of the seed —
+   * clean sessions never pass one (the server only serves deltas in
+   * bug-hunt mode for registered SQL hunts).
+   */
+  async reset(seedSql: string, deltaSql?: string): Promise<SchemaInfo> {
     this.assertNotDisposed()
     this.seedSql = seedSql
+    this.deltaSql = deltaSql ?? null
     const worker = this.spawn()
-    const response = await this.requestOn(worker, { type: 'reset', seedSql }, null)
+    const response = await this.requestOn(worker, { type: 'reset', seedSql, deltaSql }, null)
     if (response.type !== 'ready') {
       throw new Error('Unexpected response while loading the practice database.')
     }
@@ -96,7 +103,7 @@ export class SqlClient {
             void (async () => {
               try {
                 if (this.seedSql !== null) {
-                  await this.reset(this.seedSql)
+                  await this.reset(this.seedSql, this.deltaSql ?? undefined)
                 }
               } catch {
                 // Timeout is surfaced regardless; the caller reseeds on its own.

@@ -83,9 +83,9 @@ describe('ApiReferenceView', () => {
     expect(html).toContain('Operator-only · internal')
   })
 
-  it('links each of the 35 operations into the API Lab', () => {
+  it('links each of the 38 operations into the API Lab', () => {
     const matches = html.match(/\/api-lab\?method=/g) ?? []
-    expect(matches).toHaveLength(35)
+    expect(matches).toHaveLength(38)
     expect(html).toContain('/api-lab?method=GET&amp;path=%2Fapi%2Fv1%2Fproducts')
   })
 

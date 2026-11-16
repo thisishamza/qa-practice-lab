@@ -11,6 +11,7 @@ import { reportRoutes } from './reports'
 import { learningRoutes } from './learning'
 import { progressRoutes } from './progress'
 import { maintenanceRoutes } from './maintenance'
+import { sqlRoutes } from './sql'
 import { clientIp, consumeRateLimit, sha256Hex, MUTATE_LIMIT } from './rateLimit'
 
 export interface Bindings {
@@ -27,6 +28,8 @@ const SERVICE_VERSION = '0.2.0'
 
 /** Mutating requests never carry a large payload in this API; cap them. */
 const MAX_BODY_BYTES = 32 * 1024
+/** The evaluation endpoint accepts a result envelope of at most 1,000 rows. */
+const MAX_EVALUATE_BODY_BYTES = 1024 * 1024
 const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
 
 export const app = new Hono<AppEnv>().basePath('/api')
@@ -41,9 +44,13 @@ app.use('*', async (c, next) => {
     if (!Number.isFinite(size) || size < 0) {
       return c.json({ error: 'invalid_request', message: 'Invalid Content-Length.' }, 400)
     }
-    if (size > MAX_BODY_BYTES) {
+    const limit = c.req.path === '/api/v1/sql/evaluate' ? MAX_EVALUATE_BODY_BYTES : MAX_BODY_BYTES
+    if (size > limit) {
+      const message = limit === MAX_BODY_BYTES
+        ? 'The request body is larger than the 32 KB limit.'
+        : 'The evaluation payload is larger than the 1 MB limit.'
       return c.json(
-        { error: 'payload_too_large', message: 'The request body is larger than the 32 KB limit.' },
+        { error: 'payload_too_large', message },
         413,
       )
     }
@@ -135,6 +142,7 @@ app.route('/v1', reportRoutes)
 app.route('/v1', learningRoutes)
 app.route('/v1', progressRoutes)
 app.route('/v1', maintenanceRoutes)
+app.route('/v1', sqlRoutes)
 
 app.notFound((c) =>
   c.json({ error: 'not_found', message: 'API route not found' }, 404),

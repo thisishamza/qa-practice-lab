@@ -109,6 +109,9 @@ export interface HuntReveal {
  */
 export interface RevealResponse extends HuntReveal {
   attempt: AttemptView
+  /** SQL exercises and SQL hunts also reveal the reference query. Phase 3/4 hunts never carry it. */
+  solution?: string
+  explanation?: string
 }
 
 export interface AttemptHistoryResponse {
@@ -121,8 +124,8 @@ export type ProgressPersistence = 'session' | 'customer'
 /** One wired hunt with the caller's aggregated state across all attempts. */
 export interface ProgressHuntEntry {
   huntId: string
-  /** The catalogue scenario this hunt is wired to (learner-safe link target). */
-  scenarioId: string
+  /** The catalogue scenario this hunt is wired to (learner-safe link target); absent for SQL exercise entries. */
+  scenarioId?: string
   title: string
   /** Latest attempt's lifecycle status; `none` when the hunt was never attempted. */
   status: AttemptStatusView

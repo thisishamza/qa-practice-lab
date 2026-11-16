@@ -94,6 +94,12 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
             your cart, orders and sign-in are kept either way.
           </p>
           <div className="button-row">
+            {activeThisHunt && scenario.huntId?.startsWith('hunt-db-') ? (
+              <Link className="button button-secondary" to="/database/playground">
+                <Icon name="database" size={16} />
+                Investigate in the SQL playground
+              </Link>
+            ) : null}
             {activeThisHunt ? (
               <Button
                 variant="secondary"

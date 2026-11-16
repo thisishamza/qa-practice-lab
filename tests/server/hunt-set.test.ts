@@ -140,15 +140,23 @@ const EXACT_STOCK_SLUG = 'ember-led-lantern'
 const EXACT_STOCK = 4
 
 describe('registries (code, not data) — P3-M8 set', () => {
-  it('registers ten hunts, one per defect, each wired to a scenario', () => {
-    expect(HUNTS.length).toBe(10)
+  it('registers ten UI hunts plus eight SQL hunts, each wired to a scenario', () => {
+    const uiHunts = HUNTS.filter((hunt) => hunt.kind !== 'sql')
+    const sqlHunts = HUNTS.filter((hunt) => hunt.kind === 'sql')
+    expect(uiHunts.length).toBe(10)
+    expect(sqlHunts.length).toBe(8)
+    expect(HUNTS.length).toBe(18)
     expect(DEFECTS.length).toBe(10)
     const defectIds = new Set(DEFECTS.map((defect) => defect.id))
-    for (const hunt of HUNTS) {
+    for (const hunt of uiHunts) {
       expect(hunt.defectIds.length).toBe(1)
       for (const defectId of hunt.defectIds) {
         expect(defectIds.has(defectId)).toBe(true)
       }
+      expect(hunt.scenarioId).toBeTruthy()
+    }
+    for (const hunt of sqlHunts) {
+      expect(hunt.defectIds).toEqual([])
       expect(hunt.scenarioId).toBeTruthy()
     }
   })
@@ -167,7 +175,7 @@ describe('GET /api/v1/practice/hunts', () => {
     const response = await app.request('/api/v1/practice/hunts', {}, { DB: migrated.db })
     expect(response.status).toBe(200)
     const body = (await response.json()) as { data: Array<Record<string, unknown>> }
-    expect(body.data.length).toBe(10)
+    expect(body.data.length).toBe(18)
     for (const entry of body.data) {
       expect(Object.keys(entry).sort()).toEqual(['curriculum', 'id', 'scenarioId', 'summary', 'title'])
       expect(typeof entry.scenarioId).toBe('string')
@@ -194,7 +202,7 @@ describe('GET /api/v1/practice/hunts', () => {
         }
       }>
     }
-    expect(body.data.length).toBe(10)
+    expect(body.data.length).toBe(18)
     for (const entry of body.data) {
       expect(entry.curriculum).toBeDefined()
       expect(typeof entry.curriculum.skillArea).toBe('string')

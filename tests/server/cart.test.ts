@@ -122,7 +122,7 @@ describe('cart migration and schema', () => {
     const row = sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('11')
+    expect(row.value).toBe('12')
 
     const tables = sqlite
       .prepare(

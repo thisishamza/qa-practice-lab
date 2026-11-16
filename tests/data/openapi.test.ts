@@ -75,6 +75,9 @@ const EXPECTED_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ['post', '/api/v1/practice/hunts/{huntId}/reveal'],
   ['get', '/api/v1/practice/progress'],
   ['post', '/api/v1/admin/maintenance/sweep'],
+  ['post', '/api/v1/sql/exercises/{exerciseId}/start'],
+  ['post', '/api/v1/sql/evaluate'],
+  ['get', '/api/v1/sql/hunts/{huntId}/seed'],
 ]
 
 const HTTP_METHODS = new Set(['get', 'post', 'patch', 'put', 'delete'])
@@ -130,7 +133,7 @@ describe('openapi.json — document shape', () => {
 })
 
 describe('openapi.json — route coverage', () => {
-  it('documents exactly the curated set of 35 operations', () => {
+  it('documents exactly the curated set of 38 operations', () => {
     const documented: string[] = []
     for (const [path, item] of Object.entries(spec.paths)) {
       for (const method of Object.keys(item)) {
@@ -140,7 +143,7 @@ describe('openapi.json — route coverage', () => {
       }
     }
     expect(documented.sort()).toEqual(EXPECTED_ROUTES.map(([m, p]) => `${m} ${p}`).sort())
-    expect(documented).toHaveLength(35)
+    expect(documented).toHaveLength(38)
   })
 
   it('every documented operation is registered in the server source', () => {
