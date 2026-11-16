@@ -227,10 +227,11 @@ export function ApiReferenceView({ spec }: { spec: OpenApiDocument }) {
         {operationCount} operations across {groups.length} groups, documented exactly as the server
         answers today. Every error response carries the documented envelope{' '}
         <code>{'{ "error": string, "message": string }'}</code>. Money is integer cents in fictional
-        USD. Sign-in uses the lab’s synthetic demo accounts and cookies — there are no Bearer tokens
-        in this phase. Endpoint parameters marked {'"Staff only"'} need the synthetic staff account.
-        The Meridian Outfitters API is a training target; nothing here touches real payments or real
-        identities.
+        USD. Sign-in uses the lab’s synthetic demo accounts — cookie-based, or a short-lived Bearer
+        token minted from the API Lab’s token helper (it is accepted anywhere this contract accepts the
+        <code>mpl_customer</code> cookie). Endpoint parameters marked {'"Staff only"'} need the synthetic
+        staff account. The Meridian Outfitters API is a training target; nothing here touches real
+        payments or real identities.
       </Callout>
 
       <div className="api-group-list">

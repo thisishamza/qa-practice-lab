@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10). Phase 5 (API & Identity Testing Lab) is implemented through P5-M2 on the unmerged branch `feat/phase-5-m2-identity-hunts` and is **not deployed**.
+> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10). Phase 5 (API & Identity Testing Lab) is merged to `main` (P5-M1 via PR #6, P5-M2 via PR #7) and audited (P5-M3) — it is **not deployed**.
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -68,14 +68,19 @@ hand-authored OpenAPI 3.1 contract (`public/openapi.json`, served at `GET /opena
 cross-checked by `tests/data/openapi.test.ts`), the learner-facing **API Reference** page
 (`/api-reference`) and the same-origin-only **API Lab** console (`/api-lab`), wired
 `api-catalog-pagination` to `ready`, and added console-based walkthrough content. P5-M2
-(implemented on branch `feat/phase-5-m2-identity-hunts`, **not deployed**) adds **synthetic
+(merged to `main` via PR #7 on 2026-11-16, **not deployed**) added **synthetic
 practice API tokens** (opaque 256-bit Bearer credentials, SHA-256-hashed at rest, 15–900 s
 TTL clamped server-side, minted by `POST /api/v1/auth/token`, shown once, revocable),
 **Bearer authentication** accepted everywhere the `mpl_customer` cookie is accepted (when a
 Bearer header is present it wins; roles always come from the stored customer row), an
 **in-console token helper** (signed-in only; the raw token lives in component memory and is
 never persisted), and **three more deterministic hunts** — `hunt-authn-001`,
-`hunt-rbac-001` and `hunt-mass-001` — wired through the same server-controlled engine. See
+`hunt-rbac-001` and `hunt-mass-001` — wired through the same server-controlled engine. P5-M3
+(hardening and the Phase 5 exit audit) found and fixed three stale Bearer references
+(contract summary, reference-page copy, README header) and re-verified the whole phase:
+837/837 tests, clean build, both migration paths through v11, clean leak scans and 67/67
+browser checks (Chrome only). See
+[docs/phase-5-exit-audit.md](docs/phase-5-exit-audit.md) for the audit verdict and
 [docs/phase-5-api-identity-plan.md](docs/phase-5-api-identity-plan.md) for the plan.
 
 ## What you can do now
