@@ -16,6 +16,12 @@ const ApiReferencePage = lazy(() =>
 const ApiLabPage = lazy(() =>
   import('../pages/ApiLabPage').then((m) => ({ default: m.ApiLabPage })),
 )
+const DatabaseHubPage = lazy(() =>
+  import('../pages/DatabaseHubPage').then((m) => ({ default: m.DatabaseHubPage })),
+)
+const DatabasePlaygroundPage = lazy(() =>
+  import('../pages/DatabasePlaygroundPage').then((m) => ({ default: m.DatabasePlaygroundPage })),
+)
 const CartPage = lazy(() => import('../pages/CartPage').then((m) => ({ default: m.CartPage })))
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
 const OrderConfirmationPage = lazy(() =>
@@ -71,6 +77,8 @@ export function App() {
                 <Route path="guides/:guideId" element={<GuideDetailPage />} />
                 <Route path="api-reference" element={<ApiReferencePage />} />
                 <Route path="api-lab" element={<ApiLabPage />} />
+                <Route path="database" element={<DatabaseHubPage />} />
+                <Route path="database/playground" element={<DatabasePlaygroundPage />} />
                 <Route path="progress" element={<ProgressPage />} />
                 <Route path="practice" element={<PracticePage />} />
                 <Route path="shop" element={<ShopPage />} />

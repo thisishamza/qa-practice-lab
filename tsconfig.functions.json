@@ -36,6 +36,11 @@
     "tests/practice/bug-report-form.test.tsx",
     "tests/practice/hint-reveal-ui.test.tsx",
     "tests/pages/api-reference-page.test.tsx",
-    "tests/pages/api-lab-page.test.tsx"
+    "tests/pages/api-lab-page.test.tsx",
+    "tests/pages/database-hub.test.tsx",
+    "tests/pages/database-playground.test.tsx",
+    "tests/pages/database-schema-explorer.test.tsx",
+    "tests/pages/sql-editor.test.tsx",
+    "tests/lib/sql-client.test.ts"
   ]
 }
