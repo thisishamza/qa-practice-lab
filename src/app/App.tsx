@@ -22,6 +22,9 @@ const DatabaseHubPage = lazy(() =>
 const DatabasePlaygroundPage = lazy(() =>
   import('../pages/DatabasePlaygroundPage').then((m) => ({ default: m.DatabasePlaygroundPage })),
 )
+const DatabaseExercisePage = lazy(() =>
+  import('../pages/DatabaseExercisePage').then((m) => ({ default: m.DatabaseExercisePage })),
+)
 const CartPage = lazy(() => import('../pages/CartPage').then((m) => ({ default: m.CartPage })))
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
 const OrderConfirmationPage = lazy(() =>
@@ -79,6 +82,7 @@ export function App() {
                 <Route path="api-lab" element={<ApiLabPage />} />
                 <Route path="database" element={<DatabaseHubPage />} />
                 <Route path="database/playground" element={<DatabasePlaygroundPage />} />
+                <Route path="database/exercises/:exerciseId" element={<DatabaseExercisePage />} />
                 <Route path="progress" element={<ProgressPage />} />
                 <Route path="practice" element={<PracticePage />} />
                 <Route path="shop" element={<ShopPage />} />

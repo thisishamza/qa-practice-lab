@@ -41,6 +41,7 @@
     "tests/pages/database-playground.test.tsx",
     "tests/pages/database-schema-explorer.test.tsx",
     "tests/pages/sql-editor.test.tsx",
-    "tests/lib/sql-client.test.ts"
+    "tests/lib/sql-client.test.ts",
+    "tests/database/exercise-workspace.test.tsx"
   ]
 }

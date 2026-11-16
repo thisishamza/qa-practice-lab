@@ -66,7 +66,7 @@ import type {
 } from '../shared/learning'
 import type { AppEnv } from './app'
 import { resolveActiveCustomerId, hintsUsedFromMask } from './attempts'
-import { HUNTS } from './hunts'
+import { allAttemptTargets, resolveAttemptTarget } from './attemptTargets'
 import { verdictForScore } from './reportQuality'
 import {
   SESSION_COOKIE,
@@ -156,8 +156,8 @@ export function buildHuntEntries(rows: readonly ProgressAttemptRow[]): ProgressH
     else byHunt.set(row.hunt_id, [row])
   }
 
-  return HUNTS.map((hunt): ProgressHuntEntry => {
-    const huntRows = byHunt.get(hunt.id) ?? []
+  return allAttemptTargets().map((target): ProgressHuntEntry => {
+    const huntRows = byHunt.get(target.id) ?? []
     const latest = huntRows[0]
 
     let bestScore: number | null = null
@@ -177,9 +177,9 @@ export function buildHuntEntries(rows: readonly ProgressAttemptRow[]): ProgressH
     const status: AttemptStatusView = latest ? latest.status : 'none'
 
     return {
-      huntId: hunt.id,
-      scenarioId: hunt.scenarioId,
-      title: hunt.title,
+      huntId: target.id,
+      ...(target.scenarioId ? { scenarioId: target.scenarioId } : {}),
+      title: target.title,
       status,
       discovered,
       bestScore,
@@ -274,7 +274,7 @@ progressRoutes.get('/practice/progress', async (c) => {
   const totals = summarizeProgressAttempts(rows)
 
   const recent: ProgressRecentSubmission[] = recentRows.results.flatMap((entry) => {
-    const hunt = HUNTS.find((candidate) => candidate.id === entry.huntId)
+    const hunt = resolveAttemptTarget(entry.huntId)
     if (!hunt) {
       // Registry and rows are compile-time/deploy-time aligned; a stale
       // hunt_id (never expected) is omitted rather than leaked.

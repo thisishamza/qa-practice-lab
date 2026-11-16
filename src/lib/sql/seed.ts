@@ -7,14 +7,22 @@ let cached: Promise<string> | null = null
 
 export function fetchSeedSql(): Promise<string> {
   if (!cached) {
-    cached = fetch(SEED_URL).then((response) => {
-      if (!response.ok) {
-        // Allow a retry after a transient failure instead of poisoning the cache.
+    cached = fetch(SEED_URL)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`The practice dataset failed to load (HTTP ${response.status}). Check your connection and reload.`)
+        }
+        return response.text()
+      })
+      .catch((error: unknown) => {
+        // Never poison the cache — HTTP errors AND network failures
+        // both allow the next call to retry cleanly.
         cached = null
-        throw new Error(`The practice dataset failed to load (HTTP ${response.status}). Check your connection and reload.`)
-      }
-      return response.text()
-    })
+        if (error instanceof Error) {
+          throw error
+        }
+        throw new Error('The practice dataset failed to load. Check your connection and try again.')
+      })
   }
   return cached
 }

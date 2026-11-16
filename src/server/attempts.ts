@@ -52,7 +52,8 @@ import type {
 } from '../shared/learning'
 import type { AppEnv } from './app'
 import { resolveCustomerContext } from './customer'
-import { HUNT_ID_PATTERN, findHunt } from './hunts'
+import { HUNT_ID_PATTERN } from './hunts'
+import { resolveAttemptTarget } from './attemptTargets'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -274,7 +275,7 @@ attemptRoutes.get('/practice/hunts/:huntId/attempt', async (c) => {
       400,
     )
   }
-  if (!findHunt(huntId)) {
+  if (!resolveAttemptTarget(huntId)) {
     return c.json(
       { error: 'hunt_not_found', message: 'No such practice hunt exists.' },
       404,

@@ -176,6 +176,12 @@ export function HuntPanel() {
                           <Icon name="chevron-right" size={14} />
                         </Link>
                       ) : null}
+                      {entry.id.startsWith('hunt-db-') ? (
+                        <Link className="hunt-row-link" to="/database/playground">
+                          Investigate in the SQL playground
+                          <Icon name="chevron-right" size={14} />
+                        </Link>
+                      ) : null}
                     </div>
                     <div className="hunt-row-actions">
                       {isActive ? (

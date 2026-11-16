@@ -31,8 +31,8 @@ reproducible defects for controlled bug-hunt practice (see
 [Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. Progress is
 tracked server-side only for the practice session (or, when signed in, for the synthetic training
 account) — there is **no permanent learner account persistence**: guest progress expires with the
-practice session and never transfers to an account. No SQL playground, performance
-runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
+practice session and never transfers to an account. No performance runner or security
+challenge exists yet; the SQL database-testing lab shipped in Phase 6. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
 hints, structured bug reports with deterministic evaluation, and real progress tracking) is merged
 to `main` (PR #5) and deployed to production; the Phase 4 scope includes:
 P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
@@ -86,6 +86,21 @@ production acceptance passed. See
 [docs/phase-5-exit-audit.md](docs/phase-5-exit-audit.md) for the audit verdict and the
 release addendum, and
 [docs/phase-5-api-identity-plan.md](docs/phase-5-api-identity-plan.md) for the plan.
+
+Phase 6 (Database & SQL Testing Lab) adds the **Database Testing** track at
+`/database`: an isolated, browser-local SQLite practice snapshot of **Meridian
+Outfitters** (generated, deterministic, integer-cent money, ISO-8601 UTC, committed
+at `public/datasets/meridian-outfitters.sql`), a schema explorer and guarded query
+execution (3-second budget with automatic reseed, row/cell caps), **36 checked
+exercises** (12 beginner, 13 intermediate, 11 advanced) covering the full SQL
+curriculum — including 13 QA scenarios — plus **eight deterministic database bug
+hunts** (`hunt-db-001`…`hunt-db-008`) wired into the same hunt engine (progressive
+hints, structured reports, deterministic scoring, progress tracking). Learner SQL
+never leaves the browser worker; evaluation happens server-side on result sets
+only. Phase 6 M1 merged to `main` via PR #9 and M2 is implemented on
+`feat/phase-6-m2-database-learning`; see
+[docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and
+[docs/phase-6-database-testing-plan.md](docs/phase-6-database-testing-plan.md) for the plan.
 
 ## What you can do now
 
@@ -614,7 +629,7 @@ Phase 4 learning experience (P4-M2 WP1 + WP3; API and UI both shipped):
   discovery are preserved. Give-up **never awards discovery** and is idempotent. Discovery is
   governed solely by the §6.4 evaluator's finding check.
 
-**The ten hunts (one defect each), wired to scenarios:**
+**The ten UI hunts (one defect each), wired to scenarios:**
 
 | Scenario | Hunt | Area |
 | --- | --- | --- |
@@ -802,7 +817,8 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
   yet. Cancelling an order whose product was deleted returns nothing to stock (the snapshot
   outlives the catalogue).
-- Bug-hunt mode ships **ten hunts** (one deterministic defect each, listed above). Reset
+- Bug-hunt mode ships **eighteen hunts** (ten UI defect hunts listed above, plus the eight
+  SQL data-integrity hunts from Phase 6). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
   anything) — hunts are reportable, evaluable and revealable exactly like the Phase 3/4 set.
   Hunt

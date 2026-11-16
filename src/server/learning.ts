@@ -67,9 +67,12 @@ import {
   resolveAttemptForView,
   type AttemptRow,
 } from './attempts'
-import { findHunt, HUNT_ID_PATTERN } from './hunts'
+import { HUNT_ID_PATTERN } from './hunts'
+import { resolveAttemptTarget } from './attemptTargets'
 import { requireHint } from './hints'
+import { sqlHintText } from './sqlHints'
 import { findReveal } from './reveals'
+import { findSqlReveal } from './sqlReveals'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -80,11 +83,30 @@ import {
 const HINT_BITS: Record<HintLevel, number> = { 1: 1, 2: 2, 3: 4 }
 
 function buildRevealResponse(huntId: string, title: string, row: AttemptRow): RevealResponse {
+  // SQL exercises and SQL hunts reveal the reference/finding query as well;
+  // Phase 3/4 hunts never carry one.
+  const sqlReveal = findSqlReveal(huntId)
+  if (sqlReveal) {
+    return {
+      huntId,
+      title,
+      expected: sqlReveal.expected,
+      actual: sqlReveal.actual,
+      rootCause: sqlReveal.rootCause,
+      reproduction: [...sqlReveal.reproduction],
+      verification: [...sqlReveal.verification],
+      concepts: [...sqlReveal.concepts],
+      commonMisconceptions: [...sqlReveal.commonMisconceptions],
+      solution: sqlReveal.solution,
+      explanation: sqlReveal.explanation,
+      attempt: attemptView(row),
+    }
+  }
   const reveal = findReveal(huntId)
   if (!reveal) {
-    // Registry and hunt registry are compile-time checked to cover the
-    // same ids; this is unreachable for registered hunts.
-    throw new Error('Reveal registry is missing a runnable hunt.')
+    // Registry and target registry are compile-time checked to cover the
+    // same ids; this is unreachable for registered targets.
+    throw new Error('Reveal registry is missing a runnable exercise or hunt.')
   }
   return {
     huntId,
@@ -98,6 +120,15 @@ function buildRevealResponse(huntId: string, title: string, row: AttemptRow): Re
     commonMisconceptions: [...reveal.commonMisconceptions],
     attempt: attemptView(row),
   }
+}
+
+/** Hint lookup unified across the Phase 3/4 and Phase 6 SQL registries. */
+function requireAnyHint(id: string, level: HintLevel): string {
+  const sqlHint = sqlHintText(id, level)
+  if (sqlHint !== null) {
+    return sqlHint
+  }
+  return requireHint(id, level)
 }
 
 async function resolveCallerSession(
@@ -116,11 +147,12 @@ function huntLookup(c: import('hono').Context<AppEnv>) {
   if (!HUNT_ID_PATTERN.test(huntId)) {
     return { error: { error: 'invalid_request', message: 'A hunt id looks like hunt-topic-001.' } as const, status: 400 as const }
   }
-  const hunt = findHunt(huntId)
-  if (!hunt) {
+  // SQL exercise/hunt ids are valid attemptable targets too.
+  const target = resolveAttemptTarget(huntId)
+  if (!target) {
     return { error: { error: 'hunt_not_found', message: 'No such practice hunt exists.' } as const, status: 404 as const }
   }
-  return { hunt }
+  return { target }
 }
 
 export const learningRoutes = new Hono<AppEnv>()
@@ -130,7 +162,7 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
   if ('error' in lookup) {
     return c.json(lookup.error, lookup.status)
   }
-  const { hunt } = lookup
+  const { target } = lookup
 
   const session = await resolveCallerSession(c)
   if (!session) {
@@ -151,7 +183,7 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
 
   // One attempt per (session, hunt); created on demand, consistent with the
   // report path (a hunt start normally creates it first).
-  const attempt = await resolveAttemptForSubmission(c.env.DB, session.id, hunt.id)
+  const attempt = await resolveAttemptForSubmission(c.env.DB, session.id, target.id)
   const now = new Date().toISOString()
   const bit = HINT_BITS[level]
 
@@ -161,7 +193,7 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
   if ((attempt.hint_mask & bit) !== 0) {
     // Idempotent re-read of an already-unlocked level: serve the text
     // again, never double count, and never write.
-    const hint = requireHint(hunt.id, level)
+    const hint = requireAnyHint(target.id, level)
     return c.json(
       { level, hint, hintsUsed: hintsUsedFromMask(attempt.hint_mask) } satisfies HintResponse,
       200,
@@ -200,7 +232,7 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
     .bind(bit, now, attempt.id, bit)
     .run()
 
-  const updated = await resolveAttemptForView(c.env.DB, session.id, hunt.id)
+  const updated = await resolveAttemptForView(c.env.DB, session.id, target.id)
   const settledMask = updated?.hint_mask ?? (attempt.hint_mask | bit)
   if ((settledMask & bit) === 0) {
     // The attempt closed between our check and our write (a report or
@@ -213,7 +245,7 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
       409,
     )
   }
-  const hint = requireHint(hunt.id, level)
+  const hint = requireAnyHint(target.id, level)
   return c.json(
     { level, hint, hintsUsed: hintsUsedFromMask(settledMask) } satisfies HintResponse,
     200,
@@ -225,18 +257,18 @@ learningRoutes.get('/practice/hunts/:huntId/reveal', async (c) => {
   if ('error' in lookup) {
     return c.json(lookup.error, lookup.status)
   }
-  const { hunt } = lookup
+  const { target } = lookup
 
   const session = await resolveCallerSession(c)
   if (!session) {
     return revealLocked(c)
   }
 
-  const attempt = await resolveAttemptForView(c.env.DB, session.id, hunt.id)
+  const attempt = await resolveAttemptForView(c.env.DB, session.id, target.id)
   if (!attempt || (attempt.status !== 'submitted' && attempt.status !== 'revealed')) {
     return revealLocked(c)
   }
-  return c.json(buildRevealResponse(hunt.id, hunt.title, attempt), 200)
+  return c.json(buildRevealResponse(target.id, target.title, attempt), 200)
 })
 
 learningRoutes.post('/practice/hunts/:huntId/reveal', async (c) => {
@@ -244,7 +276,7 @@ learningRoutes.post('/practice/hunts/:huntId/reveal', async (c) => {
   if ('error' in lookup) {
     return c.json(lookup.error, lookup.status)
   }
-  const { hunt } = lookup
+  const { target } = lookup
 
   const session = await resolveCallerSession(c)
   if (!session) {
@@ -270,7 +302,7 @@ learningRoutes.post('/practice/hunts/:huntId/reveal', async (c) => {
   // attaches to the caller's attempt (live, else latest, else a fresh one —
   // consistent with the report path). It never flips `discovered` and
   // preserves submissions, best score and discovery status.
-  const attempt = await resolveAttemptForSubmission(c.env.DB, session.id, hunt.id)
+  const attempt = await resolveAttemptForSubmission(c.env.DB, session.id, target.id)
   const now = new Date().toISOString()
   await c.env.DB.prepare(
     `UPDATE hunt_attempts
@@ -282,9 +314,9 @@ learningRoutes.post('/practice/hunts/:huntId/reveal', async (c) => {
     .bind(now, now, attempt.id)
     .run()
 
-  const updated = await resolveAttemptForView(c.env.DB, session.id, hunt.id)
+  const updated = await resolveAttemptForView(c.env.DB, session.id, target.id)
   const row = updated ?? { ...attempt, status: attempt.status === 'in_progress' ? 'revealed' : attempt.status }
-  return c.json(buildRevealResponse(hunt.id, hunt.title, row), 200)
+  return c.json(buildRevealResponse(target.id, target.title, row), 200)
 })
 
 function revealLocked(c: import('hono').Context<AppEnv>) {

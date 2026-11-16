@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { DatabasePlaygroundPage } from '../../src/pages/DatabasePlaygroundPage'
+import { PracticeSessionProvider } from '../../src/features/practice/PracticeSessionProvider'
 import { ResultsTable } from '../../src/features/database/ResultsTable'
 import type { SqlRunOutput } from '../../src/shared/sql'
 
@@ -12,7 +13,15 @@ const noop = () => {}
 
 function renderPage() {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(DatabasePlaygroundPage)),
+    createElement(
+      MemoryRouter,
+      null,
+      createElement(
+        PracticeSessionProvider,
+        null,
+        createElement(DatabasePlaygroundPage),
+      ),
+    ),
   )
 }
 

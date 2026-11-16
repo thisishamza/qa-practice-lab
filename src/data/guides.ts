@@ -508,6 +508,104 @@ export const guides: Guide[] = [
     ],
     relatedScenarioIds: ['a11y-checkout-keyboard', 'a11y-catalog-screenreader'],
   },
+  {
+    id: 'guide-database-testing-sql',
+    title: 'Test databases with queries, not hope',
+    trackId: 'database-testing',
+    level: 'intermediate',
+    readingMinutes: 12,
+    summary:
+      'A QA-first method for using SQL to prove or disprove data integrity: reconciliation, orphan and duplicate detection, plus the exercise loop used throughout the lab.',
+    introduction: [
+      'Every screen you test is a rendering of rows you have never seen. Database testing is the discipline of querying those rows directly — before, during and after a user journey — instead of trusting what the interface chose to show.',
+      'This guide uses the Meridian Outfitters practice snapshot (the same one you meet in /database) as the worked example: orders, line items, payments and customers, all synthetic and all deliberately seeded with a few documented defects.',
+      'The method is always the same four moves: enumerate the invariant, recompute it from the raw parts, diff against what is stored, and bound the blast radius. Everything in this guide is an instance of that loop.',
+    ],
+    concepts: [
+      {
+        term: 'Invariant',
+        explanation:
+          'A statement that must be true for the data to make sense — “total equals subtotal plus shipping and tax”, “every line item references a product”. Tests exist to catch violated invariants, not to admire correct rows.',
+      },
+      {
+        term: 'Reconciliation',
+        explanation:
+          'Recomputing a stored figure from its parts and comparing. Aggregation errors hide permanently unless you recompute; the stored number can always look plausible on its own.',
+      },
+      {
+        term: 'Anti-join',
+        explanation:
+          'The pattern for “rows on the left with no matching row on the right” — NOT EXISTS or a LEFT JOIN with the null side selected. This is how orphans and missing children are found.',
+      },
+      {
+        term: 'Normalization for comparison',
+        explanation:
+          'lower(), trim(), date() and similar functions fold cosmetic differences so duplicates and mismatches become groupable. Raw comparison against unnormalized text misses most real defects.',
+      },
+      {
+        term: 'Blast radius',
+        explanation:
+          'How much of the dataset is affected — count the broken rows, sum their money, list their ids. A defect report without a blast radius cannot be triaged.',
+      },
+    ],
+    examples: [
+      {
+        title: 'Reconcile one order',
+        description:
+          'Recompute the total from parts and diff against storage.',
+        language: 'sql',
+        code: "SELECT order_number,\n       total_cents,\n       subtotal_cents + shipping_cents + tax_cents AS expected_cents\nFROM orders\nWHERE total_cents <> subtotal_cents + shipping_cents + tax_cents;",
+      },
+      {
+        title: 'Find orphaned line items',
+        description:
+          'An anti-join is the shortest honest proof of missing references.',
+        language: 'sql',
+        code: "SELECT oi.id, oi.order_id, oi.product_id\nFROM order_items oi\nWHERE NOT EXISTS (\n  SELECT 1 FROM products p WHERE p.id = oi.product_id\n);",
+      },
+      {
+        title: 'Spot duplicate-looking customers',
+        description:
+          'Normalize before grouping, or the constraint saves you from seeing them.',
+        language: 'sql',
+        code: "SELECT lower(trim(email)) AS email_key, count(*) AS copies\nFROM customers\nGROUP BY email_key\nHAVING count(*) > 1;",
+      },
+    ],
+    steps: [
+      {
+        title: 'Enumerate the invariants',
+        detail:
+          'Before opening a tool, list what must be true: totals reconcile, references resolve, statuses are legal, money is integer cents, timestamps are ISO-8601 UTC. Five lines is enough.',
+      },
+      {
+        title: 'Recompute from the parts',
+        detail:
+          'Write the query that derives the expected value from raw inputs — never compare a stored figure to itself, and never compare line totals to order totals without going through subtotal.',
+      },
+      {
+        title: 'Diff and bound',
+        detail:
+          'Filter to the disagreements, count them, sum their money, and list the ids. That four-tuple — ids, count, sum, shape — is the defect report the business can act on.',
+      },
+      {
+        title: 'Reset and verify the boundary',
+        detail:
+          'Use the lab’s reset to confirm the same drift class appears (or does not) in the clean snapshot. Deterministic reproduction beats anecdotal evidence.',
+      },
+    ],
+    expectedResults: [
+      'You can state every invariant you checked, and which query proves it.',
+      'Every anomaly you report carries count, ids and summed impact.',
+      'Your clone of the check passes on the clean snapshot and fails on the broken one.',
+    ],
+    commonMistakes: [
+      'Trusting aggregates because they “look right” — plausibility is not verification.',
+      'Counting rows instead of testing invariants — a clean count can still hide a consistent lie.',
+      'Comparing stored text without normalizing — case and whitespace hide the real duplicates.',
+      'Reporting one exemplar row instead of the full affected cohort.',
+    ],
+    relatedScenarioIds: ['db-order-consistency', 'db-orphaned-carts', 'db-line-totals'],
+  },
 ]
 
 export const guidesById = new Map(guides.map((guide) => [guide.id, guide]))

@@ -13,6 +13,8 @@ import { SqlClient } from '../lib/sql/client'
 import { fetchSeedSql, SEED_URL } from '../lib/sql/seed'
 import { classify } from '../lib/sql/classify'
 import { serializeResultSets, totalRowsCopied, type CopyMode } from '../lib/copy'
+import { usePracticeSession } from '../features/practice/usePracticeSession'
+import { fetchHuntSeed } from '../features/database/api'
 import { SQL_LIMITS, type SchemaInfo, type SqlRunOutput } from '../shared/sql'
 
 const DEFAULT_SQL = `-- A first query against the Meridian Outfitters snapshot.
@@ -32,6 +34,10 @@ type MobileTab = 'editor' | 'results' | 'schema'
  */
 export function DatabasePlaygroundPage() {
   useDocumentTitle('SQL playground')
+  const { mode, hunt } = usePracticeSession()
+  // Active SQL bug hunt (if any) — its corruption delta is applied on top of
+  // the canonical reseed. Clean sessions never fetch one.
+  const activeSqlHunt = mode === 'bug_hunt' && hunt && hunt.id.startsWith('hunt-db-') ? hunt : null
 
   const [seedState, setSeedState] = useState<SeedState>('loading')
   const [seedError, setSeedError] = useState<string | null>(null)
@@ -44,16 +50,25 @@ export function DatabasePlaygroundPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const clientRef = useRef<SqlClient | null>(null)
   const seedRef = useRef<string | null>(null)
+  // Populated with the hunt active at first render, and by the hunt-change effect.
+  const activeHuntRef = useRef<string | null>(activeSqlHunt?.id ?? null)
 
-  // Kick off a load against a fresh client. Shared by the mount effect and
-  // the Retry button; setState happens only in promise callbacks.
+  // Kick off a load against a fresh client. Shared by the mount effect, the
+  // Retry button and the hunt-change effect; setState happens only in
+  // promise callbacks. Applies the active SQL hunt delta when present.
   const startLoad = useCallback(() => {
     const client = new SqlClient()
     clientRef.current?.dispose()
     clientRef.current = client
-    return fetchSeedSql().then((seed) => {
+    return fetchSeedSql().then(async (seed) => {
       seedRef.current = seed
-      return client.reset(seed)
+      let deltaSql: string | undefined
+      const huntId = activeHuntRef.current
+      if (huntId) {
+        const delta = await fetchHuntSeed(huntId)
+        deltaSql = delta.deltaSql
+      }
+      return client.reset(seed, deltaSql)
     })
   }, [])
 
@@ -95,6 +110,27 @@ export function DatabasePlaygroundPage() {
       clientRef.current = null
     }
   }, [startLoad, handleLoadFailure])
+
+  // Switching into/out of a SQL bug hunt rebuilds the sandbox from the
+  // matching baseline (canonical, or canonical + delta).
+  const huntChangeRef = useRef(activeSqlHunt?.id ?? null)
+  useEffect(() => {
+    activeHuntRef.current = activeSqlHunt?.id ?? null
+    const next = activeSqlHunt?.id ?? null
+    if (huntChangeRef.current === next) return
+    huntChangeRef.current = next
+    setSeedState('loading')
+    setOutput(null)
+    setOutcome('idle')
+    setNotice(null)
+    startLoad()
+      .then((loaded) => {
+        setSchema(loaded)
+        setSeedState('ready')
+        setNotice(next ? 'Bug-hunt snapshot loaded — the data is deliberately corrupted for this hunt.' : 'Clean snapshot loaded.')
+      })
+      .catch(handleLoadFailure)
+  }, [activeSqlHunt?.id, handleLoadFailure, startLoad])
 
   const run = useCallback(async () => {
     const client = clientRef.current
@@ -156,7 +192,12 @@ export function DatabasePlaygroundPage() {
       // Worker recreation happens inside reset(); memory from prior state is dropped.
       const seed = seedRef.current ?? (await fetchSeedSql())
       seedRef.current = seed
-      const loaded = await client.reset(seed)
+      let deltaSql: string | undefined
+      if (activeHuntRef.current) {
+        const delta = await fetchHuntSeed(activeHuntRef.current)
+        deltaSql = delta.deltaSql
+      }
+      const loaded = await client.reset(seed, deltaSql)
       setSchema(loaded)
       setOutput(null)
       setOutcome('idle')
@@ -222,6 +263,19 @@ export function DatabasePlaygroundPage() {
         synthetic (Meridian Outfitters, fictional customers and payments). Reset re-creates the database
         from the frozen snapshot, and the 3-second limit kills runaway queries automatically.
       </Callout>
+
+      {activeSqlHunt && (
+        <Callout tone="warning" title={`Database bug hunt: ${activeSqlHunt.title}`}>
+          This sandbox was seeded from the canonical snapshot <em>with the hunt’s corruption applied</em>.
+          Your usual SQL instincts are the whole assignment — read the data, find what is out of place,
+          and file the finding on the{' '}
+          <Link className="text-link" to={`/scenarios/${activeSqlHunt.scenarioId}`}>
+            hunt page
+          </Link>{' '}
+          (hints, report and reveal all live there). Reset restores the corrupted baseline; leaving the
+          hunt restores clean mode.
+        </Callout>
+      )}
 
       <p id="sql-shortcuts" className="sql-shortcuts">
         <kbd>Ctrl/⌘ + Enter</kbd> Run · <kbd>Tab</kbd> indent · <kbd>Esc</kbd> leave the editor

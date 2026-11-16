@@ -23,6 +23,14 @@ export interface HuntDefinition {
   scenarioId: string
   /** Internal: the fixed defect list for this hunt, resolved only server-side. */
   defectIds: readonly string[]
+  /**
+   * 'ui' (default) = interactive UI/API/shop hunt with server-enforced
+   * defects; consumes the per-IP daily hunt-start cap. 'sql' = database bug
+   * hunt; the defect lives in a server-side data delta applied to the
+   * learner's browser sandbox (see sqlSeedDelta.ts); it never consumes the
+   * daily cap and can never activate a UI defect.
+   */
+  kind?: 'ui' | 'sql'
 }
 
 export const HUNTS: readonly HuntDefinition[] = [
@@ -105,6 +113,82 @@ export const HUNTS: readonly HuntDefinition[] = [
       'The order total on the confirmation does not match the cart. Find where a client figure is believed and report it.',
     scenarioId: 'api-mass-assignment',
     defectIds: ['MASS-001'],
+  },
+  // Phase 6 M2 — SQL database bug hunts (kind: 'sql'). The defect lives in a
+  // server-side data delta applied to the learner's browser sandbox
+  // (src/server/sqlSeedDelta.ts); no code-path defect exists for these, so
+  // defectIds stays empty and isDefectActive() is always false for them.
+  {
+    id: 'hunt-db-001',
+    title: 'Order items without products',
+    summary:
+      'Some line items reference products that are not in the catalogue. Find them and report what they break downstream.',
+    scenarioId: 'db-orphaned-carts',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-002',
+    title: 'The signup email lookalikes',
+    summary:
+      'Support sees one person with several customer rows. Track down the lookalikes and report how you would identify them safely.',
+    scenarioId: 'db-duplicate-customers',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-003',
+    title: 'The order that drifted',
+    summary:
+      'A delivered order’s stored total does not reconcile with its own parts. Find it and quantify the drift.',
+    scenarioId: 'db-order-total-drift',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-004',
+    title: 'Stock that lied',
+    summary:
+      'The on-hand figure for one product disagrees with everything else the data can tell you. Find the bad row.',
+    scenarioId: 'db-stock-audit',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-005',
+    title: 'The silent payment',
+    summary:
+      'A delivered order is missing its payment record. Find it without assuming where it went.',
+    scenarioId: 'db-missing-payment',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-006',
+    title: 'Line totals that ignore quantity',
+    summary:
+      'Revenue under-counts in ways the UI never shows. Recompute the line math and find the broken rows.',
+    scenarioId: 'db-line-totals',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-007',
+    title: 'The boundary that would not checkout',
+    summary:
+      'One product sits exactly on the seam between “enough stock” and “not enough”. Find it and explain why that row class is dangerous.',
+    scenarioId: 'db-stock-boundary',
+    defectIds: [],
+    kind: 'sql',
+  },
+  {
+    id: 'hunt-db-008',
+    title: 'The customer who vanished',
+    summary:
+      'Some orders point at a customer who is no longer in the data. Find the orphaned history and bound the damage.',
+    scenarioId: 'db-vanished-customer',
+    defectIds: [],
+    kind: 'sql',
   },
 ]
 

@@ -290,6 +290,214 @@ export const HUNT_CURRICULUM: Record<string, HuntCurriculum> = {
       'Impact — an order placed against a client-dictated total',
     ],
   },
+  'hunt-db-001': {
+    skillArea: 'Database testing · referential integrity',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Anti-joins and NOT EXISTS reasoning',
+      'What inner joins silently filter out',
+      'Orphan detection against a known-good baseline',
+    ],
+    expectedOutcomes: [
+      'Find rows referencing missing parents with one bounded query',
+      'Explain why the UI never surfaces the broken rows',
+      'Report the count, the ids and the affected orders',
+    ],
+    investigationFocus: [
+      'Join order items to products both ways and compare what each direction yields',
+      'Count items whose product reference resolves, and items that do not',
+      'Work from the query outward — the data is the only witness here',
+      'Reset to clean mode and confirm the query returns an empty set',
+    ],
+    reportFocus: [
+      'The query used to surface the orphaned rows',
+      'The orphaned row ids and the orders they belong to',
+      'Expected versus actual referential completeness',
+      'Why downstream reports would silently drop these lines',
+    ],
+  },
+  'hunt-db-002': {
+    skillArea: 'Database testing · duplicate detection & identity',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Normalized-key deduplication',
+      'Case and whitespace insensitivity in identity columns',
+      'Grouping and HAVING analysis across a cohort',
+    ],
+    expectedOutcomes: [
+      'Surface same-human/multi-row identities with a normalized key',
+      'Quantify the split order history behind the duplicates',
+      'Propose a safe deduplication criterion for support follow-up',
+    ],
+    investigationFocus: [
+      'List customers ordered by email and look for near-identical rows',
+      'Group by a normalized (lower-cased, trimmed) key and inspect the sizes',
+      'For each suspect cluster, join orders to see how history splits',
+      'Reset to clean mode and confirm the clusters do not exist there',
+    ],
+    reportFocus: [
+      'The normalization rule that exposes the cluster',
+      'The exact rows involved and their differing fields',
+      'Impact — inflated counts, split loyalty points, split order history',
+      'A recommended merge criterion and what must be preserved',
+    ],
+  },
+  'hunt-db-003': {
+    skillArea: 'Database testing · reconciliation & arithmetic drift',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Reconciliation identities across stored parts and totals',
+      'Derived-vs-stored comparison in one query',
+      'Incident bounding across a whole table',
+    ],
+    expectedOutcomes: [
+      'Recompute an expected total from an order’s own parts',
+      'Enumerate every drifting row instead of stopping at the first',
+      'Quantify the total financial exposure precisely',
+    ],
+    investigationFocus: [
+      'Recompute subtotal + shipping + tax for every order and diff against stored totals',
+      'List every mismatching order, not only the obvious one',
+      'Compare the injected drift against the seeded pattern of acceptable noise',
+      'Reset to clean mode and confirm the injected order reconciles there',
+    ],
+    reportFocus: [
+      'The reconciliation query and its mismatch output',
+      'The exact order number and the size of the drift',
+      'Expected versus actual total for the affected order',
+      'How you would sweep for more rows of the same class',
+    ],
+  },
+  'hunt-db-004': {
+    skillArea: 'Database testing · inventory consistency',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Ledger-style re-derivation of stored figures',
+      'Cross-checking stored state against historical behaviour',
+      'Spotting edits that left no audit trail',
+    ],
+    expectedOutcomes: [
+      'Detect a silent single-row rewrite of inventory state',
+      'Bound the blast radius of the drift (oversell or phantom scarcity)',
+      'Specify the verification that would catch it in a future release',
+    ],
+    investigationFocus: [
+      'Survey inventory quantities for rows that look out of place for their category',
+      'Cross-check a suspect row against what order history implies',
+      'Look at the low-stock threshold too — it travels with the row',
+      'Reset to clean mode and compare the stored figure side by side',
+    ],
+    reportFocus: [
+      'The product and the stored-versus-supported quantity',
+      'The evidence chain used to spot the lie',
+      'Impact — oversell, phantom scarcity, or both',
+      'A monitoring assertion that would alert on the drift',
+    ],
+  },
+  'hunt-db-005': {
+    skillArea: 'Database testing · completeness oracles & missing rows',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Anti-join completeness checks',
+      '“Every X has a Y” invariant testing',
+      'Severity reasoning about silent omissions',
+    ],
+    expectedOutcomes: [
+      'Enumerate delivered orders lacking any payment row',
+      'Distinguish an absent payment from a legitimate pending state',
+      'Report the missing row with evidence and blast radius',
+    ],
+    investigationFocus: [
+      'Compare delivered orders against approved payments in both directions',
+      'Sweep for missing payments with an anti-join, not by scrolling',
+      'Confirm the absence is real — check payment ids, not just counts',
+      'Reset to clean mode and confirm the anti-join comes back empty',
+    ],
+    reportFocus: [
+      'The anti-join used and its output',
+      'The exact order number and its total',
+      'Expected versus actual — “every delivered order has a payment”',
+      'Finance impact and the webhook/pipeline suspected of dropping it',
+    ],
+  },
+  'hunt-db-006': {
+    skillArea: 'Database testing · aggregation correctness',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Recompute-and-diff on stored aggregates',
+      'Fingerprinting defect classes by their arithmetic signature',
+      'Blast-radius estimation across a table',
+    ],
+    expectedOutcomes: [
+      'Surface every line where line total drops the quantity factor',
+      'Quantify the revenue under-count exactly, in cents',
+      'Describe the detection query a CI check could run nightly',
+    ],
+    investigationFocus: [
+      'Scan every line item for total ≠ quantity × price',
+      'Group the finds by order and size each order’s under-count',
+      'Check whether the corruption is disjoint from the baseline noise',
+      'Reset to clean mode and re-run to confirm the quieter baseline',
+    ],
+    reportFocus: [
+      'The comparison query and the rows it returns',
+      'The per-order and total revenue delta',
+      'Expected versus actual per line, in integer cents',
+      'Why the storefront never exposed this — aggregates hid it completely',
+    ],
+  },
+  'hunt-db-007': {
+    skillArea: 'Database testing · boundary-value data seams',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Boundary-value analysis pushed into stored data',
+      'Cross-table equality-seam detection',
+      'Consistency oracles for exact-checkout cases',
+    ],
+    expectedOutcomes: [
+      'Find the product whose stock equals an exact demand boundary',
+      'Explain why exact-boundary rows are the fault line',
+      'Articulate the invariant a checkout guard must enforce',
+    ],
+    investigationFocus: [
+      'Compute each product’s largest single-line ordered quantity',
+      'Compare those figures against the stored inventory quantities',
+      'The pair that lands exactly on equality is the defect seam',
+      'Reset to clean mode and compare the same scan there',
+    ],
+    reportFocus: [
+      'The product and the equality evidence',
+      'Expected versus actual at the boundary',
+      'Why a strict less-than check silently oversells here',
+      'The boundary assertion a regression test should encode',
+    ],
+  },
+  'hunt-db-008': {
+    skillArea: 'Database testing · deletion behavior & referential fallout',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Outer-join null-side reading',
+      'Bounding damage after an out-of-band delete',
+      'Orphan inventory mapping (records with no parent)',
+    ],
+    expectedOutcomes: [
+      'Enumerate all orders whose customer no longer exists',
+      'Distinguish intended purges from accidental loss',
+      'Bound the blast radius — which accounts, which reporting joins break',
+    ],
+    investigationFocus: [
+      'Left-join orders to customers and read the NULL side',
+      'Group the orphans by customer id and count their history',
+      'Check the addresses table too — collateral orphans are common',
+      'Reset to clean mode and confirm the join is whole there',
+    ],
+    reportFocus: [
+      'The anti-join used and the orphaned order ids',
+      'The missing customer’s footprint (orders, totals)',
+      'Expected versus actual referential completeness',
+      'Which dashboards double-count or silently drop these orders',
+    ],
+  },
 }
 
 export function curriculumForHunt(huntId: string): HuntCurriculum | undefined {

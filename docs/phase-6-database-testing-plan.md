@@ -1,9 +1,10 @@
 # Phase 6 — Database & SQL Testing Lab — Implementation Plan
 
-> **Status (2026-11-17):** APPROVED-FOR-PLANNING — this document is the complete
-> plan for Phase 6. **Phase 6 is not started.** No application code, dependencies,
-> migrations, or Cloudflare resources exist for Phase 6 yet. Implementation begins
-> only after explicit maintainer instruction, milestone by milestone.
+> **Status (2026-11-17):** IMPLEMENTED AND VERIFIED — M1 merged to `main` (PR #9,
+> `94cc7fa`); M2 implemented on `feat/phase-6-m2-database-learning` and verified
+> (1106/1106 tests green, 36/36 reference solutions, 42/42 browser checks).
+> Decision log and deviations are recorded in §19 below; the exit audit is
+> `docs/phase-6-exit-audit.md`. **Nothing is pushed, merged or deployed.**
 >
 > **Baseline:** `main` @ `04974d0` (docs commit on top of the Phase 5 release
 > `3ecfb41`, merged via PR #8). Production: https://qa-practice-lab.pages.dev,
@@ -1102,5 +1103,66 @@ only scheduling moves (the phase remains two milestones).
 
 ---
 
-*Plan approved-in-principle by charter; implementation begins only on explicit
-maintainer instruction, starting with Phase 6 M1.*
+## 19. Implementation decisions and deviations (as built, 2026-11-17)
+
+**As-built decisions (all verified by tests):**
+
+1. **Exercise start mints a clean guest session when the browser has none** —
+   mirrors hunt-start semantics; deviation from §10.4's "401 no session". Eliminates
+   a guaranteed 401 for fresh guests opening an exercise; nothing about signed-in
+   accounts changes.
+2. **OpenAPI contract extended additively**: three operations under the `practice`
+   tag (`startSqlExercise`, `evaluateSqlExercise`, `getSqlHuntSeed`), two new error
+   codes (`exercise_not_found`, `not_hunt_mode`), `info.version` 1.0.0 → 1.1.0; the
+   1 MB evaluate cap and scoped 30/min budgets are documented. `/api-reference`
+   renders them from the served spec with no code change.
+3. **QA-02 exercise redesigned** (see exit audit §2.4): evaluate the order-total
+   identity against `subtotal + shipping + tax`, not against item sums. The plan's
+   literal formula was a data-impossible predicate on the seeded snapshot.
+4. **hunt-db-003 uses a clean order** (id 5003, non-round drift −339) rather than a
+   seeded DQ-02 row — injected defect is disjoint from baseline noise (the six
+   seeded DQ-02 rows remain visible to learners as the known-shape noise class).
+5. **hunt-db-007 delta** sets product 20's stock to exactly its max single order
+   line (3), preserving the seeded product-21 seam.
+6. **Recommended path**: the eight database hunts were appended to the existing
+   wired-hunt recommended sequence in ascending difficulty (the existing ordering
+   contract keeps `beginner → intermediate → advanced` non-decreasing).
+7. **`kind: 'sql'` discriminator** added to `HuntDefinition` (optional, defaults to
+   `'ui'`); the 20/IP/UTC-day cap is skipped for SQL hunts only. `defectIds: []`
+   for SQL hunts — `isDefectActive()` is structurally always false for them.
+8. **AttemptTargets registry** (`src/server/attemptTargets.ts`) unifies
+   hunts + SQL exercises for attempt/hint/reveal/progress lookups; Phase 3/4 route
+   files changed additively only (same 404 semantics, same error codes).
+9. **Expected specs are generated, not hand-written.** Each was produced by running
+   the shipped solution against the snapshot; `tests/lib/sql-exercises.test.ts`
+   re-derives them, so seed/spec/solution drift fails loudly.
+10. **Evaluation side effect**: on a pass the caller's attempt is stamped submitted
+    with `best_quality_score = MAX(existing, score)` in the same path; on a fail
+    the attempt stays in_progress (mirrors report semantics minus discovery).
+11. **Migration 0012 applied to local D1 only** (`schema_version` 12); never to
+    production; production untouched.
+12. **Seed-client cache fix**: a network-level failure no longer poisons the seed
+    cache (previously only an HTTP `!ok` reset it) — retries now always succeed
+    once the network recovers.
+13. **M1 grid-area scope fix**: `grid-area` rules for `.sql-editor-panel` /
+    `.sql-results-panel` / `.sql-explorer-panel` are scoped to `.sql-workbench`
+    so the M2 exercise workbench has no phantom named areas.
+14. **HttpOnly 401/403s are by design** on gated endpoints (auth/me probe,
+    reveal-lock probe); anything else at ≥400 is a failure in CI.
+
+**Deviations / not implemented from the plan:**
+
+- Recommended-path "foundations exercises → QA scenarios → first hunt" sequence
+  for the Database Testing track on `/practice` is deferred (the existing
+  recommended-path panel carries the hunt sequence; a per-track sequence is its
+  own feature). Tracked in the audit's deferred section.
+- "Attempt history on exercise pages" is the attempt-status chip (status + best
+  score); the full history lives on `/practice` (existing WP1 surface).
+- M2 criterion #4 (4 s timeout bound) was not re-measured this turn; evidence is
+  from M1 (3,262 ms). Marked NOT VERIFIED in the audit.
+- Foundations track CTA on the database track page was added to the aside
+  (Open the Database Testing lab) rather than the page hero action area.
+
+*Plan approved-in-principle by charter; implementation executed under explicit
+maintainer instruction (2026-11-17); deployment remains a separate, explicitly
+approved step.*
