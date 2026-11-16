@@ -2498,3 +2498,55 @@ fresh `feat/phase-6-m2-database-learning` off updated `main`: 36 exercises, 14 S
 `hunt-db-001…008`, server-side result-based evaluation, progress integration, guide, `0012` as an
 `app_meta` bump only, docs + exit audit; deployment always a separately approved release. Do **not**
 start M2 before M1 is merged and explicitly approved.
+
+## 16. Phase 7 — prepared branch baseline (2026-11-17)
+
+> **This file is the `origin/main` (eeded31) baseline.** Its Phase 6 entries predate the
+> 2026-11-17 production release and are superseded by the documents preserved on the backup
+> branch `backup/unpublished-phase6-7-docs` (see below) and by the production facts recorded
+> here. Do not treat the pre-release claims above as current status.
+
+### Verified Git baseline (reconciled 2026-11-17)
+
+- `origin/main` **had not advanced** beyond the expected Phase 6 merge/release baseline:
+  `origin/main` == `eeded31fd9fe5cd20789e037ffabbf5811412945` ("Phase 6 M2: Database
+  Learning, Testing & Bug Hunts", merge of PR #10) — exactly the commit production runs.
+- Local `main` was 5 commits ahead of `origin/main` (all documentation-only — verified by
+  `git diff origin/main..main --name-only`: only `AGENTS.md`, `PROJECT_STATE.md`,
+  `README.md`, `docs/phase-6-exit-audit.md`, `docs/phase-7-contract-testing-plan.md`; no
+  application code, migration or configuration). Local `main` was hard-reset to
+  `origin/main` after backup; `main` now resolves to `eeded31`, identical to `origin/main`.
+- The five unpublished commits are preserved, in order, on the **local-only** backup branch
+  **`backup/unpublished-phase6-7-docs`** (tip `a6c5c2a914bce2ca5b2e6d23e96ed689544f3802`;
+  never pushed; never to be deleted):
+  1. `c899e17` — docs: record phase 6 m1 merge (`PROJECT_STATE.md`)
+  2. `76b0b74` — Merge remote-tracking branch 'origin/main' (merge commit `c899e17` + `eeded31`)
+  3. `c5ac252` — docs: record phase 6 merge status in agents and readme (`AGENTS.md`)
+  4. `3e0e5e7` — docs: record phase 6 production release (`AGENTS.md`, `README.md`,
+     `PROJECT_STATE.md`, `docs/phase-6-exit-audit.md`) — carries the released-production
+     record (§14 release addendum)
+  5. `a6c5c2a` — docs: add phase 7 contract testing lab plan (`docs/phase-7-contract-testing-plan.md`,
+     `AGENTS.md`, `PROJECT_STATE.md`)
+- Production reality (authoritative for deployment status, recorded in the backup docs):
+  **Phase 6 is deployed** (deployment `2c32a721-8374-46af-8a20-e560839f88b1`, source `eeded31`,
+  alias https://qa-practice-lab.pages.dev, migration `0012` applied after a verified
+  pre-migration export; production `schema_version` **12**). The Phase 7 plan exists on the
+  backup branch (`docs/phase-7-contract-testing-plan.md`).
+
+### This branch
+
+- `feat/phase-7-contract-testing-lab` was created from verified `origin/main`
+  (`eeded31fd9fe5cd20789e037ffabbf5811412945`, the Phase 6 merge/release source) on
+  2026-11-17. It intentionally contains **none** of the backup branch's documentation
+  commits: no Phase 7 plan, no Phase 6 production-release documentation.
+- The branch therefore predates the Phase 7 plan; the plan (and the released-production
+  documentation) must reach it through a maintainer-approved step (e.g. a docs merge of the
+  backup branch, or re-applying those documents) — deliberately not done in the
+  reconciliation session.
+- **Phase 7 implementation has NOT started.** No Phase 7 code, dependency, migration,
+  fixture, route or test exists. Production is untouched (Pages `qa-practice-lab`,
+  D1 `qa-practice-lab-db`, `schema_version` 12). No push, merge, deployment or D1 operation
+  was performed in this turn.
+- Exact next action: maintainer decision on promoting the backup docs (plan + release
+  record) to this branch / `main`, then explicit instruction to begin the single `P7 —
+  Contract Testing Lab` milestone per `docs/phase-7-contract-testing-plan.md`.
