@@ -301,7 +301,7 @@ tables (attempts reused; expected specs/deltas/solutions are compiled Worker cod
 | 1 | `npm run check` green; total tests ≥ baseline + 90 | **PASS** — 1106 vs 927 on `main` (+179; baseline documented at M1 verification) |
 | 2 | 36/36 exercises pass reference solutions through the real evaluator | **PASS** — test-enforced |
 | 3 | 8/8 hunt deltas deterministic (double-fetch byte equality) and reset restores the broken baseline | **PASS** — test + browser |
-| 4 | Runaway query terminated ≤ 4.0 s incl. reseed | **NOT VERIFIED (M2)** — verified in M1 (3,262 ms); the worker path is unchanged in M2; no new evidence this turn |
+| 4 | Runaway query terminated ≤ 4.0 s incl. reseed | **PASS** — measured 2026-11-17 in headless Chrome over CDP against the production build: infinite `WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM cnt) SELECT count(*) FROM cnt` killed by the worker guard at **3,112 ms** with automatic reseed and full post-timeout recovery (re-run 3,218 ms earlier the same day; M1 measured 3,262 ms) |
 | 5 | Seed ≤ 300 KB; wasm ≤ 600 KB gzip; `/database` JS delta recorded | **PASS** — 120 KB seed / 329 KB gzip wasm / ≈15.8 KB gzip lazy JS |
 | 6 | `grep` for solutions/expected/defect internals in `dist/` is empty | **PASS** — zero matches (client literals, expected figures, module names) |
 | 7 | Both themes × 4 widths; contrast/focus/labels; reduced motion | **PASS** — 25 screenshots, runtime contrast audit, reduced-motion emulation, no overflow |
@@ -314,6 +314,36 @@ tables (attempts reused; expected specs/deltas/solutions are compiled Worker cod
 - Branch `feat/phase-6-m2-database-learning`; M2 work is **not pushed**; no PR; no merge;
   no deploy; no production D1 access; no Cloudflare resource change; no remote migration.
 - `0012` is local-only. Production (`schema_version` 11) is untouched.
+
+## 13a. Integrated review addendum (2026-11-17, pre-merge)
+
+**Review fixes made during the integrated review (both committed on the branch):**
+
+1. `327d536 fix: keep openapi contract diff reviewable` — restored the original curated
+   key order and formatting in `public/openapi.json`; no contract semantics changed.
+   The original M2 commit's diff showed ~1,900 rewritten lines; after the fix the
+   contract diff is 336 additions + 4 deletions in 5 hunks (the intended SQL
+   operations, two error codes, `info` 1.1.0, the 1 MB evaluate cap).
+2. Browser-probe diagnosis: intermittent "hunt panel stuck in bug-hunt mode" failures
+   during verification were root-caused to the ephemeral CDP harness (fixed debug port
+   9444 + zombie headless Chrome processes from crashed probe runs holding that port,
+   so probes connected to stale bug-hunt-mode sessions). **Not an application defect** —
+   the app's cookie flows are unchanged and correct. The harness now uses a unique
+   port per run; local D1 probe state was reset via `npm run db:reset:local` (local
+   only, learner state wiped by design); all probes re-run green from a clean base.
+
+**Final integrated verification (from the clean local state, production build):**
+`npm run check` green — 1106/1106 tests; `npm run build` clean; browser probes:
+hub/exercise/hunt-loop/grids **25/25**, learning-support flows (DML, rollback verdict,
+hints, give-up reveal, report scoring) **18/18**, error/404/retry states **5/5**,
+timeout terminate + auto-reseed verified live (**3,112 ms**), zero unexpected
+console/network problems. Migration 0012 (zero DDL) applies fresh and as a v11→v12
+upgrade with data preserved (unit tests + local D1 at `schema_version` 12). Phase 5
+regression suites unchanged and green. Leak scans (source + `dist/`) clean.
+
+**Release gates:** 1 PASS · 2 PASS · 3 PASS · 4 PASS · 5 PASS · 6 PASS · 7 PASS ·
+8 PASS · 9 PASS · 10 PASS — with criterion 9 meaning "deployment not authorized"
+remains deferred, not approved. See §12.
 
 ## 14. Release addendum
 
