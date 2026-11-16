@@ -1131,8 +1131,11 @@ deliberately **not executed** — no push, PR, merge, production D1 migration or
 **Deviations from this plan (justified):** none beyond the three copy/contract fixes above.
 The P5-M3 checklist was followed as written; two-person review of `customer.ts` was not possible
 in a single-session milestone and is recorded as a recommendation for the maintainer's release
-gate (audit §13 item 11). Production D1 remains `schema_version` 10; nothing of Phase 5 is deployed.
+gate (audit §13 item 11). An independent fresh-context review was performed at the release gate
+and found no release-blocking issues (audit §17). Production D1 is now at `schema_version` 11
+(migration `0011_api_tokens.sql` applied 2026-11-16).
 
-**Exact state:** `feat/phase-5-m3-exit-audit` (branch cut from `main` @ `3b5c090`) carrying one
-focused P5-M3 commit; Phase 5 awaits explicit maintainer approval for the release step (§14 of
-the audit). **Do not push, merge, migrate production or deploy without explicit instruction.**
+**Exact state:** `main` @ `3ecfb41` (merge of P5-M3, PR #8); Phase 5 is released to production
+(deployment `aaa0e2a6-2f13-47e1-91b5-cac38c4d2765`, 2026-11-16) and verified in production — see
+`docs/phase-5-exit-audit.md` §14/§17. Phase 6 remains unstarted and requires explicit maintainer
+instruction.

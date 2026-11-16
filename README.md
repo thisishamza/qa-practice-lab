@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10). Phase 5 (API & Identity Testing Lab) is merged to `main` (P5-M1 via PR #6, P5-M2 via PR #7) and audited (P5-M3) — it is **not deployed**.
+> **Production:** https://qa-practice-lab.pages.dev (Phase 5 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 11). Previously Phase 4 (PR #5). Deployment `aaa0e2a6`, source commit `3ecfb41` (merge of PR #8).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -63,12 +63,12 @@ release addendum (independent review fixes + route-level code splitting that shi
 the release: initial JS 538.57 → 370.33 kB, gzip 156.15 → 114.62 kB).
 
 Phase 5 (API & Identity Testing Lab) turns the existing `/api/v1` surface into a guided
-practice target. P5-M1 (merged to `main` via PR #6 on 2026-11-16, **not deployed**) added the
+practice target. P5-M1 (merged to `main` via PR #6 on 2026-11-16) added the
 hand-authored OpenAPI 3.1 contract (`public/openapi.json`, served at `GET /openapi.json`,
 cross-checked by `tests/data/openapi.test.ts`), the learner-facing **API Reference** page
 (`/api-reference`) and the same-origin-only **API Lab** console (`/api-lab`), wired
 `api-catalog-pagination` to `ready`, and added console-based walkthrough content. P5-M2
-(merged to `main` via PR #7 on 2026-11-16, **not deployed**) added **synthetic
+(merged to `main` via PR #7 on 2026-11-16) added **synthetic
 practice API tokens** (opaque 256-bit Bearer credentials, SHA-256-hashed at rest, 15–900 s
 TTL clamped server-side, minted by `POST /api/v1/auth/token`, shown once, revocable),
 **Bearer authentication** accepted everywhere the `mpl_customer` cookie is accepted (when a
@@ -76,11 +76,15 @@ Bearer header is present it wins; roles always come from the stored customer row
 **in-console token helper** (signed-in only; the raw token lives in component memory and is
 never persisted), and **three more deterministic hunts** — `hunt-authn-001`,
 `hunt-rbac-001` and `hunt-mass-001` — wired through the same server-controlled engine. P5-M3
-(hardening and the Phase 5 exit audit) found and fixed three stale Bearer references
+(hardening and the Phase 5 exit audit, PR #8) found and fixed three stale Bearer references
 (contract summary, reference-page copy, README header) and re-verified the whole phase:
 837/837 tests, clean build, both migration paths through v11, clean leak scans and 67/67
-browser checks (Chrome only). See
-[docs/phase-5-exit-audit.md](docs/phase-5-exit-audit.md) for the audit verdict and
+browser checks (Chrome only). The release was executed on 2026-11-16: PR #8 merged (`3ecfb41`),
+migration `0011_api_tokens.sql` applied to the production D1 (`schema_version` 10 → 11, backup
+exported first), the merged `main` deployed to Cloudflare Pages (deployment `aaa0e2a6`), and the
+production acceptance passed. See
+[docs/phase-5-exit-audit.md](docs/phase-5-exit-audit.md) for the audit verdict and the
+release addendum, and
 [docs/phase-5-api-identity-plan.md](docs/phase-5-api-identity-plan.md) for the plan.
 
 ## What you can do now
@@ -269,7 +273,7 @@ src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defec
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0011; production D1 is on 0001..0010 — Phase 5 not deployed)
+db/migrations/             D1 SQL migrations (0001..0011; production D1 is on 0001..0011)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
