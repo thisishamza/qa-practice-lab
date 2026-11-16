@@ -1840,3 +1840,20 @@ real `/progress`) and P4-M3 WP2 (scoring transparency & recommended completion p
 implemented, verified and committed on the branch** (2026-11-16). The next step is
 **P4-M3 WP3** (Phase 4 exit audit & release) — see §6 (P4-M3) and PROJECT_STATE.md — which
 must not start without explicit maintainer instruction.
+
+**2026-11-16 — P4-M3 WP3 implemented and verified (this note records the as-built outcome).**
+The Phase 4 exit audit was performed and is recorded in `docs/phase-4-exit-audit.md`: the full
+suite re-runs green (720/720 tests), the production build passes, the client bundle was scanned
+clean of defect ids/hint/reveal content/evaluator internals (published-rubric check ids are
+intentional), both migration paths pass (fresh; 0001–0009 → 0010), the maintenance sweep does not
+touch attempt/report rows (they die by cascade), and the complete learner journey was exercised
+end-to-end in a browser over CDP — 133/133 checks pass (fresh guest: start → ordered hints with
+skip refused 409 → refresh-persisted ladder → complete report → evaluation → reveal unlocked
+in-place via the report path → resubmission; give-up path grants zero discovery; signed-in
+attribution flip; placeholders intact; both themes × 375/768/1024/1440; zero console errors).
+All nine §13 exit criteria are graded **PASS** in the audit (criterion 1 covers implementation
+and gates; merging to `main` and deployment remain explicit maintainer decisions). **Phase 4 is
+implementation-complete and release-ready but NOT DEPLOYED** — production remains at
+`schema_version` 9 with migration 0010 applied only locally; release follows §7.5. No plan
+requirement, acceptance criterion, security rule or planning decision changed; no criteria were
+waived.

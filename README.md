@@ -34,7 +34,7 @@ account) — there is **no permanent learner account persistence**: guest progre
 practice session and never transfers to an account. No SQL playground, performance
 runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
 hints, structured bug reports with deterministic evaluation, and real progress tracking) is
-underway: P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
+implementation-complete on the branch (not deployed): P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
 P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — plus server-side hunt-attempt
 and structured bug-report persistence with a scoped 30/minute report rate limit) and
 P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
@@ -50,9 +50,9 @@ verification/concepts) and attempt-status chips on the hunt cards — cancel mak
 request; the report path unlocks the reveal in-place after submission) are implemented,
 reviewed and committed on the implementation branch;
 production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
-is planned in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
-P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard) is implemented and committed on the branch (`feat: add phase 4 progress dashboard`), and P4-M3 WP2 (scoring transparency + recommended completion path) is implemented and committed on the branch (`feat: add phase 4 learning transparency`)** — **only P4-M3 WP3 (Phase 4 exit audit & release) remains**. See
-[docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md).
+is recorded in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard), P4-M3 WP2 (scoring transparency + recommended completion path) and P4-M3 WP3 (the Phase 4 exit audit) are all implemented and committed on the branch** — **Phase 4 is implementation-complete and NOT DEPLOYED**; see
+[docs/phase-4-exit-audit.md](docs/phase-4-exit-audit.md) for the audit verdict and release-readiness notes.
 
 ## What you can do now
 
