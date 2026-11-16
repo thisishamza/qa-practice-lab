@@ -1,6 +1,6 @@
 # Phase 5 — API & Identity Testing Lab — Implementation Plan
 
-> **Status (2026-11-16):** **P5-M1 MERGED to `main` via PR #6 (merge commit `05f4870`). P5-M2 implemented, verified and committed on `feat/phase-5-m2-identity-hunts` (commit `feat: add phase 5 identity depth and bug hunts`; NOT pushed/merged/deployed; local `schema_version` 11; production D1 untouched at 10) — see PROJECT_STATE.md §11 and the P5-M2 outcome below. P5-M3 not started (no implementation without explicit instruction).** Previously: **Approved for implementation.** The maintainer approved this
+> **Status (2026-11-16):** **P5-M1 MERGED to `main` via PR #6 (merge commit `05f4870`). P5-M2 MERGED to `main` via PR #7 (merge commit `f7bf1c3`, 2026-11-16; NOT deployed; local `schema_version` 11; production D1 untouched at 10) — see PROJECT_STATE.md §11 and the P5-M2 outcome below. P5-M3 not started (no implementation without explicit instruction).** Previously: **Approved for implementation.** The maintainer approved this
 > plan on 2026-11-16 and resolved the §14 decisions: synthetic practice API tokens ship in
 > P5-M2; the expired-token signal is a distinct `401 token_expired`; token mint returns
 > `201 Created`; API Reference and API Lab are **separate navigation entries**; schema
