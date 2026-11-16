@@ -28,9 +28,31 @@ exit audit in `docs/phase-3-exit-audit.md`).
 
 The storefront is the first real practice surface, and seven of its behaviours are now
 reproducible defects for controlled bug-hunt practice (see
-[Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. There is
-**no learner account persistence** yet (progress is not saved). No SQL playground, performance
-runner, or security challenge exists yet.
+[Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. Progress is
+tracked server-side only for the practice session (or, when signed in, for the synthetic training
+account) — there is **no permanent learner account persistence**: guest progress expires with the
+practice session and never transfers to an account. No SQL playground, performance
+runner, or security challenge exists yet. Phase 4 (Learning & Bug-Hunt Intelligence — progressive
+hints, structured bug reports with deterministic evaluation, and real progress tracking) is
+implementation-complete on the branch (not deployed): P4-M1 WP1 (learner-safe curriculum metadata on the bug-hunt scenarios),
+P4-M1 WP2 (migration `0010_hunt_attempts.sql` — `schema_version` → 10 — plus server-side hunt-attempt
+and structured bug-report persistence with a scoped 30/minute report rate limit) and
+P4-M1 WP3 (the deterministic §6.4 bug-report evaluator — synchronous rule-based scoring,
+a stored feedback checklist, `best_quality_score` running max and sticky `discovered`,
+no AI), P4-M2 WP1 (the three-level progressive-hint ladder and the gated solution
+reveal as server-side API endpoints — unlocked only by a submitted report or an explicit
+confirmed give-up), P4-M2 WP2 (the structured bug-report UI — labelled form, inline
+validation with a linked error summary, server-side submission, an evaluation result view
+and a downloadable markdown report — rendered on the wired hunt panels) and P4-M2 WP3
+(the hint ladder UI (sequential three-level disclosures), the "Show the solution" give-up
+WAI-modal confirm dialog, the gated reveal panel (expected/actual/root cause/reproduction/
+verification/concepts) and attempt-status chips on the hunt cards — cancel makes no
+request; the report path unlocks the reveal in-place after submission) are implemented,
+reviewed and committed on the implementation branch;
+production is unchanged and still runs the pre-Phase-4 schema. The rest of Phase 4 (progress)
+is recorded in [docs/phase-4-learning-intelligence-plan.md](docs/phase-4-learning-intelligence-plan.md);
+P4-M2 is complete; **P4-M3 WP1 (the progress API and the real /progress dashboard), P4-M3 WP2 (scoring transparency + recommended completion path) and P4-M3 WP3 (the Phase 4 exit audit) are all implemented and committed on the branch** — **Phase 4 is implementation-complete and NOT DEPLOYED**; see
+[docs/phase-4-exit-audit.md](docs/phase-4-exit-audit.md) for the audit verdict and release-readiness notes.
 
 ## What you can do now
 
@@ -40,11 +62,12 @@ runner, or security challenge exists yet.
 | `/tracks` | Browse the twelve testing disciplines |
 | `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
 | `/scenarios` | Search and filter every scenario by track, difficulty, mode, status, category, and hunt availability |
-| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel |
+| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel (and the structured report form while the hunt is active) |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
-| `/progress` | No-persistence progress preview, clearly labelled as sample data |
-| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts, local bug-report export), planned practice formats and safety boundaries |
+| `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
+| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
+| `/about` | What works today, what comes next, honest guest/signed-in progress durability, the published report-evaluation rubric (weights, verdict bands, discovery vs report quality) at `/about#evaluation`, synthetic-environment limits |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -56,8 +79,10 @@ runner, or security challenge exists yet.
 | `/account/orders/:reference` | Order details, readable only by the owning synthetic customer; placed orders can be cancelled here |
 | `/admin/inventory` | Staff-only inventory view and restock tool (staff account only) |
 
-Theme choice and sidebar collapse are remembered in `localStorage`. Progress is not tracked or
-saved; the progress page shows labelled sample data and says so. The cart and orders are the real
+Theme choice and sidebar collapse are remembered in `localStorage`. Progress is tracked server-side
+under an opaque `mpl_session` cookie (HttpOnly, `SameSite=Strict`, 7-day expiry): the `/progress`
+page shows the caller's real attempts, reports, scores and discoveries — guest progress expires
+with the session and never transfers to an account. The cart and orders are the real
 pieces of server-side practice state: they persist in D1 under an opaque `mpl_session` cookie
 (HttpOnly, `SameSite=Strict`, 7-day expiry) and are never shared between browser sessions.
 Signing in adds a second, independent `mpl_customer` cookie (HttpOnly, `SameSite=Strict`,
@@ -179,12 +204,31 @@ src/server/staff.ts        Staff authorization guard (requireStaff; server-side 
 src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
 src/server/session.ts      Anonymous practice-session helpers (SHA-256-hashed tokens)
 src/server/practice.ts     Practice-mode routes (/api/v1/practice/*) + the 20/IP/UTC-day hunt-start cap
+src/server/attempts.ts     Phase 4 attempt lifecycle + GET /practice/attempts (bounded history)
+src/server/reports.ts      Phase 4 structured bug-report validation + POST .../report
+src/server/reportQuality.ts  Phase 4 deterministic §6.4 report evaluator (pure; server-only)
+src/lib/reportForm.ts      Phase 4 bug-report form logic (validation, submission flow, markdown download)
+src/lib/hintReveal.ts      Phase 4 hint-ladder/give-up/reveal flow logic (pure; injected transports)
+src/lib/attemptStatus.ts   Phase 4 attempt-status chip mapping (pure)
+src/lib/recommendedPath.ts  Phase 4 recommended-path derivation + completion mapping (pure)
+src/shared/evaluationRubric.ts  Phase 4 canonical learner-safe §6.4 rubric (shared by the server evaluator and the UI)
+src/features/progress/useProgress.ts  Phase 4 shared progress fetch state (route-remount refetch, retry)
+src/features/practice/RecommendedPath.tsx  Phase 4 /practice ordered path with live completion state
+src/features/evaluation/EvaluationTransparency.tsx  Phase 4 learner-facing rubric explainer (/about#evaluation)
+src/components/ui/Modal.tsx        Phase 4 WAI-modal dialog primitive (focus trap, Escape, restore)
+src/features/practice/BugReportForm.tsx        Phase 4 structured report form (WP2)
+src/features/practice/ReportEvaluationView.tsx Phase 4 evaluation result view (WP2)
+src/features/practice/ReportErrorSummary.tsx   Phase 4 linked error summary (WP2)
+src/features/practice/HintLadder.tsx           Phase 4 progressive hint ladder UI (WP3)
+src/features/practice/RevealPanel.tsx          Phase 4 gated reveal panel + give-up dialog (WP3)
+src/features/practice/AttemptStatusChip.tsx    Phase 4 hunt-card attempt status chips (WP3)
 src/server/rateLimit.ts    Fixed-window rate limiter (login failures, checkout, global mutation cap)
 src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin/maintenance/sweep
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
+src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0009)
+db/migrations/             D1 SQL migrations (0001..0010; production D1 is on 0001..0009)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -410,6 +454,99 @@ Bug-hunt mode (P3-M8):
   live session is re-stamped to `mode: "clean"`, `hunt_id: NULL`; the cart, orders and any
   synthetic sign-in are kept. With no live session, a fresh clean session is minted.
 
+Phase 4 practice learning (P4-M1 WP2 + WP3; rendered by the P4-M2 WP2 UI on the hunt panels):
+
+- `POST /api/v1/practice/hunts/:huntId/report` — submit a structured bug report. Body:
+  `{ title, environment, preconditions?, steps, expected, actual, severity, priority,
+  reproducibility? }` — `severity` ∈ `critical|high|medium|low`, `priority` ∈ `p1|p2|p3|p4`
+  (independent axes; never derived from each other), `reproducibility` ∈
+  `always|sometimes|once` (default `always`). All enums are matched case-insensitively and stored
+  lowercase. Validation: required fields, per-field length caps (title/environment 200,
+  preconditions 1000, steps 4000, expected/actual 2000), control-character rejection (newlines and
+  tabs are permitted inside the multi-line `steps`/`expected`/`actual`/`preconditions` only),
+  per-field `400` messages. The hunt id must match the registry (`404 hunt_not_found`;
+  `400` when malformed). Reports require a live practice session (`401 session_required`
+  otherwise) — hunt start mints one and opens the attempt; submission stamps
+  `customer_id` when signed in, otherwise the report stays guest-scoped. The attempt the report
+  attaches to is resolved server-side (the live `in_progress` attempt, else the latest attempt,
+  else a fresh one) and ids are never accepted from the client. Submissions are **rate limited to
+  30 per IP per minute** (`report:<iphash>`, only a SHA-256 hash of the IP is stored) with
+  `429 rate_limited` + `Retry-After` on overflow. `201` answers
+  `{ attempt, report, evaluation }` — learner-safe: no attempt/report ids, no defect ids, no
+  finding-check terms. The report is evaluated synchronously by the deterministic §6.4 rule-based
+  rubric (title 10 · environment 10 · steps 15 · step quality 10 · expected 8 · actual 8 ·
+  expected-vs-actual distinct 7 · severity 5 · priority 5 · finding 22; verdict bands
+  ≥80 `solid` · 50–79 `needs-work` · <50 `incomplete` — no AI, no network, no randomness).
+  `report.qualityScore`, `report.feedback` (per-check `{ id, passed, message }` results),
+  `evaluation.checks`, `attempt.bestQualityScore` (running maximum across submissions) and
+  `attempt.discovered` (sticky once earned) all reflect this evaluation; client-supplied score,
+  feedback or discovery fields are ignored.
+- `GET /api/v1/practice/hunts/:huntId/attempt` — the caller's current attempt for one registered
+  hunt: `{ status, hintsUsed, bestQualityScore, discovered, submittedAt }` where `status` is
+  `none|in_progress|submitted|revealed` (`none` when the caller has no attempt — the endpoint is
+  404-free), `hintsUsed` is 0–3. Forged hunt ids answer `404 hunt_not_found`.
+- `GET /api/v1/practice/attempts` — bounded history (newest first, ≤50) across hunts for this
+  session, plus customer-bound attempts when signed in. No internal ids. Empty `{ data: [] }`
+  without a session.
+- `GET /api/v1/practice/progress` — the learner's progress aggregate: per-wired-hunt entries
+  (status, discovery, best score, hints used, attempts, last submission), the 10 newest
+  submissions (score + verdict from the §6.4 bands), totals (attempts, status buckets,
+  submissions, distinct discovered hunts, hints used, best and average best score over scored
+  attempts) and a `persistence` marker (`session` | `customer`). No attempt/report/customer
+  ids, no evaluator internals, no defect ids. Discovery requires a non-revealed attempt with
+  the persisted finding-check result; a reveal never awards discovery and hints never lower a
+  score. Averages render only over scored attempts.
+- Hunt starts now also ensure exactly one live (`in_progress`) attempt per (session, hunt) —
+  idempotent under retries and concurrency (a partial unique index enforces it in D1). Attempts
+  cascade-delete with their practice session (orders precedent): guest progress is exactly as
+  durable as the session's 7-day TTL. The `/progress` page shows this same persisted state.
+
+  **P4-M2 WP2 (rendered).** The wired hunt panels (`/practice` and the scenario launch panel)
+  carry a **structured report form** while a hunt is active: labelled fields (title, environment,
+  optional preconditions, steps, expected, actual, severity — impact-based — and an independent
+  priority, plus reproducibility), persistent required/optional markers, inline validation on blur,
+  a linked error summary that takes focus on a failed submit (each entry names its field and moves
+  focus to the control), duplicate-submission protection, and server per-field errors rendered
+  beside their fields. The submitted report is evaluated synchronously and the result view shows
+  the server's score (out of 100), the verdict band (≥80 solid · 50–79 needs work · below 50
+  incomplete), per-check pass/improve feedback and an explicit
+  **report quality vs. finding the defect** explainer (discovery follows solely from the finding
+  evidence in title/steps/expected/actual; a high score does not imply discovery). The evaluation
+  is rule-based and says so — no AI, nothing is estimated in the browser. The report can be
+  revised and resubmitted (best score is kept) or downloaded as markdown generated from the
+  submitted report plus the safe, learner-facing feedback — never from hidden evaluator state;
+  no ids, defect data or evaluator internals appear in the file. A failed submission keeps the
+  learner's text. **P4-M2 WP3 (rendered).** While a hunt is active, the panels also carry a
+  **three-level hint ladder** ("Need a hint?" — sequential unlocks with a live "N of 3 hints
+  used" counter; unlocked hints persist across refreshes; locked levels are unavailable and
+  disclose nothing), a **gated reveal panel** ("The solution" — locked until a report is
+  submitted or the learner explicitly gives up through a WAI-modal "Show the solution?"
+  confirmation; cancel makes no request) and **attempt-status chips** on the hunt cards
+  (Not started · In progress · Submitted · score · Solution viewed). Report submission unlocks
+  the reveal in place. Hint text and reveal content are never present in the client bundle;
+  both are served only after server-side eligibility checks.
+
+Phase 4 learning experience (P4-M2 WP1 + WP3; API and UI both shipped):
+
+- `POST /api/v1/practice/hunts/:huntId/hints` — request one progressive hint, three levels per
+  hunt (Orient → Focus → Narrow). Body: `{ "level": 1|2|3 }` (strict). Level N requires level
+  N−1 already used on the attempt, enforced server-side (`409 hint_level_locked`); re-requesting
+  an unlocked level is idempotent. Hint usage is stored as a bitmask on the attempt row
+  (`hint_mask`), so progress survives refreshes and is isolated per session and per hunt; it
+  never reveals any reveal/solution content and never unlocks the solution. Response:
+  `{ level, hint, hintsUsed }` — no ids, no internal titles.
+- `GET /api/v1/practice/hunts/:huntId/reveal` — the gated solution, but only once the caller's
+  attempt for this hunt is `submitted` (a persisted report exists) or `revealed`; otherwise
+  `403 reveal_locked` (also for cookie-less callers; no attempt is minted by the read). Response:
+  `{ huntId, title, expected, actual, rootCause, reproduction[], verification[], concepts[],
+  commonMisconceptions[], attempt }` — learner-safe prose, never defect ids or code identifiers.
+- `POST /api/v1/practice/hunts/:huntId/reveal` — the explicit, confirmed give-up ("Show the
+  solution"). Requires `{ "confirm": true }` (anything else → `400 invalid_request`) and a live
+  session. An `in_progress` attempt is atomically switched to `revealed` (first `revealed_at`
+  kept); a `submitted` attempt stays `submitted`; prior submissions, best score and sticky
+  discovery are preserved. Give-up **never awards discovery** and is idempotent. Discovery is
+  governed solely by the §6.4 evaluator's finding check.
+
 **The seven hunts (one defect each), wired to scenarios:**
 
 | Scenario | Hunt | Area |
@@ -423,9 +560,10 @@ Bug-hunt mode (P3-M8):
 | `security-object-access` | `hunt-authz-001` | access control on order detail |
 
 Wiring both directions: wired scenario pages carry a **Bug-hunt exercise** launch panel
-(start/reset in place); `/practice` lists the hunts with start/switch/reset and a **local
-bug-report export** (the report is generated in your browser as a markdown download — nothing
-is uploaded, stored or graded); the scenario catalogue cards show a **Bug-hunt exercise** badge,
+(start/reset in place) and, while the hunt is active, the **structured bug-report panel**;
+`/practice` lists the hunts with start/switch/reset and the same report panel for the active
+hunt (submission persists the report, evaluates it and offers a markdown download); the scenario
+catalogue cards show a **Bug-hunt exercise** badge,
 the status filter includes `Ready`, and `/scenarios?hunt=available` deep-links the seven wired
 scenarios.
 
@@ -433,7 +571,7 @@ scenarios.
 into an intentionally broken state (the banner turns amber and names the hunt). One defect is
 active; it is deterministic and reproducible. Nothing about the hunt is stored anywhere but your
 own `practice_sessions` row, other browsers never share it, and `reset` always returns the shop
-to clean behaviour. Work out what the defect is, gather evidence, file your local report, and
+to clean behaviour. Work out what the defect is, gather evidence, file your report, and
 reset. Defect ids, expected/actual details and repro steps are deliberately **not** exposed to
 the learner; they live in `docs/bug-hunt-catalogue.md` for maintainers.
 
@@ -539,6 +677,9 @@ How it was set up (and how to reproduce or re-deploy):
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
 2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009.
    Verified before applying: the remote database contained no application tables/data.
+   (Migration `0010_hunt_attempts.sql`, added in Phase 4 WP2, ships in the repository but has
+   NOT been applied to production; production remains `schema_version` 9 until the next approved
+   deployment.)
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
    step was required (verified via `/api/health` → `schemaVersion: "9"`).
@@ -559,8 +700,14 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 ## Known constraints
 
 - Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
-  bug-hunt exercises (see above); there is no scoring and no saved progress; the progress page
-  shows labelled sample data and says so.
+  bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
+  server-side (session-scoped) and are evaluated by the deterministic §6.4
+  rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI and the
+  hint/reveal UI ships in the P4-M2 WP3 UI; P4-M3 WP1 (progress API + real /progress) is
+  implemented on the branch — only P4-M3 WP2/WP3 remain);
+  Phase 4
+  (P4-M1 WP1–WP3 and P4-M2 WP1–WP3 implemented and committed on the branch) addresses exactly this — see
+  `docs/phase-4-learning-intelligence-plan.md`.
 - The storefront catalogue, cart, checkout and the synthetic customer account area are real and
   backed by the API and D1. Sign-in is a **training simulation**: the synthetic accounts, the
   PBKDF2 password digests and the session tokens are fixtures; there is no registration, password
@@ -578,8 +725,11 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   outlives the catalogue).
 - Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
-  anything), and there is no reveal/scoring flow yet — intended behaviour during an active hunt
-  is intentionally not documented to the learner until the reveal flow lands (Phase 4+). Hunt
+   anything), and there is no reveal/scoring UI yet (reports are persisted and evaluated by the
+  deterministic §6.4 rubric; the server-side hint ladder and the gated solution reveal exist as
+  API endpoints since P4-M2 WP1 — unlocking only after a submitted report or an explicit confirmed
+  give-up — but the evaluation and reveal UI land in P4-M2 WP2/WP3) — intended behaviour during an active
+  hunt is intentionally not documented to the learner until the reveal flow lands. Hunt
   starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
   endpoints carry the rate limits described above; the limiter is a fixed-window approximation
   (counts are exact within a minute, bursts at the window boundary can briefly exceed the

@@ -180,12 +180,12 @@ describe('cart item id pattern is bounded', () => {
 })
 
 describe('migration 0009 (rate_limit_buckets)', () => {
-  it('applies cleanly on a fresh database (schema_version 9, bucket usable)', async () => {
+  it('applies cleanly on a fresh database (schema_version 10, bucket usable)', async () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('9')
+    expect(row.value).toBe('10')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'rate_limit_buckets'")
@@ -211,7 +211,7 @@ describe('migration 0009 (rate_limit_buckets)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('9')
+    expect(after.value).toBe('10')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite
@@ -264,6 +264,30 @@ describe('global mutation rate limit (120/min per IP)', () => {
     expect(response.status).toBe(429)
     expect(((await response.json()) as { error: string }).error).toBe('rate_limited')
     expect(response.headers.get('retry-after')).toBeTruthy()
+  })
+
+  it('never trusts x-forwarded-for, even with a full bucket for the spoofed address', async () => {
+    const migrated = createMigratedD1()
+    const spoofed = '203.0.113.99'
+    const ipHash = await sha256Hex(spoofed)
+    const now = Math.floor(Date.now() / 1000)
+    const windowStart = Math.floor(now / 60)
+    migrated.sqlite
+      .prepare('INSERT INTO rate_limit_buckets (key, window_start, count) VALUES (?, ?, 120)')
+      .run(`mutate:${ipHash}`, windowStart)
+
+    const response = await app.request(
+      '/api/v1/cart/items',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': spoofed },
+        body: JSON.stringify({ slug: 'ember-led-lantern', quantity: 1 }),
+      },
+      { DB: migrated.db },
+    )
+    // The limiter must not have consulted the spoofable header: the request
+    // reaches the route instead of being rejected with 429.
+    expect(response.status).not.toBe(429)
   })
 
   it('does not cap requests without a visible client IP', async () => {

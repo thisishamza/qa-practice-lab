@@ -108,6 +108,98 @@ export function ScenarioDetailPage() {
             </ul>
           </section>
 
+          {scenario.curriculum ? (
+            <>
+              <section className="content-section" aria-labelledby="scenario-concepts">
+                <SectionHeader
+                  id="scenario-concepts"
+                  title="QA concepts practised"
+                  description="Techniques this exercise trains."
+                />
+                <ul className="check-list">
+                  {scenario.curriculum.conceptsPracticed.map((concept) => (
+                    <li key={concept}>
+                      <span className="check-list-icon" aria-hidden="true">
+                        <Icon name="check" size={14} />
+                      </span>
+                      <span>{concept}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="content-section" aria-labelledby="scenario-focus">
+                <SectionHeader
+                  id="scenario-focus"
+                  title="Suggested investigation focus"
+                  description="Where to aim your investigation — method, not answers."
+                />
+                <ul className="plain-list">
+                  {scenario.curriculum.investigationFocus.map((focus) => (
+                    <li key={focus}>
+                      <Icon name="target" size={14} />
+                      {focus}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="content-section" aria-labelledby="scenario-outcomes">
+                <SectionHeader
+                  id="scenario-outcomes"
+                  title="Expected learning outcomes"
+                  description="What you should be able to do afterwards."
+                />
+                <ul className="check-list">
+                  {scenario.curriculum.expectedOutcomes.map((outcome) => (
+                    <li key={outcome}>
+                      <span className="check-list-icon" aria-hidden="true">
+                        <Icon name="check" size={14} />
+                      </span>
+                      <span>{outcome}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="content-section" aria-labelledby="scenario-report-focus">
+                <SectionHeader
+                  id="scenario-report-focus"
+                  title="What a good report covers"
+                  description="The substance a strong bug report for this exercise has."
+                />
+                <ul className="plain-list">
+                  {scenario.curriculum.reportFocus.map((item) => (
+                    <li key={item}>
+                      <Icon name="target" size={14} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          ) : null}
+
+          {scenario.huntId ? (
+            <section className="content-section" aria-labelledby="scenario-evaluation">
+              <SectionHeader
+                id="scenario-evaluation"
+                title="How your report is evaluated"
+                description="The same ten deterministic checks, worth the same points, on every submission."
+              />
+              <p className="body-copy">
+                Every report filed for this exercise is scored out of 100 against a published
+                rubric — completeness, clarity and evidence, with a separate discovery signal for
+                whether the incorrect behaviour was identified. Hints never lower the score and
+                revealing the solution never counts as discovering it.{' '}
+                <Link to="/about#evaluation">
+                  See the full rubric, the verdict bands and what discovery means
+                </Link>
+                .
+              </p>
+            </section>
+          ) : null}
+
           <section className="content-section" aria-labelledby="scenario-prerequisites">
             <SectionHeader id="scenario-prerequisites" title="Prerequisites" />
             <ul className="plain-list">
@@ -161,6 +253,9 @@ export function ScenarioDetailPage() {
                   ),
                 },
                 { label: 'Category', value: category?.name ?? scenario.categoryId },
+                ...(scenario.curriculum
+                  ? [{ label: 'Skill area', value: scenario.curriculum.skillArea }]
+                  : []),
                 { label: 'Difficulty', value: difficultyLabels[scenario.difficulty] },
                 { label: 'Estimated time', value: formatMinutes(scenario.estimatedMinutes) },
                 {

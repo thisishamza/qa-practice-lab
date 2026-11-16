@@ -15,6 +15,9 @@ import { usePracticeSession } from './usePracticeSession'
 import { Button } from '../../components/ui/Button'
 import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
+import { BugReportForm } from './BugReportForm'
+import { HintLadder } from './HintLadder'
+import { RevealPanel } from './RevealPanel'
 
 export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
   const { loadState, mode, hunt, busy, actionError, startHunt, resetSession } =
@@ -45,6 +48,7 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
   }, [scenario.huntId, attempt])
 
   const activeThisHunt = mode === 'bug_hunt' && hunt?.id === scenario.huntId
+  const [reportNonce, setReportNonce] = useState(0)
 
   return (
     <div className="panel hunt-launch" aria-labelledby="hunt-launch-title">
@@ -126,6 +130,16 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
           ) : null}
         </>
       )}
+      {activeThisHunt && scenario.huntId ? (
+        <div className="learning-block" key={scenario.huntId}>
+          <HintLadder huntId={scenario.huntId} />
+          <div className="bug-report-block">
+            <h3>File a report</h3>
+            <BugReportForm huntId={scenario.huntId} onSubmitted={() => setReportNonce((n) => n + 1)} />
+          </div>
+          <RevealPanel huntId={scenario.huntId} refreshToken={reportNonce} />
+        </div>
+      ) : null}
     </div>
   )
 }

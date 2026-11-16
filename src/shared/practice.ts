@@ -5,18 +5,23 @@
 // ids are internal to the server registries (src/server/defects.ts) and
 // never leave the server.
 
+import type { HuntCurriculum } from './huntCurriculum'
+
 export type PracticeSessionMode = 'clean' | 'bug_hunt'
 
 /**
  * Learner-safe hunt summary. Never includes defect ids, hints or repro
  * steps. `scenarioId` points at the catalogue scenario that teaches the
- * exercise; null when the hunt has no catalogue wiring.
+ * exercise; null when the hunt has no catalogue wiring. `curriculum` is the
+ * learner-safe curriculum metadata (Phase 4, WP1): what the exercise
+ * practises, never the answer.
  */
 export interface HuntSummary {
   id: string
   title: string
   summary: string
   scenarioId: string | null
+  curriculum?: HuntCurriculum
 }
 
 /** Learner-safe list of the available hunts (server registry order). */

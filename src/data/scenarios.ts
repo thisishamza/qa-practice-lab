@@ -1,3 +1,4 @@
+import { HUNT_CURRICULUM } from '../shared/huntCurriculum'
 import type { Scenario } from './types'
 
 /**
@@ -27,6 +28,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['Start the bug-hunt exercise below', 'No tooling required'],
     runnable: true,
     huntId: 'hunt-pricing-001',
+    curriculum: HUNT_CURRICULUM['hunt-pricing-001'],
     relatedGuideIds: ['guide-manual-test-design'],
   },
   {
@@ -50,6 +52,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['An HTTP client or browser dev tools', 'Start the bug-hunt exercise below'],
     runnable: true,
     huntId: 'hunt-checkout-001',
+    curriculum: HUNT_CURRICULUM['hunt-checkout-001'],
     relatedGuideIds: ['guide-manual-test-design'],
   },
   {
@@ -73,6 +76,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['Start the bug-hunt exercise below', 'Complete the cart totals exercise'],
     runnable: true,
     huntId: 'hunt-catalogue-001',
+    curriculum: HUNT_CURRICULUM['hunt-catalogue-001'],
     relatedGuideIds: ['guide-manual-test-design'],
   },
   {
@@ -96,6 +100,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['An HTTP client or curl', 'Read the catalogue endpoint contract', 'Start the bug-hunt exercise below'],
     runnable: true,
     huntId: 'hunt-catalogue-002',
+    curriculum: HUNT_CURRICULUM['hunt-catalogue-002'],
     relatedGuideIds: ['guide-api-request-response'],
   },
   {
@@ -119,6 +124,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['Start the bug-hunt exercise below', 'No tooling required'],
     runnable: true,
     huntId: 'hunt-cart-001',
+    curriculum: HUNT_CURRICULUM['hunt-cart-001'],
     relatedGuideIds: ['guide-manual-test-design'],
   },
   {
@@ -142,6 +148,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['An HTTP client or browser dev tools', 'Start the bug-hunt exercise below'],
     runnable: true,
     huntId: 'hunt-inventory-001',
+    curriculum: HUNT_CURRICULUM['hunt-inventory-001'],
     relatedGuideIds: ['guide-api-request-response'],
   },
   {
@@ -429,6 +436,7 @@ export const scenarios: Scenario[] = [
     prerequisites: ['Two synthetic demo accounts (see the lab README)', 'Start the bug-hunt exercise below'],
     runnable: true,
     huntId: 'hunt-authz-001',
+    curriculum: HUNT_CURRICULUM['hunt-authz-001'],
     relatedGuideIds: ['guide-auth-session-testing'],
   },
   {
@@ -629,6 +637,22 @@ export const scenarios: Scenario[] = [
     runnable: false,
     relatedGuideIds: ['guide-accessibility-keyboard'],
   },
+]
+
+/**
+ * Suggested order through the runnable bug-hunt scenarios: beginner manual
+ * and API exercises first, intermediate investigation skills next, the
+ * advanced access-control hunt last. Static and data-driven; every id must
+ * reference a runnable wired scenario (asserted by content tests).
+ */
+export const recommendedHuntScenarioIds: string[] = [
+  'manual-cart-add-quantity',
+  'api-catalogue-filters',
+  'manual-cart-totals',
+  'manual-shop-search',
+  'manual-address-edge-cases',
+  'api-checkout-exact-stock',
+  'security-object-access',
 ]
 
 export const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, scenario]))

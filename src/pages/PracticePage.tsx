@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { IconName } from '../data/types'
 import { HealthStatus } from '../features/system/HealthStatus'
 import { HuntPanel } from '../features/practice/HuntPanel'
+import { RecommendedPath } from '../features/practice/RecommendedPath'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
 import { SectionHeader } from '../components/ui/PageChrome'
@@ -108,6 +109,8 @@ export function PracticePage() {
           ))}
         </ol>
       </section>
+
+      <RecommendedPath />
 
       <HuntPanel />
 

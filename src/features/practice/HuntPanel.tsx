@@ -9,8 +9,11 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { usePracticeSession } from './usePracticeSession'
-import { fetchPracticeHunts } from './api'
-import { BugReportExport } from './BugReportExport'
+import { fetchPracticeHunts, fetchAttempt } from './api'
+import { BugReportForm } from './BugReportForm'
+import { HintLadder } from './HintLadder'
+import { RevealPanel } from './RevealPanel'
+import { AttemptStatusChip } from './AttemptStatusChip'
 import { Button } from '../../components/ui/Button'
 import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
@@ -18,6 +21,7 @@ import { SectionHeader } from '../../components/ui/PageChrome'
 import { scenarios } from '../../data/scenarios'
 import { PracticeApiError } from './api'
 import type { HuntSummary } from '../../shared/practice'
+import type { AttemptView } from '../../shared/learning'
 
 type HuntsState =
   | { status: 'loading' }
@@ -31,6 +35,40 @@ export function HuntPanel() {
   const [justReset, setJustReset] = useState(false)
   const [huntsState, setHuntsState] = useState<HuntsState>({ status: 'loading' })
   const [huntsAttempt, setHuntsAttempt] = useState(0)
+  /** Attempt status per hunt id; 'unavailable' when the fetch fails. */
+  const [statuses, setStatuses] = useState<Record<string, AttemptView | 'unavailable'>>({})
+  const [statusNonce, setStatusNonce] = useState(0)
+  const [revealNonce, setRevealNonce] = useState(0)
+  const refreshStatuses = () => setStatusNonce((n) => n + 1)
+  const refreshAfterReport = () => {
+    setStatusNonce((n) => n + 1)
+    setRevealNonce((n) => n + 1)
+  }
+
+  // Attempt-status chips for the hunt cards. Source of truth is the server;
+  // any failure maps to an explicit "unavailable" placeholder, never a guess.
+  useEffect(() => {
+    if (huntsState.status !== 'ready') {
+      return
+    }
+    const controller = new AbortController()
+    Promise.all(
+      huntsState.hunts.map(async (entry) => {
+        try {
+          const view = await fetchAttempt(entry.id, controller.signal)
+          return [entry.id, view] as const
+        } catch {
+          return [entry.id, 'unavailable'] as const
+        }
+      }),
+    ).then((pairs) => {
+      if (controller.signal.aborted) {
+        return
+      }
+      setStatuses(Object.fromEntries(pairs))
+    })
+    return () => controller.abort()
+  }, [huntsState, statusNonce])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -112,6 +150,9 @@ export function HuntPanel() {
             <ul className="hunt-list" aria-label="Available bug-hunt exercises">
               {huntsState.hunts.map((entry) => {
                 const isActive = bugHuntActive && hunt.id === entry.id
+                const statusEntry = statuses[entry.id]
+                const statusView =
+                  statusEntry === undefined || statusEntry === 'unavailable' ? null : statusEntry
                 const scenario = entry.scenarioId
                   ? scenarios.find((candidate) => candidate.id === entry.scenarioId)
                   : undefined
@@ -121,6 +162,12 @@ export function HuntPanel() {
                       <span className="hunt-row-title">
                         {isActive ? <Tag tone="warn" icon="bug">Active</Tag> : null}
                         {entry.title}
+                        {statusEntry === undefined ? null : (
+                          <AttemptStatusChip
+                            status={statusView === null ? null : statusView.status}
+                            bestQualityScore={statusView === null ? null : statusView.bestQualityScore}
+                          />
+                        )}
                       </span>
                       <span className="hunt-row-summary">{entry.summary}</span>
                       {scenario ? (
@@ -140,6 +187,7 @@ export function HuntPanel() {
                               if (ok) {
                                 setJustReset(true)
                                 setJustStarted(false)
+                                refreshStatuses()
                               }
                             })
                           }}
@@ -156,6 +204,7 @@ export function HuntPanel() {
                               if (ok) {
                                 setJustStarted(true)
                                 setJustReset(false)
+                                refreshStatuses()
                               }
                             })
                           }}
@@ -207,13 +256,13 @@ export function HuntPanel() {
           ) : null}
 
           {bugHuntActive ? (
-            <div className="bug-report-block">
-              <h3>File a report</h3>
-              <p className="panel-note">
-                Found something? Write the report while it is in front of you. It is exported as a
-                local markdown file — the lab does not receive it.
-              </p>
-              <BugReportExport />
+            <div className="learning-block" key={hunt.id}>
+              <HintLadder huntId={hunt.id} />
+              <div className="bug-report-block">
+                <h3>File a report</h3>
+                <BugReportForm huntId={hunt.id} onSubmitted={refreshAfterReport} />
+              </div>
+              <RevealPanel huntId={hunt.id} onRevealed={refreshStatuses} refreshToken={revealNonce} />
             </div>
           ) : null}
         </div>

@@ -84,6 +84,9 @@ export const HUNTS: readonly HuntDefinition[] = [
   },
 ]
 
+/** Learner-safe shape of a hunt id path segment (`hunt-topic-001`). */
+export const HUNT_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,63}$/
+
 export function findHunt(id: string): HuntDefinition | null {
   return HUNTS.find((hunt) => hunt.id === id) ?? null
 }

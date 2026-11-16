@@ -16,5 +16,5 @@
     "types": ["@cloudflare/workers-types"]
   },
   "include": ["functions", "src/server", "tests"],
-  "exclude": ["tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx"]
+  "exclude": ["tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx", "tests/pages/curriculum-views.test.tsx", "tests/pages/progress-page.test.tsx", "tests/pages/recommended-path.test.tsx", "tests/pages/evaluation-transparency.test.tsx", "tests/pages/about-page.test.tsx", "tests/practice/bug-report-form.test.tsx", "tests/practice/hint-reveal-ui.test.tsx"]
 }
