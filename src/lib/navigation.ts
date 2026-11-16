@@ -35,6 +35,18 @@ export const primaryNav: NavItem[] = [
     description: 'Concepts, examples, and walkthroughs',
   },
   {
+    label: 'API Reference',
+    to: '/api-reference',
+    icon: 'contract',
+    description: 'The documented API contract',
+  },
+  {
+    label: 'API Lab',
+    to: '/api-lab',
+    icon: 'api',
+    description: 'Same-origin request console',
+  },
+  {
     label: 'Practice',
     to: '/practice',
     icon: 'practice',

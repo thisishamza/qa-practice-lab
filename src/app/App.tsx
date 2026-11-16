@@ -10,6 +10,12 @@ import { DashboardPage } from '../pages/DashboardPage'
 // Route-level code splitting: every non-index page is its own chunk, fetched
 // on first navigation instead of up front. The dashboard stays eager because
 // it is the landing route; everything behind the shell is deferrable.
+const ApiReferencePage = lazy(() =>
+  import('../pages/ApiReferencePage').then((m) => ({ default: m.ApiReferencePage })),
+)
+const ApiLabPage = lazy(() =>
+  import('../pages/ApiLabPage').then((m) => ({ default: m.ApiLabPage })),
+)
 const CartPage = lazy(() => import('../pages/CartPage').then((m) => ({ default: m.CartPage })))
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
 const OrderConfirmationPage = lazy(() =>
@@ -63,6 +69,8 @@ export function App() {
                 <Route path="scenarios/:scenarioId" element={<ScenarioDetailPage />} />
                 <Route path="guides" element={<GuidesPage />} />
                 <Route path="guides/:guideId" element={<GuideDetailPage />} />
+                <Route path="api-reference" element={<ApiReferencePage />} />
+                <Route path="api-lab" element={<ApiLabPage />} />
                 <Route path="progress" element={<ProgressPage />} />
                 <Route path="practice" element={<PracticePage />} />
                 <Route path="shop" element={<ShopPage />} />

@@ -127,7 +127,7 @@ describe('filterScenarios', () => {
       trackId: 'api-testing',
       difficulty: 'beginner',
       mode: 'clean',
-      status: 'planned',
+      status: 'ready',
     })
 
     expect(result.map((scenario) => scenario.id)).toEqual(['api-catalog-pagination'])
@@ -293,7 +293,7 @@ describe('countScenariosByStatus', () => {
     expect(total).toBe(scenarios.length)
     expect(counts['in-design']).toBe(scenarios.filter((s) => s.status === 'in-design').length)
     expect(counts.planned).toBe(scenarios.filter((s) => s.status === 'planned').length)
-    expect(counts.ready).toBe(7)
+    expect(counts.ready).toBe(8)
   })
 })
 

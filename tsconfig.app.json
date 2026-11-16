@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -17,8 +21,26 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ]
   },
-  "include": ["src", "tests/shop/views.test.tsx", "tests/shop/cart-views.test.tsx", "tests/shop/checkout-views.test.tsx", "tests/pages/curriculum-views.test.tsx", "tests/pages/progress-page.test.tsx", "tests/pages/recommended-path.test.tsx", "tests/pages/evaluation-transparency.test.tsx", "tests/pages/about-page.test.tsx", "tests/practice/bug-report-form.test.tsx", "tests/practice/hint-reveal-ui.test.tsx"],
-  "exclude": ["src/server"]
+  "include": [
+    "src",
+    "tests/shop/views.test.tsx",
+    "tests/shop/cart-views.test.tsx",
+    "tests/shop/checkout-views.test.tsx",
+    "tests/pages/curriculum-views.test.tsx",
+    "tests/pages/progress-page.test.tsx",
+    "tests/pages/recommended-path.test.tsx",
+    "tests/pages/evaluation-transparency.test.tsx",
+    "tests/pages/about-page.test.tsx",
+    "tests/practice/bug-report-form.test.tsx",
+    "tests/practice/hint-reveal-ui.test.tsx",
+    "tests/pages/api-reference-page.test.tsx",
+    "tests/pages/api-lab-page.test.tsx"
+  ],
+  "exclude": [
+    "src/server"
+  ]
 }

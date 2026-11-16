@@ -18,6 +18,7 @@ import { HuntLaunchPanel } from '../features/practice/HuntLaunchPanel'
 export function ScenarioDetailPage() {
   const { scenarioId } = useParams()
   const scenario = scenarioId ? getScenario(scenarioId) : undefined
+  const labUrl = `/api-lab?method=GET&path=${encodeURIComponent('/api/v1/products')}&query=${encodeURIComponent('perPage=3&sort=price_asc')}`
 
   useDocumentTitle(scenario?.title ?? 'Scenario not found')
 
@@ -271,7 +272,27 @@ export function ScenarioDetailPage() {
           </div>
 
           {scenario.huntId ? (
-            <HuntLaunchPanel scenario={scenario} />
+            <>
+              <HuntLaunchPanel scenario={scenario} />
+              <Link className="button button-secondary scenario-lab-link" to={labUrl}>
+                <Icon name="api" size={16} />
+                Open in API Lab
+              </Link>
+            </>
+          ) : scenario.runnable ? (
+            <div className="panel">
+              <h2>Run this exercise</h2>
+              <p>
+                Everything you need is built in: open the API Lab and send{' '}
+                <code>GET /api/v1/products?perPage=3&amp;sort=price_asc</code>, then vary one
+                parameter at a time and compare what you see with the documented contract in the{' '}
+                <Link to="/api-reference">API Reference</Link>.
+              </p>
+              <Link className="button" to={labUrl}>
+                <Icon name="api" size={16} />
+                Open in API Lab
+              </Link>
+            </div>
           ) : (
             <Callout tone="warning" title="This exercise is not runnable yet">
               The description, objectives, and prerequisites are reviewable now. A launch

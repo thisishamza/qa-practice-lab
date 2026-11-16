@@ -1,6 +1,6 @@
 # Phase 5 — API & Identity Testing Lab — Implementation Plan
 
-> **Status (2026-11-16):** **Approved for implementation.** The maintainer approved this
+> **Status (2026-11-16):** **P5-M1 implemented, verified and committed on `feat/phase-5-m1-foundations` (commit `feat: add phase 5 api foundations`; NOT pushed/merged/deployed) — see PROJECT_STATE.md §11. P5-M2 and P5-M3 not started.** Previously: **Approved for implementation.** The maintainer approved this
 > plan on 2026-11-16 and resolved the §14 decisions: synthetic practice API tokens ship in
 > P5-M2; the expired-token signal is a distinct `401 token_expired`; token mint returns
 > `201 Created`; API Reference and API Lab are **separate navigation entries**; schema
@@ -569,6 +569,30 @@ focused commit; stop at the boundary.
 bearer anything; schema validation tooling; Newman/Postman collections; any server change;
 the `/progress` page; navigation redesign; no work-package session split; no deployment,
 push, merge or production migration.
+
+**Outcome (2026-11-16, actual).** Delivered as specified, with three recorded decisions: (a)
+the staff-only maintenance sweep is documented **with `x-internal: true`** and an
+operator-only description — omitted would have silently broken the
+"every route documented" contract test, and omission was explicitly allowed but
+documentation was chosen deliberately; (b) `/api/health` stays **out** of the contract
+(infrastructure, not the versioned API); (c) the plan's “`cookieAuth`” security scheme was
+realized as **two** apiKey cookie schemes — `practiceSessionCookie` (`mpl_session`) and
+`customerCookie` (`mpl_customer`) — one scheme cannot bind two cookies. `public/openapi.json`
+ships OpenAPI 3.1.0, 30 path keys / 34 operations, an `ErrorCode` vocabulary enum asserted
+against the server source in both directions by `tests/data/openapi.test.ts` (14/14), and a
+defect-id/evaluator leak lint. `/api-reference` renders the served document at runtime (no
+drift possible); `/api-lab` enforces the same-origin `/api/v1` allowlist client-side and
+rejects before any fetch (verified in-browser: zero network requests for a refused URL);
+bodies are byte-capped at 64 KB both in display and at streaming-read time; history stays in
+component state (10 entries, clearable, never persisted). `api-catalog-pagination` is
+`ready`/`runnable` (clean) with a console launch action; `guide-api-request-response` gained
+the console walkthrough; wired scenario pages deep-link into the console. Two separate nav
+entries landed as approved (API Reference, API Lab). Verification: `npm run check` green,
+**795/795 tests**, `npm run build` clean, SSR suites 17/17, browser probe **49/49** (themes
+× 375/768/1024/1440 px, zero overflow, zero unexpected console errors), client-bundle leak
+scan clean, no migrations (schema 10), no new dependencies, README and AGENTS.md untouched.
+See PROJECT_STATE.md §1 and §11 for the full handoff; P5-M2 is next and must not start
+without maintainer instruction.
 
 ---
 
