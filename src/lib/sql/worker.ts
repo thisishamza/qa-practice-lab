@@ -26,13 +26,9 @@ async function ensureWasmBytes(): Promise<Uint8Array> {
   return wasmBytes
 }
 
-function post(message: WorkerResponse, transfer?: Transferable[]): void {
+function post(message: WorkerResponse): void {
   const scope = self as unknown as DedicatedWorkerGlobalScope
-  if (transfer && transfer.length > 0) {
-    scope.postMessage(message, transfer)
-  } else {
-    scope.postMessage(message)
-  }
+  scope.postMessage(message)
 }
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
@@ -84,15 +80,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         }
         const schema: SchemaInfo = db.schema()
         post({ id: message.id, type: 'schema', schema })
-        return
-      }
-      case 'export': {
-        if (!db) {
-          post({ id: message.id, type: 'error', kind: 'not-ready', message: 'The practice database is not ready yet.' })
-          return
-        }
-        const bytes = db.exportBytes()
-        post({ id: message.id, type: 'exported', bytes: bytes.buffer as ArrayBuffer }, [bytes.buffer as Transferable])
         return
       }
       case 'close': {

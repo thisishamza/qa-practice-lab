@@ -7,7 +7,6 @@ export type WorkerRequest =
   | { id: number; type: 'reset'; seedSql: string }
   | { id: number; type: 'run'; sql: string }
   | { id: number; type: 'schema' }
-  | { id: number; type: 'export' }
   | { id: number; type: 'close' }
 
 export type WorkerResponse =
@@ -18,7 +17,6 @@ export type WorkerResponse =
       type: 'schema'
       schema: SchemaInfo
     }
-  | { id: number; type: 'exported'; bytes: ArrayBuffer }
   | { id: number; type: 'closed' }
   | { id: number; type: 'error'; kind: 'internal' | 'not-ready'; message: string }
 
