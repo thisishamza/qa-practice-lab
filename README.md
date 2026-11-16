@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 5 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 11). Previously Phase 4 (PR #5). Deployment `aaa0e2a6`, source commit `3ecfb41` (merge of PR #8).
+> **Production:** https://qa-practice-lab.pages.dev (Phase 6 deployed 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 12). Deployment `2c32a721-8374-46af-8a20-e560839f88b1`, source commit `eeded31` (merge of PR #10). Previously Phase 5 (PR #8, deployment `aaa0e2a6`). Phase 6 (Database & SQL Testing Lab) was merged to `main` via PRs #9/#10 (`94cc7fa`/`eeded31`), migration `0012_sql_lab_schema.sql` applied to production D1 (pre-migration export verified) and deployed 2026-11-17 after explicit maintainer authorization.
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -97,10 +97,18 @@ curriculum — including 13 QA scenarios — plus **eight deterministic database
 hunts** (`hunt-db-001`…`hunt-db-008`) wired into the same hunt engine (progressive
 hints, structured reports, deterministic scoring, progress tracking). Learner SQL
 never leaves the browser worker; evaluation happens server-side on result sets
-only. Phase 6 M1 merged to `main` via PR #9 and M2 is implemented on
-`feat/phase-6-m2-database-learning`; see
-[docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and
+only. Phase 6 M1 and M2 are merged to `main` (PRs #9/#10, `94cc7fa`/`eeded31`) and
+deployed to production (2026-11-17, migration `0012`, `schema_version` 12); see
+[docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and release record and
 [docs/phase-6-database-testing-plan.md](docs/phase-6-database-testing-plan.md) for the plan.
+
+Phase 7 (Contract Testing Lab) is **planned, not implemented** (2026-11-17). The
+implementation-ready plan is
+[docs/phase-7-contract-testing-plan.md](docs/phase-7-contract-testing-plan.md): one `P7`
+implementation milestone, 24 exercises, seven contract bug hunts, four new endpoints
+(→ 42 operations, OpenAPI `info.version` 1.2.0), zero new D1 tables. No Phase 7 code,
+dependency, migration, route or test exists yet; implementation begins only on explicit
+maintainer instruction.
 
 ## What you can do now
 
@@ -288,7 +296,7 @@ src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defec
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0011; production D1 is on 0001..0011)
+db/migrations/             D1 SQL migrations (0001..0012; production D1 is on 0001..0012)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -755,35 +763,32 @@ Do not expose the platform D1 binding as a user-facing SQL console.
 
 ## Deployment status
 
-**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16):
+**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 6 deployed 2026-11-17):
 Cloudflare Pages project `qa-practice-lab` (production branch `main`) and D1 database
-`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 10. `/api/health` reports
+`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 12. `/api/health` reports
 the deployed schema version.
 
 How it was set up (and how to reproduce or re-deploy):
 
 1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
-2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0010 for the
-   Phase 4 release (0010 applied to production on 2026-11-16; additive-only; health reports
-   `schemaVersion: "10"`). **0011 (`api_tokens`, Phase 5) is not applied to production**; it is
-   local-only until a Phase 5 release is explicitly approved — Phase 5 deployment would claim
-   0001–0011.
+2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies migrations
+   through `0012_sql_lab_schema.sql`. `0011` was applied to production on 2026-11-16 and
+   `0012` (zero-DDL `app_meta` bump to `schema_version` 12) on 2026-11-17, both after a
+   verified pre-migration export; `/api/health` reports `schemaVersion: "12"`.
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
-   step was required (verified via `/api/health` → `schemaVersion: "10"`). The Phase 4 release
-   deployed commit `ac53fd0` (merge of PR #5) on 2026-11-16; the deployment-specific URL is
-   https://0b1cd31b.qa-practice-lab.pages.dev.
-4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "10"`; staged smoke of the
-   Phase 4 journey passed on production (hunt start → ladder gating 409 → ordered hint unlock →
-   report → deterministic evaluation → reveal unlock/lock → `/progress` attribution banners;
-   give-up does not grant discovery; both themes × 375/768/1024/1440 px; zero unexpected console
-   errors — recorded in `PROJECT_STATE.md` §11). The maintenance sweep remains operator-invoked.
-5. **Rollback:** the previous production deployment (`99ef81ca-c8c2-44bc-ba9b-69f4f627e982`,
-   commit `1f0847f`) is still available; redeploy it to roll back code. Migrations 0010 and 0011
-   are additive-only, so the rolled-back application runs unchanged against `schema_version` 10
-   or 11; the new tables simply sit unused. Do not drop them and do not attempt a destructive
-   down-migration.
+   step is required (verified via `/api/health` → `schemaVersion: "12"`). The Phase 6 release
+   deployed commit `eeded31` (merge of PR #10) on 2026-11-17; deployment
+   `2c32a721-8374-46af-8a20-e560839f88b1`, alias https://qa-practice-lab.pages.dev.
+4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "12"`; the Phase 6
+   production acceptance passed on 2026-11-17 (route smoke, headless-Chrome probe 18/18,
+   hint/reveal gates and auth boundaries re-verified against production — recorded in
+   `PROJECT_STATE.md` §11 and `docs/phase-6-exit-audit.md`). The maintenance sweep remains
+   operator-invoked.
+5. **Rollback:** migrations `0010`–`0012` are additive-only, so the rolled-back application
+   runs unchanged against `schema_version` 10, 11 or 12; the new tables/columns simply sit
+   unused. Do not drop them and do not attempt a destructive down-migration.
 5. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
    the operator's choosing (at least weekly; daily during active classes). With a staff
    session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
