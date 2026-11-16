@@ -6,11 +6,20 @@
 // Endpoints (mounted under /api/v1):
 //   GET  /api/v1/auth/accounts             — safe list of the demo accounts
 //   POST /api/v1/auth/login                — sign in a synthetic customer
-//   POST /api/v1/auth/logout               — sign out (idempotent)
+//   POST /api/v1/auth/token                — mint a synthetic practice API token (201)
+//   POST /api/v1/auth/logout               — sign out (idempotent); clean mode also
+//                                            revokes the account's practice API tokens
 //   GET  /api/v1/auth/me                   — current customer or 401
 //   GET  /api/v1/account                   — own full profile (protected)
 //   GET  /api/v1/account/orders            — own order history (protected)
 //   GET  /api/v1/account/orders/:reference — own order details (protected)
+//
+// Bearer credentials (P5-M2): every protected endpoint above also accepts
+//   Authorization: Bearer <token> minted by POST /api/v1/auth/token. When a
+//   Bearer header is present it wins over the cookie; when absent, the
+//   cookie pair is used exactly as before. Expired tokens answer 401
+//   token_expired; unknown/revoked/malformed/cross-claim credentials answer
+//   401 unauthorized. Roles come from the stored customer row in both paths.
 //
 // Security model:
 // - Bearer material lives ONLY in the `mpl_customer` cookie (HttpOnly,
@@ -78,6 +87,7 @@ import {
   sha256Hex,
   LOGIN_FAILURE_LIMIT,
 } from './rateLimit'
+import { mintApiToken, parseExpiresInSeconds, revokeCustomerApiTokens } from './apiTokens'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const MAX_LIST_LIMIT = 50
@@ -238,13 +248,136 @@ authRoutes.post('/auth/login', async (c) => {
   return c.json({ customer: toCustomerProfile(customer) } satisfies AuthResponse)
 })
 
+interface TokenBody {
+  email: string
+  password: string
+  expiresInSeconds: number
+}
+
+function parseTokenBody(raw: unknown): TokenBody | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return null
+  }
+  const body = raw as Record<string, unknown>
+  const email =
+    typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : ''
+  const password = typeof body.password === 'string' ? body.password : ''
+  if (!EMAIL_PATTERN.test(email) || password.length === 0 || password.length > 256) {
+    return null
+  }
+  const ttl = parseExpiresInSeconds(body.expiresInSeconds)
+  if (!ttl.ok) {
+    return null
+  }
+  return { email, password, expiresInSeconds: ttl.seconds }
+}
+
+// Synthetic practice API token mint (P5-M2). Shares the login failure budget
+// deliberately — one brute-force budget for every credential-checking
+// endpoint. Same PBKDF2 verify, same dummy-hash timing equalization, same
+// 429. The raw token is returned ONCE in the 201 response; only its SHA-256
+// hash is stored. Never logged. No registration, no refresh: minting again
+// is the only renewal there is.
+authRoutes.post('/auth/token', async (c) => {
+  const ip = clientIp(c)
+  const ipHash = ip ? await sha256Hex(ip) : null
+  if (ipHash) {
+    const peek = await peekRateLimit(c.env.DB, 'login', ipHash)
+    if (peek.count >= LOGIN_FAILURE_LIMIT) {
+      c.header('Retry-After', String(peek.retryAfterSeconds))
+      return c.json(
+        {
+          error: 'login_rate_limited',
+          message:
+            'Too many failed sign-ins from this network. Wait a minute and try again with the same training account.',
+        },
+        429,
+      )
+    }
+  }
+
+  const raw = await c.req.json().catch(() => null)
+  const body = parseTokenBody(raw)
+  if (!body) {
+    return errorJson(
+      c,
+      400,
+      'invalid_request',
+      'Provide a valid email address, the synthetic account password, and an optional expiresInSeconds between 15 and 900.',
+    )
+  }
+
+  const customer = await c.env.DB.prepare('SELECT * FROM customers WHERE email = ?')
+    .bind(body.email)
+    .first<CustomerRow>()
+
+  const passwordOk = await verifyPassword(
+    body.password,
+    customer?.password_hash ?? DUMMY_PASSWORD_HASH,
+  )
+  if (!customer || !passwordOk) {
+    if (ipHash) {
+      await consumeRateLimit(c.env.DB, 'login', ipHash, LOGIN_FAILURE_LIMIT)
+    }
+    return errorJson(
+      c,
+      401,
+      'invalid_credentials',
+      'The email address or password is not correct.',
+    )
+  }
+  if (customer.status !== 'active') {
+    return errorJson(
+      c,
+      403,
+      'account_suspended',
+      'This synthetic training account is suspended. Try one of the other demo accounts.',
+    )
+  }
+  if (ipHash) {
+    await resetRateLimit(c.env.DB, 'login', ipHash)
+  }
+
+  const { token, expiresAt } = await mintApiToken(
+    c.env.DB,
+    customer.id,
+    body.expiresInSeconds,
+  )
+  return c.json(
+    {
+      token,
+      tokenType: 'Bearer',
+      expiresIn: body.expiresInSeconds,
+      expiresAt,
+    },
+    201,
+  )
+})
+
 authRoutes.post('/auth/logout', async (c) => {
   const presented = getCookie(c, CUSTOMER_COOKIE)
+  let customerId: number | null = null
   if (presented && /^[a-f0-9]{32}$/.test(presented)) {
     const tokenHash = await hashCustomerToken(presented)
+    // Read the customer BEFORE deleting: logout also revokes the account's
+    // practice API tokens (customer-scoped, deliberately broad and
+    // documented — signing out anywhere signs out everywhere).
+    const row = await c.env.DB.prepare(
+      'SELECT customer_id FROM customer_sessions WHERE token_hash = ?',
+    )
+      .bind(tokenHash)
+      .first<{ customer_id: number }>()
+    customerId = row?.customer_id ?? null
     await c.env.DB.prepare('DELETE FROM customer_sessions WHERE token_hash = ?')
       .bind(tokenHash)
       .run()
+  }
+  // BUG-HUNT DEFECT AUTHN-001 (hunt-authn-001): in a bug-hunt session
+  // carrying this defect the account's API tokens survive logout, so a
+  // replayed Bearer token still resolves. Clean mode always revokes here.
+  const replaySurvives = await isDefectActive(c, 'AUTHN-001')
+  if (customerId !== null && !replaySurvives) {
+    await revokeCustomerApiTokens(c.env.DB, customerId)
   }
   setCookie(c, CUSTOMER_COOKIE, '', customerCookieOptions(isSecureRequest(c.req.url), 0))
   return c.json({ ok: true })

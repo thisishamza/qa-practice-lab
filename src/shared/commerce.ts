@@ -125,6 +125,15 @@ export interface AuthResponse {
   customer: CustomerProfile
 }
 
+/** 201 response body of POST /api/v1/auth/token. The raw token appears here once and never again. */
+export interface ApiTokenResponse {
+  token: string
+  tokenType: 'Bearer'
+  /** Effective TTL in seconds after the server-side 15–900 clamp. */
+  expiresIn: number
+  expiresAt: string
+}
+
 export interface AccountOrderListResponse {
   data: OrderSummary[]
 }

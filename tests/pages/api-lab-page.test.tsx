@@ -5,12 +5,44 @@ import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { ApiLabPage } from '../../src/pages/ApiLabPage'
+import { AuthContext, type AuthContextValue } from '../../src/features/auth/auth-context'
 
-function render(route = '/api-lab'): string {
+const GUEST_AUTH: AuthContextValue = {
+  loadState: { status: 'ready' },
+  customer: null,
+  suspended: false,
+  refresh: () => {},
+  signIn: () => Promise.resolve({ ok: false, message: 'not used' }),
+  signOut: () => Promise.resolve(),
+}
+
+const SIGNED_IN_AUTH: AuthContextValue = {
+  ...GUEST_AUTH,
+  customer: {
+    name: 'Amara Okafor',
+    email: 'amara.okafor@example.com',
+    role: 'customer',
+    status: 'active',
+    addressLine: '12 Practice Lane',
+    addressCity: 'Lisbon',
+    addressPostcode: '1100-341',
+    memberSince: '2026-11-01T00:00:00.000Z',
+  },
+}
+
+const SUSPENDED_AUTH: AuthContextValue = {
+  ...GUEST_AUTH,
+  customer: null,
+  suspended: true,
+}
+
+function render(route = '/api-lab', auth: AuthContextValue = GUEST_AUTH): string {
   return renderToStaticMarkup(
-    <MemoryRouter initialEntries={[route]}>
-      <ApiLabPage />
-    </MemoryRouter>,
+    <AuthContext.Provider value={auth}>
+      <MemoryRouter initialEntries={[route]}>
+        <ApiLabPage />
+      </MemoryRouter>
+    </AuthContext.Provider>,
   )
 }
 
@@ -74,5 +106,40 @@ describe('ApiLabPage', () => {
     // parameters used by the reference deep links.
     const deep = render('/api-lab?method=POST&path=%2Fapi%2Fv1%2Fcart%2Fitems&query=')
     expect(deep).toContain('API Lab')
+  })
+})
+
+describe('ApiLabPage — token helper', () => {
+  it('invites a guest to sign in instead of minting', () => {
+    const html = render('/api-lab', GUEST_AUTH)
+    expect(html).toContain('Practice API token')
+    expect(html).toContain('Sign in as a synthetic demo account to mint')
+    expect(html).toContain('href="/login"')
+    expect(html).not.toContain('Mint practice API token')
+    expect(html).not.toContain('Copy token')
+  })
+
+  it('explains the suspended state without offering the mint form', () => {
+    const html = render('/api-lab', SUSPENDED_AUTH)
+    expect(html).toContain('suspended')
+    expect(html).not.toContain('Mint practice API token')
+  })
+
+  it('renders the mint form for a signed-in account, password cleared', () => {
+    const html = render('/api-lab', SIGNED_IN_AUTH)
+    expect(html).toContain('Mint practice API token')
+    expect(html).toContain('id="api-token-password"')
+    expect(html).toContain('value="amara.okafor@example.com"')
+    expect(html).toContain('<option value="900" selected="">')
+    // No token material exists before minting.
+    expect(html).not.toContain('Copy token')
+    expect(html).not.toContain('Use as Bearer header')
+    expect(html).not.toContain('Clear token')
+  })
+
+  it('documents the one-time display and the refresh caveat without any token', () => {
+    const html = render('/api-lab', SIGNED_IN_AUTH)
+    expect(html).toContain('shown once')
+    expect(html).toContain('refreshing the page clears it')
   })
 })

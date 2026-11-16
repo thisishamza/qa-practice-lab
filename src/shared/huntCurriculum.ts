@@ -1,5 +1,5 @@
-// Shared, learner-safe curriculum metadata for the seven bug-hunt hunts
-// (Phase 4, WP1). CODE, not data — compiled with the bundle like the hunt
+// Shared, learner-safe curriculum metadata for the runnable bug-hunt hunts
+// (Phase 4, WP1; extended in Phase 5 P5-M2). CODE, not data — compiled with the bundle like the hunt
 // registries. This module is the single source of truth for the curriculum
 // payload: the server attaches it to the learner-safe hunt summary
 // (src/shared/practice.ts `HuntSummary.curriculum`) and the client renders
@@ -210,6 +210,84 @@ export const HUNT_CURRICULUM: Record<string, HuntCurriculum> = {
       'The reference and endpoint involved',
       'Expected versus actual response',
       'Impact — which data may be exposed to whom',
+    ],
+  },
+  'hunt-authn-001': {
+    skillArea: 'API testing · authentication & tokens',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Credential lifecycle: mint, use, expiry, revocation',
+      'Bearer authentication alongside cookie authentication',
+      'Server-side revocation versus client-side cookie clearing',
+    ],
+    expectedOutcomes: [
+      'Trace an API token through its full lifecycle',
+      'Replay a credential deliberately after state-changing actions',
+      'Distinguish client-side sign-out from server-side revocation',
+    ],
+    investigationFocus: [
+      'Mint a practice API token and prove it works on one protected endpoint',
+      'Sign out, then replay the identical request with the token',
+      'Compare the cookie path and the token path after sign-out',
+      'Confirm whether every protected surface agrees before reporting',
+    ],
+    reportFocus: [
+      'The lifecycle steps — mint, use, sign out, replay',
+      'The exact status and body of the replayed request',
+      'Expected versus actual behaviour after sign-out',
+      'Why it matters — sign-out must end the account’s credentials',
+    ],
+  },
+  'hunt-rbac-001': {
+    skillArea: 'Security testing · role-based access control',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Per-route versus per-surface authorization design',
+      'Read paths as authorization boundaries',
+      'Contrast testing across sibling routes and credentials',
+    ],
+    expectedOutcomes: [
+      'Probe a staff-only surface with a non-staff synthetic account',
+      'Compare list and action endpoints for consistent boundaries',
+      'Write a precise finding naming the missing check',
+    ],
+    investigationFocus: [
+      'Request the staff inventory view as a customer-role account',
+      'Contrast that response with the restock action for the same account',
+      'Replay with and without a Bearer credential for the same account',
+      'Characterise exactly which half of the boundary is missing',
+    ],
+    reportFocus: [
+      'The account role used and how it authenticated',
+      'The exact request and the response received',
+      'The contrast with the restock action (same account)',
+      'Impact — which figures a non-staff account can read',
+    ],
+  },
+  'hunt-mass-001': {
+    skillArea: 'API testing · input binding & mass assignment',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Mass assignment: client fields bound the contract never declared',
+      'Server-authoritative totals and pricing',
+      'Response-versus-source-of-truth consistency checks',
+    ],
+    expectedOutcomes: [
+      'Detect server trust of an undeclared client figure',
+      'Isolate which figures are server-computed and which are believed',
+      'Write an evidence-led finding with a minimal request',
+    ],
+    investigationFocus: [
+      'Follow one order from cart to confirmation and note every total',
+      'Replay the checkout request with an edited body claiming a different total',
+      'Compare subtotal, line totals and order total on the resulting order',
+      'Reset and confirm the field is ignored outside the exercise',
+    ],
+    reportFocus: [
+      'The edited request body and the field it carried',
+      'The figures on the resulting order versus the cart and summary',
+      'Which values are server-computed and which are believed from the client',
+      'Impact — an order placed against a client-dictated total',
     ],
   },
 }

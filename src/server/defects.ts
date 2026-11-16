@@ -128,6 +128,54 @@ export const DEFECTS: readonly DefectDefinition[] = [
     fix: "Re-apply the NAME_PATTERN check to the trimmed customerName before accepting the details.",
   },
   {
+    id: 'AUTHN-001',
+    title: 'Logout leaves API tokens replayable',
+    affectedSurface: 'POST /api/v1/auth/logout (+ Bearer token resolution in src/server/customer.ts)',
+    expected:
+      'Logging out revokes the account’s practice API tokens server-side (customer-scoped delete), so a Bearer token captured before logout answers 401 unauthorized on every protected endpoint.',
+    actual:
+      'Logout deletes the customer session but leaves the account’s api_tokens rows in place, so a Bearer token replayed after logout still resolves the account and answers 200 on protected endpoints.',
+    repro: [
+      'In a bug-hunt session, sign in as a demo customer and mint a practice API token.',
+      'Call POST /api/v1/auth/token, note the token, then call POST /api/v1/auth/logout.',
+      'Replay the token against GET /api/v1/account with an Authorization: Bearer header.',
+      'Clean mode answers 401 unauthorized; the hunt session answers 200 with the profile.',
+    ],
+    fix: "Run the customer-scoped DELETE FROM api_tokens WHERE customer_id = ? in the logout handler (clean mode does this today).",
+  },
+  {
+    id: 'RBAC-001',
+    title: 'Staff inventory read is open to the customer role',
+    affectedSurface: 'GET /api/v1/admin/inventory',
+    expected:
+      'GET /api/v1/admin/inventory is staff-only: an authenticated customer-role account answers 403 staff_required, identically for cookie and Bearer authentication. PATCH /api/v1/admin/inventory/:productId enforces the same boundary.',
+    actual:
+      'The read-only list endpoint does not check the role: any authenticated active customer (cookie or Bearer) receives the full inventory payload with 200. PATCH is unaffected and still answers 403 staff_required for non-staff accounts.',
+    repro: [
+      'In a bug-hunt session, sign in as a customer-role demo account.',
+      'GET /api/v1/admin/inventory with the mpl_customer cookie (or a Bearer token).',
+      'Clean mode answers 403 staff_required; the hunt session answers 200 with the inventory list.',
+      'Control: PATCH /api/v1/admin/inventory/:productId is 403 in both modes.',
+    ],
+    fix: "Re-apply the role check on the GET route (clean mode already enforces it); PATCH is not part of this defect and stays enforced.",
+  },
+  {
+    id: 'MASS-001',
+    title: 'Checkout honours a client-supplied totalCents',
+    affectedSurface: 'POST /api/v1/checkout',
+    expected:
+      'The checkout contract accepts only customer details and paymentSimulation. The order total is computed server-side from the catalogue; a client-supplied totalCents is ignored entirely.',
+    actual:
+      'When the client sends a non-negative integer totalCents it is bound as the order’s total, while the subtotal stays server-computed. The confirmation and GET /api/v1/orders/:reference report a total that disagrees with the cart, the checkout summary and the sum of the line totals.',
+    repro: [
+      'In a bug-hunt session, add products to the cart and note the checkout summary total.',
+      'Call POST /api/v1/checkout with valid details, approved paymentSimulation and "totalCents": 1.',
+      'Open the confirmation: the stored total is the forged figure, not the summary total.',
+      'Reset to clean mode and repeat — the field is ignored and the server-computed total is stored.',
+    ],
+    fix: "Ignore the client-supplied totalCents entirely (clean mode binds the server-computed figure).",
+  },
+  {
     id: 'AUTHZ-001',
     title: 'Account order detail drops the ownership check',
     affectedSurface: 'GET /api/v1/account/orders/:reference',

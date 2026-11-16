@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10).
+> **Production:** https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 10). Phase 5 (API & Identity Testing Lab) is implemented through P5-M2 on the unmerged branch `feat/phase-5-m2-identity-hunts` and is **not deployed**.
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -22,11 +22,11 @@ seed data (`schema_version` 10), a `/api/v1` catalogue API with search, a workin
 storefront, a session-based cart with server-calculated totals, a practice checkout that places
 a simulated order in one atomic database transaction with idempotency protection, synthetic
 customer sign-in, staff-only inventory management with exactly-once cancellation, a
-seven-hunt bug-hunt program wired into the scenario catalogue, and the hardening & exit
+ten-hunt bug-hunt program wired into the scenario catalogue, and the hardening & exit
 milestone (rate limits, bounded cleanup sweeps, a local demo-data reset, and the Phase 3
 exit audit in `docs/phase-3-exit-audit.md`).
 
-The storefront is the first real practice surface, and seven of its behaviours are now
+The storefront is the first real practice surface, and ten of its behaviours are now
 reproducible defects for controlled bug-hunt practice (see
 [Bug-hunt mode](#bug-hunt-mode-p3-m8)). Other catalog scenarios remain placeholders. Progress is
 tracked server-side only for the practice session (or, when signed in, for the synthetic training
@@ -62,6 +62,22 @@ See [docs/phase-4-exit-audit.md](docs/phase-4-exit-audit.md) for the audit verdi
 release addendum (independent review fixes + route-level code splitting that shipped with
 the release: initial JS 538.57 → 370.33 kB, gzip 156.15 → 114.62 kB).
 
+Phase 5 (API & Identity Testing Lab) turns the existing `/api/v1` surface into a guided
+practice target. P5-M1 (merged to `main` via PR #6 on 2026-11-16, **not deployed**) added the
+hand-authored OpenAPI 3.1 contract (`public/openapi.json`, served at `GET /openapi.json`,
+cross-checked by `tests/data/openapi.test.ts`), the learner-facing **API Reference** page
+(`/api-reference`) and the same-origin-only **API Lab** console (`/api-lab`), wired
+`api-catalog-pagination` to `ready`, and added console-based walkthrough content. P5-M2
+(implemented on branch `feat/phase-5-m2-identity-hunts`, **not deployed**) adds **synthetic
+practice API tokens** (opaque 256-bit Bearer credentials, SHA-256-hashed at rest, 15–900 s
+TTL clamped server-side, minted by `POST /api/v1/auth/token`, shown once, revocable),
+**Bearer authentication** accepted everywhere the `mpl_customer` cookie is accepted (when a
+Bearer header is present it wins; roles always come from the stored customer row), an
+**in-console token helper** (signed-in only; the raw token lives in component memory and is
+never persisted), and **three more deterministic hunts** — `hunt-authn-001`,
+`hunt-rbac-001` and `hunt-mass-001` — wired through the same server-controlled engine. See
+[docs/phase-5-api-identity-plan.md](docs/phase-5-api-identity-plan.md) for the plan.
+
 ## What you can do now
 
 | Route | Purpose |
@@ -70,12 +86,14 @@ the release: initial JS 538.57 → 370.33 kB, gzip 156.15 → 114.62 kB).
 | `/tracks` | Browse the twelve testing disciplines |
 | `/tracks/:trackId` | Objectives, getting-started steps, guide link, listed scenarios |
 | `/scenarios` | Search and filter every scenario by track, difficulty, mode, status, category, and hunt availability |
-| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the seven wired hunt scenarios carry a live bug-hunt launch panel (and the structured report form while the hunt is active) |
+| `/scenarios/:scenarioId` | Scenario objectives, prerequisites, related guides, availability; the ten wired hunt scenarios carry a live bug-hunt launch panel (and the structured report form while the hunt is active) |
 | `/guides` | Guides grouped by discipline |
 | `/guides/:guideId` | Concepts, examples, steps, expected results, common mistakes, related exercises |
 | `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
-| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the seven registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
+| `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the ten registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
 | `/about` | What works today, what comes next, honest guest/signed-in progress durability, the published report-evaluation rubric (weights, verdict bands, discovery vs report quality) at `/about#evaluation`, synthetic-environment limits |
+| `/api-reference` | The machine-checkable description of every `/api/v1` route: methods, paths, parameters, request/response bodies, error envelopes and codes, rate-limit notes, and the documented bearer/cookie security schemes. Download `openapi.json` from the page; every operation deep-links into the API Lab |
+| `/api-lab` | Same-origin-only in-browser API console (method, path, query, headers, body) with status, timing, headers and byte-capped inert-text body; copy-as-curl; component-state-only history (cleared on refresh); deep-linkable from the reference and wired scenario pages; includes a signed-in-only **practice API token helper** |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
 | `/shop/products/:slug` | Product detail with price, stock status and a link back to the catalogue |
 | `/cart` | Session cart: quantities, removal, server-calculated totals, clear |
@@ -131,6 +149,14 @@ orders, and URL/id tampering is refused with a concealed `404 not_found`.
   storefront. Only its SHA-256 hash is stored, in `customer_sessions`, bound to the practice
   session that established it. A customer signed in on practice session A is *not* signed in on
   practice session B.
+- **Practice API token** (`Authorization: Bearer …`): an optional, synthetic opaque 256-bit
+  credential minted by `POST /api/v1/auth/token` for the same demo accounts (only its SHA-256
+  hash is stored, in `api_tokens`; the raw token is returned exactly once, in the 201 mint
+  response). Tokens are **not** bound to a practice session — an API credential must outlive the
+  tab that minted it — they are bound to the customer row, expire after 15–900 seconds (clamped
+  server-side), are revoked server-side by sign-out, and carry no claims: role and status are
+  read from the stored customer row on every request. When a Bearer header is present it wins;
+  when absent, the cookie pair is used exactly as before. Expired tokens answer `401 token_expired`.
 - Signing in **rotates** the customer token (any pre-existing customer session for this practice
   session is destroyed at login), which defeats session fixation by construction.
 - Orders placed while signed in are associated **explicitly and transactionally** with
@@ -180,7 +206,7 @@ green only after the local D1 migration has been applied.
 | `npm run check` | Runs lint, typecheck, and tests in that order |
 | `npm run db:migrate:local` | Applies unapplied D1 migrations to the local database |
 | `npm run db:migrations:list` | Lists unapplied local D1 migrations |
-| `npm run db:cleanup:local` | Deletes expired local session/rate-limit rows (bounded, idempotent) |
+| `npm run db:cleanup:local` | Deletes expired local session/rate-limit/token rows (bounded, idempotent) |
 | `npm run db:reset:local` | **Destructive (local only):** wipes all local learner state and restores the seed inventory |
 
 Run a single test file directly with:
@@ -207,6 +233,8 @@ src/server/catalogue.ts    Meridian Outfitters /api/v1 catalogue routes
 src/server/cart.ts         Session cart routes (/api/v1/cart) with server-side totals
 src/server/checkout.ts     Checkout & orders routes (/api/v1/checkout, /api/v1/orders)
 src/server/auth.ts         Synthetic customer auth & account routes (/api/v1/auth/*, /api/v1/account/*)
+src/server/apiTokens.ts    Synthetic practice API tokens (P5-M2): mint (SHA-256 at rest), expiry, revocation, sweep support
+src/components/api-lab/TokenHelper.tsx  P5-M2 in-console practice API token helper (memory-only token)
 src/server/inventory.ts    Staff-only inventory routes (/api/v1/admin/inventory*, P3-M6)
 src/server/staff.ts        Staff authorization guard (requireStaff; server-side role check)
 src/server/customer.ts     Customer session helpers (PBKDF2 verify, hashed tokens, ownership guard)
@@ -236,7 +264,7 @@ src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defec
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0010; production D1 is on 0001..0009)
+db/migrations/             D1 SQL migrations (0001..0011; production D1 is on 0001..0010 — Phase 5 not deployed)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -357,11 +385,33 @@ Synthetic customer authentication and the account area (P3-M5):
   Max-Age 28800) and destroys any pre-existing customer session for this practice session
   (token rotation). If the browser had no practice session, a fresh one is minted and returned in
   the same response. Responses never contain password hashes or token hashes.
+- `POST /api/v1/auth/token` — mint a synthetic practice API token. Body:
+  `{ "email": "…", "password": "…", "expiresInSeconds"?: 15–900 }` — `expiresInSeconds` is clamped
+  server-side to **15–900 seconds** (default `900`). The mint re-authenticates exactly like
+  `POST /api/v1/auth/login`: same PBKDF2 verify, same dummy-hash timing equalization, and the
+  **same shared `login:<iphash>` failure budget** (five failed attempts per IP per UTC minute →
+  `429 login_rate_limited`, shared counter; a successful mint clears it; a suspended account
+  answers `403 account_suspended`). Success answers **`201`** with
+  `{ "token", "tokenType": "Bearer", "expiresIn", "expiresAt" }` — the raw token appears in this
+  response **exactly once**; only its SHA-256 hash is stored (`api_tokens`), never logged, never
+  returned again. There is no refresh and no renewal: mint a new token instead.
+- **Bearer authentication.** Every protected endpoint (`/api/v1/auth/me`,
+  `/api/v1/account*`, `/api/v1/admin/*`) accepts `Authorization: Bearer <token>` in addition to
+  the `mpl_customer` cookie — identical success payloads and identical error envelopes. When a
+  Bearer header is present it wins; when it is absent, the cookie pair is used exactly as
+  documented. An expired token answers `401 token_expired`; an unknown, revoked, malformed or
+  orphaned Bearer answers `401 unauthorized` (the cookie is never used as a fallback in either
+  case). A suspended account answers `403 account_suspended` and a customer-role account answers
+  `403 staff_required` on staff surfaces, exactly as with a cookie. Roles are read from the
+  stored customer row on every request; the token carries no claims and can never elevate them.
 - `POST /api/v1/auth/logout` — destroy the presented customer session and clear the cookie.
-  Idempotent; `200 { ok: true }` in all cases.
+  **Clean mode also revokes every practice API token bound to the account** (customer-scoped,
+  deliberately broad and documented — signing out anywhere signs out everywhere). Idempotent;
+  `200 { ok: true }` in all cases.
 - `GET /api/v1/auth/me` — the currently authenticated customer, or `401 unauthorized` (a stale or
-  wrong-practice-session cookie is cleared in the same response). A customer suspended
-  mid-session answers `403 account_suspended`.
+  wrong-practice-session cookie is cleared in the same response; an expired Bearer token answers
+  `401 token_expired`). A customer suspended mid-session answers `403 account_suspended`.
+  Authenticate with the `mpl_customer` cookie or `Authorization: Bearer <token>`.
 - `GET /api/v1/account` — the same profile (name, email, role, status, synthetic address, member
   since). Protected.
 - `GET /api/v1/account/orders` — the signed-in customer's own order history (newest first, ≤50).
@@ -555,12 +605,15 @@ Phase 4 learning experience (P4-M2 WP1 + WP3; API and UI both shipped):
   discovery are preserved. Give-up **never awards discovery** and is idempotent. Discovery is
   governed solely by the §6.4 evaluator's finding check.
 
-**The seven hunts (one defect each), wired to scenarios:**
+**The ten hunts (one defect each), wired to scenarios:**
 
 | Scenario | Hunt | Area |
 | --- | --- | --- |
 | `api-catalogue-filters` | `hunt-catalogue-002` | catalogue category filtering |
 | `api-checkout-exact-stock` | `hunt-inventory-001` | inventory boundary at checkout |
+| `api-mass-assignment` | `hunt-mass-001` | checkout mass assignment of the order total |
+| `api-token-replay` | `hunt-authn-001` | API token replay after sign-out |
+| `auth-role-boundaries` | `hunt-rbac-001` | staff-role boundary on the inventory read |
 | `manual-address-edge-cases` | `hunt-checkout-001` | checkout validation |
 | `manual-cart-add-quantity` | `hunt-cart-001` | cart quantity accumulation |
 | `manual-cart-totals` | `hunt-pricing-001` | order line-total snapshot |
@@ -572,7 +625,7 @@ Wiring both directions: wired scenario pages carry a **Bug-hunt exercise** launc
 `/practice` lists the hunts with start/switch/reset and the same report panel for the active
 hunt (submission persists the report, evaluates it and offers a markdown download); the scenario
 catalogue cards show a **Bug-hunt exercise** badge,
-the status filter includes `Ready`, and `/scenarios?hunt=available` deep-links the seven wired
+the status filter includes `Ready`, and `/scenarios?hunt=available` deep-links the ten wired
 scenarios.
 
 **Bug-hunt mode — learner-facing summary.** Starting a hunt puts *your browser session only*
@@ -601,7 +654,9 @@ SHA-256 hash of the IP — never the raw address):
 - `mutate:<ip>` — global backstop, **120 mutating requests/minute** for every POST/PATCH/PUT/DELETE
   under `/api/v1`. Overshooting answers `429 rate_limited` + `Retry-After`.
 - `login:<ip>` — **5 failed sign-ins/minute** (PBKDF2 is skipped once the budget is exhausted;
-  a successful sign-in clears it). Overshooting answers `429 login_rate_limited`.
+  a successful sign-in clears it). Overshooting answers `429 login_rate_limited`. The budget is
+  shared with `POST /api/v1/auth/token` — one brute-force allowance for every credential-checking
+  endpoint.
 - `checkout:<ip>` — **30 order placements/minute** (every attempt, including invalid payloads,
   counts). Overshooting answers `429 rate_limited`.
 - `hunt_start_caps` — **20 hunt starts per IP per UTC day**, atomically enforced (no overshoot).
@@ -623,7 +678,8 @@ SHA-256 hash of the IP — never the raw address):
 What the sweep deletes: expired `practice_sessions` (their `carts`, `cart_items`, `orders`,
 `order_items`, `checkout_idempotency` and bound `customer_sessions` cascade with them — synthetic
 learner state never outlives its session), expired `customer_sessions`, day-old
-`hunt_start_caps`, and `rate_limit_buckets` older than two hours.
+`hunt_start_caps`, `rate_limit_buckets` older than two hours, and expired or revoked
+`api_tokens`.
 
 What nothing ever deletes automatically: **`inventory_adjustments` and `order_cancellations`**
 — they are the append-only audit trail and the exactly-once cancellation markers; deleting them
@@ -634,7 +690,8 @@ sessions and their live carts/orders are never touched, regardless of age. Custo
 the catalogue are never touched by maintenance.
 
 `npm run db:reset:local` is the **destructive, local-only** demo reset: it deletes ALL learner
-state (carts, orders, adjustments, sessions, caps, buckets) and restores the seed inventory
+state (carts, orders, adjustments, sessions, caps, buckets, attempts, reports, API tokens) and
+restores the seed inventory
 quantities from `0002_commerce_domain.sql`. It is separate from the learner-facing Clean Mode
 reset (`POST /api/v1/practice/session/reset`), which remains non-destructive — it re-stamps the
 session to clean mode and always preserves cart, orders and sign-in. Nothing in `db/` or
@@ -683,10 +740,11 @@ How it was set up (and how to reproduce or re-deploy):
 
 1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
-2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0009,
-   then 0010 for the Phase 4 release. 0010 was applied to production on 2026-11-16 (additive-only:
-   two new tables, three indexes/constraints, `schema_version` → 10; no backfills; production
-   health now reports `schemaVersion: "10"`).
+2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0010 for the
+   Phase 4 release (0010 applied to production on 2026-11-16; additive-only; health reports
+   `schemaVersion: "10"`). **0011 (`api_tokens`, Phase 5) is not applied to production**; it is
+   local-only until a Phase 5 release is explicitly approved — Phase 5 deployment would claim
+   0001–0011.
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
    step was required (verified via `/api/health` → `schemaVersion: "10"`). The Phase 4 release
@@ -698,9 +756,10 @@ How it was set up (and how to reproduce or re-deploy):
    give-up does not grant discovery; both themes × 375/768/1024/1440 px; zero unexpected console
    errors — recorded in `PROJECT_STATE.md` §11). The maintenance sweep remains operator-invoked.
 5. **Rollback:** the previous production deployment (`99ef81ca-c8c2-44bc-ba9b-69f4f627e982`,
-   commit `1f0847f`) is still available; redeploy it to roll back code. Migration 0010 is
-   additive-only, so the rolled-back application runs unchanged against `schema_version` 10; the
-   two new tables simply sit unused. Do not drop them and do not attempt a destructive down-migration.
+   commit `1f0847f`) is still available; redeploy it to roll back code. Migrations 0010 and 0011
+   are additive-only, so the rolled-back application runs unchanged against `schema_version` 10
+   or 11; the new tables simply sit unused. Do not drop them and do not attempt a destructive
+   down-migration.
 5. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
    the operator's choosing (at least weekly; daily during active classes). With a staff
    session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
@@ -713,7 +772,7 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
 
 ## Known constraints
 
-- Most catalog scenarios are placeholders. The seven wired hunt scenarios are runnable
+- Most catalog scenarios are placeholders. The ten wired hunt scenarios are runnable
   bug-hunt exercises (see above); hunt attempts and submitted bug reports persist
   server-side (session-scoped) and are evaluated by the deterministic §6.4
   rubric — the report form and evaluation feedback ship in the P4-M2 WP2 UI and the
@@ -734,13 +793,10 @@ build limits, D1 daily reads/writes and per-invocation query limits). Do not add
   `inventory_adjustments` is append-only; nothing prunes it, and there is no removal adjustment
   yet. Cancelling an order whose product was deleted returns nothing to stock (the snapshot
   outlives the catalogue).
-- Bug-hunt mode ships **seven hunts** (one deterministic defect each, listed above). Reset
+- Bug-hunt mode ships **ten hunts** (one deterministic defect each, listed above). Reset
   preserves the cart, orders and sign-in (it re-stamps the session; it does not cascade-delete
-   anything), and there is no reveal/scoring UI yet (reports are persisted and evaluated by the
-  deterministic §6.4 rubric; the server-side hint ladder and the gated solution reveal exist as
-  API endpoints since P4-M2 WP1 — unlocking only after a submitted report or an explicit confirmed
-  give-up — but the evaluation and reveal UI land in P4-M2 WP2/WP3) — intended behaviour during an active
-  hunt is intentionally not documented to the learner until the reveal flow lands. Hunt
+  anything) — hunts are reportable, evaluable and revealable exactly like the Phase 3/4 set.
+  Hunt
   starts are capped per IP per UTC day (20; only a hash of the IP is stored). All mutating
   endpoints carry the rate limits described above; the limiter is a fixed-window approximation
   (counts are exact within a minute, bursts at the window boundary can briefly exceed the

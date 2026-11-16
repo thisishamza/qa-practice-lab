@@ -55,6 +55,7 @@ const EXPECTED_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ['post', '/api/v1/orders/{reference}/cancel'],
   ['get', '/api/v1/auth/accounts'],
   ['post', '/api/v1/auth/login'],
+  ['post', '/api/v1/auth/token'],
   ['post', '/api/v1/auth/logout'],
   ['get', '/api/v1/auth/me'],
   ['get', '/api/v1/account'],
@@ -129,7 +130,7 @@ describe('openapi.json — document shape', () => {
 })
 
 describe('openapi.json — route coverage', () => {
-  it('documents exactly the curated set of 34 operations', () => {
+  it('documents exactly the curated set of 35 operations', () => {
     const documented: string[] = []
     for (const [path, item] of Object.entries(spec.paths)) {
       for (const method of Object.keys(item)) {
@@ -139,7 +140,7 @@ describe('openapi.json — route coverage', () => {
       }
     }
     expect(documented.sort()).toEqual(EXPECTED_ROUTES.map(([m, p]) => `${m} ${p}`).sort())
-    expect(documented).toHaveLength(34)
+    expect(documented).toHaveLength(35)
   })
 
   it('every documented operation is registered in the server source', () => {
@@ -262,7 +263,7 @@ describe('openapi.json — error-code vocabulary', () => {
   it('every error code the server emits is documented', () => {
     const source = serverSource()
     const observed = new Set<string>()
-    for (const match of source.matchAll(/'((?:invalid_request|invalid_level|invalid_credentials|not_found|internal_error|payload_too_large|rate_limited|login_rate_limited|account_suspended|unauthorized|staff_required|out_of_stock|insufficient_stock|stock_limit_exceeded|empty_cart|cart_unavailable|payment_declined|idempotency_conflict|hunt_not_found|hunt_start_cap_reached|session_required|hint_level_locked|hint_attempt_completed|reveal_locked))'/g)) {
+    for (const match of source.matchAll(/'((?:invalid_request|invalid_level|invalid_credentials|not_found|internal_error|payload_too_large|rate_limited|login_rate_limited|account_suspended|unauthorized|staff_required|out_of_stock|insufficient_stock|stock_limit_exceeded|empty_cart|cart_unavailable|payment_declined|idempotency_conflict|hunt_not_found|hunt_start_cap_reached|session_required|hint_level_locked|hint_attempt_completed|reveal_locked|token_expired))'/g)) {
       observed.add(match[1])
     }
     for (const code of observed) {

@@ -39,7 +39,7 @@ export function AboutPage() {
           <SectionHeader
             id="real-title"
             title="What works today"
-            description="The shell, the shop, and seven runnable exercises."
+            description="The shell, the shop, ten runnable bug-hunt exercises and two ready practice exercises."
           />
           <div className="panel">
             <p className="panel-note">
@@ -48,10 +48,11 @@ export function AboutPage() {
               URL, so a search can be linked or shared.
             </p>
             <p className="panel-note">
-              Seven bug-hunt exercises are runnable against the fictional Meridian Outfitters
+              Ten bug-hunt exercises are runnable against the fictional Meridian Outfitters
               shop — defects are deterministic, scoped to your browser session, and never affect
-              anyone else. The other 21 catalogue scenarios are labelled placeholders and are not
-              runnable yet.
+              anyone else. Two clean exercises (catalogue pagination and the API token lifecycle)
+              are also ready. The remaining catalogue scenarios are labelled placeholders and are
+              not runnable yet.
             </p>
             <p className="panel-note">
               Progress is real on this server: the progress page shows your own attempts, scores,

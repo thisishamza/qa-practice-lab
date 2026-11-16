@@ -1,6 +1,6 @@
 # Phase 5 — API & Identity Testing Lab — Implementation Plan
 
-> **Status (2026-11-16):** **P5-M1 implemented, verified and committed on `feat/phase-5-m1-foundations` (commit `feat: add phase 5 api foundations`; NOT pushed/merged/deployed) — see PROJECT_STATE.md §11. P5-M2 and P5-M3 not started.** Previously: **Approved for implementation.** The maintainer approved this
+> **Status (2026-11-16):** **P5-M1 MERGED to `main` via PR #6 (merge commit `05f4870`). P5-M2 implemented, verified and committed on `feat/phase-5-m2-identity-hunts` (commit `feat: add phase 5 identity depth and bug hunts`; NOT pushed/merged/deployed; local `schema_version` 11; production D1 untouched at 10) — see PROJECT_STATE.md §11 and the P5-M2 outcome below. P5-M3 not started (no implementation without explicit instruction).** Previously: **Approved for implementation.** The maintainer approved this
 > plan on 2026-11-16 and resolved the §14 decisions: synthetic practice API tokens ship in
 > P5-M2; the expired-token signal is a distinct `401 token_expired`; token mint returns
 > `201 Created`; API Reference and API Lab are **separate navigation entries**; schema
@@ -266,7 +266,8 @@ The checkout contract states the client sends only customer details and `payment
 figures are server-computed. In hunt mode, `POST /api/v1/checkout` with
 `"totalCents": 1` stores that figure on the order; the confirmation page and
 `GET /api/v1/orders/:reference` disagree with the cart/checkout summary and with the sum of
-line totals. Clean mode: the field is ignored. Orders are session-scoped and cascade-delete
+line totals. (Implemented for non-negative safe integers only — see the P5-M2 outcome note
+(a): the `total_cents >= 0` CHECK is preserved.) Clean mode: the field is ignored. Orders are session-scoped and cascade-delete
 with the session, so no shared state is corrupted and nothing persists beyond the learner's
 7-day session TTL. Scenario `api-mass-assignment` (new) is wired to this hunt.
 
@@ -402,7 +403,7 @@ exactly the engine's rules:
 |---|---|---|---|---|
 | `hunt-authn-001` | `AUTHN-001` | `POST /api/v1/auth/logout` (+ token resolution in `customer.ts`) | logout deletes `api_tokens` rows; replayed Bearer → `401` | token rows survive logout; replayed Bearer → `200` |
 | `hunt-rbac-001` | `RBAC-001` | `GET /api/v1/admin/inventory` | customer role → `403 staff_required` | customer role → `200` inventory payload (PATCH still `403`) |
-| `hunt-mass-001` | `MASS-001` | `POST /api/v1/checkout` | client `totalCents` ignored; server-computed value stored | client `totalCents` (integer, any sign) stored as the order total; confirmation/history disagree with the cart |
+| `hunt-mass-001` | `MASS-001` | `POST /api/v1/checkout` | client `totalCents` ignored; server-computed value stored | client `totalCents` (non-negative safe integer — see outcome note (a)) stored as the order total; confirmation/history disagree with the cart |
 
 Wiring: `hunts.ts`, `defects.ts`, `docs/bug-hunt-catalogue.md`, `huntCurriculum.ts`,
 scenarios (`auth-role-boundaries` updated copy; new `api-token-replay`, `api-mass-assignment`),
@@ -747,6 +748,37 @@ dated entry (files changed, commands and tests run, browser verification result,
 registration/reset/MFA; additional roles; suspending-account hunt; rate-limit-bypass hunt
 (rejected); a verbose-error/info-disclosure defect (stretch — only if all else lands with
 margin); any deployment, push, merge or production migration.
+
+**Outcome (2026-11-16, actual).** Delivered as specified, with one recorded deviation and a
+handful of recorded decisions: **(a) MASS-001 narrowed to non-negative safe integers** — the
+plan's “any sign” is not enforceable without altering the `orders.total_cents >= 0` CHECK
+constraint, which this lab will not do for a hunt; negative forged totals (and non-integers,
+NaN, unsafe integers) are ignored exactly as clean mode ignores the field. Everything else in
+the MASS-001 spec landed verbatim (server-computed subtotal/line totals untouched; confirmation
+disagrees with the cart; session-scoped cascade). **(b) The RBAC-001 branch lives in
+`requireStaff` behind a per-route opt-in** (`{ roleBoundaryDefect: true }`) used only by
+`GET /api/v1/admin/inventory` — PATCH and the maintenance sweep never opt in. **(c) Logout
+deletes** the account's `api_tokens` rows customer-scoped (the plan's model) rather than
+marking `revoked_at`; `revoked_at` remains as a fail-closed guard exercised by tests and the
+sweep. `0011_api_tokens.sql` shipped: `api_tokens` + two indexes, `schema_version` → 11;
+both migration paths verified (fresh 0001→0011; upgrade 0001–0010 → 0011 with planted rows);
+`npm run db:reset:local` extended with the token table (plus a Phase 4 cleanup of its missing
+`bug_reports`/`hunt_attempts` deletes); `db:cleanup:local` gained the bounded token purge.
+Bearer resolution landed in `customer.ts` (`resolveCustomerContext` prefers Bearer when
+present, never falls back to cookie; distinct `401 token_expired`; cookie path and all
+401/403/404 semantics unchanged). `POST /api/v1/auth/token` is `201` with the one-time raw
+token, a 15–900 s server-side TTL clamp, and the shared `login:<iphash>` failure budget
+(5/IP/UTC-minute, one counter for every credential endpoint). The API Lab token helper is
+memory-only (one-time display, explicit “Clear token”, nothing persisted anywhere; honest
+copy warnings). Ten runnable bug-hunts now ship; `auth-session-expiry` is `ready` (clean),
+`auth-role-boundaries` wired to `hunt-rbac-001`, and `api-token-replay` / `api-mass-assignment`
+added and wired as approved. Verification: `npm run check` green (**837/837** across 42 files);
+`npm run build` passes; OpenAPI contract pins **35 operations** with `bearerAuth` and
+`token_expired`; client-bundle leak scan clean (all ten defect ids absent); browser probe
+**38/38** (Chrome over CDP, both themes × 375/768/1024/1440 px, token lifecycle incl. a real
+17-second expiry wait, both hunts plus MASS-001 end-to-end, reset restores clean). Production
+is untouched (Phase 4 release; D1 `schema_version` 10); nothing was pushed, merged, PR'd or
+deployed; `AGENTS.md` untouched per the plan. See PROJECT_STATE.md §11.
 
 ---
 

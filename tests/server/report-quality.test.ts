@@ -28,6 +28,9 @@ const DEFECT_IDS = [
   'PRICING-001',
   'CHECKOUT-001',
   'AUTHZ-001',
+  'AUTHN-001',
+  'RBAC-001',
+  'MASS-001',
 ]
 
 function baseReport(overrides: Partial<EvaluateReportInput> = {}): EvaluateReportInput {
@@ -106,6 +109,30 @@ const STRONG_FIXTURES: Record<string, EvaluateReportInput> = {
       '1. Sign in as the first demo customer\n2. Place an order and note the reference\n3. Sign in as a different account\n4. Open the order reference',
     expected: 'The order reference should only open for its owner.',
     actual: 'The order detail renders for the other account without any check.',
+  }),
+  'hunt-authn-001': baseReport({
+    huntId: 'hunt-authn-001',
+    title: 'Token still resolves after sign out',
+    steps:
+      '1. Sign in as a demo customer\n2. Mint a practice API token\n3. Sign out\n4. Replay the token on a protected endpoint',
+    expected: 'The token should stop resolving once the account signs out.',
+    actual: 'The replayed Bearer token still resolves the account after sign out.',
+  }),
+  'hunt-rbac-001': baseReport({
+    huntId: 'hunt-rbac-001',
+    title: 'Customer role can read staff inventory',
+    steps:
+      '1. Sign in as a customer-role demo account\n2. GET the staff inventory view\n3. Compare with the restock action for the same account',
+    expected: 'The staff inventory view should require the staff role.',
+    actual: 'The inventory list renders for the customer role without any check.',
+  }),
+  'hunt-mass-001': baseReport({
+    huntId: 'hunt-mass-001',
+    title: 'Checkout stores a client-supplied total',
+    steps:
+      '1. Open the shop\n2. Add Ridgeline Tent to the cart\n3. Place the order with an extra body field and a different figure',
+    expected: 'The order total should be computed server-side from the catalogue.',
+    actual: 'The stored order total is the figure the client supplied, not the server-computed one.',
   }),
 }
 
@@ -446,6 +473,9 @@ describe('finding (22 pts) — per-hunt curated groups', () => {
       ['hunt-pricing-001', 'Line price is multiplied by nothing'],
       ['hunt-checkout-001', 'Customer details pass with an empty value'],
       ['hunt-authz-001', 'Not yours, yet openable by reference'],
+      ['hunt-authn-001', 'API token outlives sign out'],
+      ['hunt-rbac-001', 'Wrong role reaches staff tools'],
+      ['hunt-mass-001', 'Client wrote the order total'],
     ]
     for (const [huntId, title] of synonymTitles) {
       const result = evaluateReport(findingFreeReport({ huntId, title }))

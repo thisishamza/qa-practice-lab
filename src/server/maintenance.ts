@@ -21,6 +21,8 @@
 //   again anyway).
 // - Rate-limit buckets older than two hours are deleted (they are dead
 //   letters; the current window is what matters).
+// - Expired or revoked API tokens are deleted (they would never authenticate
+//   again anyway).
 // - hunt_start_caps rows whose day is not today are deleted.
 // - inventory_adjustments and order_cancellations are NEVER deleted: they
 //   are the append-only audit trail and the exactly-once cancellation
@@ -47,6 +49,7 @@ export interface SweepCounts {
   practiceSessions: number
   huntStartCaps: number
   rateLimitBuckets: number
+  apiTokens: number
 }
 
 async function changesOf(result: { meta: { changes?: number | bigint } }): Promise<number> {
@@ -122,8 +125,20 @@ export async function sweepExpiredData(
     [cutoffWindow],
     limit,
   )
+  const apiTokens = await db
+    .prepare(
+      `DELETE FROM api_tokens
+       WHERE id IN (
+         SELECT id FROM api_tokens
+         WHERE expires_at <= ? OR revoked_at IS NOT NULL
+         LIMIT ?
+       )`,
+    )
+    .bind(nowIso, limit)
+    .run()
+    .then(changesOf)
 
-  return { customerSessions, practiceSessions, huntStartCaps, rateLimitBuckets }
+  return { customerSessions, practiceSessions, huntStartCaps, rateLimitBuckets, apiTokens }
 }
 
 export const maintenanceRoutes = new Hono<AppEnv>()

@@ -136,12 +136,12 @@ function sqlAttemptRows(migrated: MigratedD1) {
 }
 
 describe('migration 0010 (hunt_attempts, bug_reports)', () => {
-  it('applies cleanly on a fresh database (schema_version 10)', () => {
+  it('applies cleanly on a fresh database (schema_version 11)', () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('10')
+    expect(row.value).toBe('11')
 
     const tables = migrated.sqlite
       .prepare(
@@ -185,7 +185,7 @@ describe('migration 0010 (hunt_attempts, bug_reports)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('10')
+    expect(after.value).toBe('11')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite

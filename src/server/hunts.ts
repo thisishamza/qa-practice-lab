@@ -82,6 +82,30 @@ export const HUNTS: readonly HuntDefinition[] = [
     scenarioId: 'security-object-access',
     defectIds: ['AUTHZ-001'],
   },
+  {
+    id: 'hunt-authn-001',
+    title: 'Signing out does not end the token’s life',
+    summary:
+      'A practice API token keeps working after the account signs out. Find where logout falls short and report it.',
+    scenarioId: 'api-token-replay',
+    defectIds: ['AUTHN-001'],
+  },
+  {
+    id: 'hunt-rbac-001',
+    title: 'Staff tools open to the wrong role',
+    summary:
+      'A customer-role account can read the staff inventory view. Find where the role check is missing and report it.',
+    scenarioId: 'auth-role-boundaries',
+    defectIds: ['RBAC-001'],
+  },
+  {
+    id: 'hunt-mass-001',
+    title: 'Checkout trusts the client’s prices',
+    summary:
+      'The order total on the confirmation does not match the cart. Find where a client figure is believed and report it.',
+    scenarioId: 'api-mass-assignment',
+    defectIds: ['MASS-001'],
+  },
 ]
 
 /** Learner-safe shape of a hunt id path segment (`hunt-topic-001`). */

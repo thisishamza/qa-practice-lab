@@ -1,6 +1,6 @@
 // Phase 4 (P4-M2 WP1) — progressive hints & gated solution reveal.
 //
-// Covers: all 21 hint levels across the seven runnable hunts, hint
+// Covers: all hint levels across the registered runnable hunts, hint
 // progression/persistence/idempotency, attempt ownership and isolation,
 // the gated reveal (403 pre-unlock, 200 post-submit), the explicit
 // confirmed give-up path (POST …/reveal), discovery independence, reveal
@@ -189,7 +189,7 @@ function hintStrings(): string[] {
 }
 
 describe('hint registry (content, completeness, leakage)', () => {
-  it('covers exactly the seven runnable hunts with three levels each', () => {
+  it('covers exactly the registered runnable hunts with three levels each', () => {
     expect(Object.keys(HINTS).sort()).toEqual([...RUNNABLE_IDS].sort())
     expect(Object.keys(REVEALS).sort()).toEqual([...RUNNABLE_IDS].sort())
     for (const huntId of RUNNABLE_IDS) {

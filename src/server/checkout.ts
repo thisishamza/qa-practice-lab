@@ -577,6 +577,7 @@ checkoutRoutes.post('/checkout', async (c) => {
   const exactStockRejected = await isDefectActive(c, 'INVENTORY-001')
   const skipNameCheck = await isDefectActive(c, 'CHECKOUT-001')
   const pricingSnapshotDefect = await isDefectActive(c, 'PRICING-001')
+  const massAssignDefect = await isDefectActive(c, 'MASS-001')
   const body = await c.req.json().catch(() => null)
   const { details, fields } = validateDetails(body, { skipNameCheck })
   if (!details) {
@@ -658,7 +659,27 @@ checkoutRoutes.post('/checkout', async (c) => {
   }
 
   const { items, subtotalCents } = totalsFor(lines)
-  const totalCents = subtotalCents
+  // BUG-HUNT DEFECT MASS-001 (hunt-mass-001): in a bug-hunt session carrying
+  // this defect, a client-supplied `totalCents` that is a non-negative safe
+  // integer is bound as the order's total instead of the server-computed
+  // figure. The subtotal stays server-computed, so the order disagrees with
+  // its own summary. Values outside that domain (non-integers, NaN, unsafe,
+  // negative — the orders table carries a CHECK (total_cents >= 0) that this
+  // lab will not alter) are ignored exactly as clean mode ignores the
+  // field. Orders are session-scoped and cascade with the session; nothing
+  // here touches shared data.
+  const forgedRaw =
+    body !== null && typeof body === 'object' && !Array.isArray(body)
+      ? (body as Record<string, unknown>).totalCents
+      : undefined
+  const forgedTotalCents =
+    massAssignDefect &&
+    typeof forgedRaw === 'number' &&
+    Number.isSafeInteger(forgedRaw) &&
+    forgedRaw >= 0
+      ? forgedRaw
+      : null
+  const totalCents = forgedTotalCents ?? subtotalCents
 
   if (details.paymentSimulation === 'declined') {
     // Deterministic simulated decline: nothing is ordered, stock stays

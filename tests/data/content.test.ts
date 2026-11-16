@@ -66,7 +66,7 @@ describe('learning tracks', () => {
 describe('bug-hunt curriculum metadata (Phase 4, WP1)', () => {
   const wired = scenarios.filter((scenario) => scenario.huntId)
 
-  it('enriches exactly the seven wired hunt scenarios and nothing else', () => {
+  it('enriches exactly the wired hunt scenarios and nothing else', () => {
     expect(wired.length).toBe(HUNTS.length)
     for (const scenario of scenarios) {
       if (scenario.huntId) {
@@ -145,8 +145,8 @@ describe('scenarios', () => {
     }
   })
 
-  it('keeps unwired scenarios non-runnable (pagination exercise and wired hunts excepted)', () => {
-    const runnableClean = new Set(['api-catalog-pagination'])
+  it('keeps unwired scenarios non-runnable (ready clean exercises excepted)', () => {
+    const runnableClean = new Set(['api-catalog-pagination', 'auth-session-expiry'])
     for (const scenario of scenarios) {
       if (!scenario.huntId && !runnableClean.has(scenario.id)) {
         expect(scenario.runnable).toBe(false)

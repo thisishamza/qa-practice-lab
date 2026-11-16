@@ -93,13 +93,13 @@ describe('completionForEntry', () => {
 describe('getRecommendedPath', () => {
   const items = getRecommendedPath()
 
-  it('returns exactly the seven wired hunts in the approved order', () => {
+  it('returns exactly the wired hunts in the approved order', () => {
     expect(items.map((item) => item.scenario.id)).toEqual(recommendedHuntScenarioIds)
-    expect(items).toHaveLength(7)
+    expect(items).toHaveLength(10)
   })
 
-  it('numbers positions 1–7 in sequence', () => {
-    expect(items.map((item) => item.position)).toEqual([1, 2, 3, 4, 5, 6, 7])
+  it('numbers positions 1–10 in sequence', () => {
+    expect(items.map((item) => item.position)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
   })
 
   it('attaches curriculum metadata sourced from the shared registry', () => {

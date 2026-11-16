@@ -140,9 +140,9 @@ const EXACT_STOCK_SLUG = 'ember-led-lantern'
 const EXACT_STOCK = 4
 
 describe('registries (code, not data) — P3-M8 set', () => {
-  it('registers seven hunts, one per defect, each wired to a scenario', () => {
-    expect(HUNTS.length).toBe(7)
-    expect(DEFECTS.length).toBe(7)
+  it('registers ten hunts, one per defect, each wired to a scenario', () => {
+    expect(HUNTS.length).toBe(10)
+    expect(DEFECTS.length).toBe(10)
     const defectIds = new Set(DEFECTS.map((defect) => defect.id))
     for (const hunt of HUNTS) {
       expect(hunt.defectIds.length).toBe(1)
@@ -167,7 +167,7 @@ describe('GET /api/v1/practice/hunts', () => {
     const response = await app.request('/api/v1/practice/hunts', {}, { DB: migrated.db })
     expect(response.status).toBe(200)
     const body = (await response.json()) as { data: Array<Record<string, unknown>> }
-    expect(body.data.length).toBe(7)
+    expect(body.data.length).toBe(10)
     for (const entry of body.data) {
       expect(Object.keys(entry).sort()).toEqual(['curriculum', 'id', 'scenarioId', 'summary', 'title'])
       expect(typeof entry.scenarioId).toBe('string')
@@ -194,7 +194,7 @@ describe('GET /api/v1/practice/hunts', () => {
         }
       }>
     }
-    expect(body.data.length).toBe(7)
+    expect(body.data.length).toBe(10)
     for (const entry of body.data) {
       expect(entry.curriculum).toBeDefined()
       expect(typeof entry.curriculum.skillArea).toBe('string')
@@ -669,5 +669,192 @@ describe('signed-in customer compatibility in bug-hunt mode', () => {
     )
     const list = (await history.json()) as { data: Array<{ reference: string }> }
     expect(list.data.map((order) => order.reference)).toEqual([reference])
+  })
+})
+
+describe('RBAC-001 — staff inventory read open to the customer role', () => {
+  it('clean mode refuses the customer role on the list (cookie and Bearer)', async () => {
+    const migrated = createMigratedD1()
+    const amara = await signIn(migrated, 'amara.okafor@example.com', 'demo-amara-1001')
+    const cookie = bothCookies(amara.practice, amara.customer)
+
+    const viaCookie = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie } },
+      { DB: migrated.db },
+    )
+    expect(viaCookie.status).toBe(403)
+    expect(((await viaCookie.json()) as { error: string }).error).toBe('staff_required')
+
+    const mint = await app.request(
+      '/api/v1/auth/token',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'amara.okafor@example.com', password: 'demo-amara-1001' }),
+      },
+      { DB: migrated.db },
+    )
+    const { token: bearer } = (await mint.json()) as { token: string }
+    const viaBearer = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { authorization: `Bearer ${bearer}` } },
+      { DB: migrated.db },
+    )
+    expect(viaBearer.status).toBe(403)
+  })
+
+  it('bug-hunt mode serves the list to the customer role; PATCH stays 403; reset restores 403', async () => {
+    const migrated = createMigratedD1()
+    const amara = await signIn(migrated, 'amara.okafor@example.com', 'demo-amara-1001')
+    const cookie = bothCookies(amara.practice, amara.customer)
+    const hunt = await startHunt(migrated, 'hunt-rbac-001', { token: amara.practice! })
+    expect(hunt.status).toBe(200)
+
+    const list = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie } },
+      { DB: migrated.db },
+    )
+    expect(list.status).toBe(200)
+    const body = (await list.json()) as { data: Array<Record<string, unknown>> }
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.length).toBeGreaterThan(0)
+
+    // PATCH remains staff-only in both modes.
+    const patch = await app.request(
+      '/api/v1/admin/inventory/1',
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ quantity: 1 }),
+      },
+      { DB: migrated.db },
+    )
+    expect(patch.status).toBe(403)
+    expect(((await patch.json()) as { error: string }).error).toBe('staff_required')
+
+    await resetSession(migrated, amara.practice!)
+    const afterReset = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie } },
+      { DB: migrated.db },
+    )
+    expect(afterReset.status).toBe(403)
+  })
+
+  it('a suspended account stays 403 in the hunt; staff and bystanders behave per role', async () => {
+    const migrated = createMigratedD1()
+    const amara = await signIn(migrated, 'amara.okafor@example.com', 'demo-amara-1001')
+    await startHunt(migrated, 'hunt-rbac-001', { token: amara.practice! })
+
+    // Mid-session suspension: an account suspended after sign-in is never
+    // served, even with the hunt active.
+    const amaraSuspended = await signIn(migrated, 'amara.okafor@example.com', 'demo-amara-1001')
+    await startHunt(migrated, 'hunt-rbac-001', { token: amaraSuspended.practice! })
+    migrated.sqlite
+      .prepare("UPDATE customers SET status = 'suspended' WHERE email = ?")
+      .run('amara.okafor@example.com')
+    const suspendedList = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie: bothCookies(amaraSuspended.practice, amaraSuspended.customer) } },
+      { DB: migrated.db },
+    )
+    expect(suspendedList.status).toBe(403)
+    expect(((await suspendedList.json()) as { error: string }).error).toBe('account_suspended')
+    migrated.sqlite
+      .prepare("UPDATE customers SET status = 'active' WHERE email = ?")
+      .run('amara.okafor@example.com')
+
+    // Staff role: unaffected in both modes.
+    const rowan = await signIn(migrated, 'rowan.ellison@example.com', 'demo-rowan-9001')
+    const rowanList = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie: bothCookies(rowan.practice, rowan.customer) } },
+      { DB: migrated.db },
+    )
+    expect(rowanList.status).toBe(200)
+
+    // Bystander customer (no hunt): unaffected.
+    const ben = await signIn(migrated, 'ben.whitmore@example.net', 'demo-ben-1002')
+    const benList = await app.request(
+      '/api/v1/admin/inventory',
+      { headers: { cookie: bothCookies(ben.practice, ben.customer) } },
+      { DB: migrated.db },
+    )
+    expect(benList.status).toBe(403)
+  })
+})
+
+describe('MASS-001 — checkout honours a client-supplied totalCents', () => {
+  it('clean mode ignores the field; the stored total is the server-computed figure', async () => {
+    const migrated = createMigratedD1()
+    const added = await addToCart(migrated, 'sequoia-sleeping-bag', undefined, 2)
+    expect(added.response.status).toBe(200)
+    const { response, body } = await checkout(migrated, added.token!, { totalCents: 1 })
+    expect(response.status).toBe(201)
+    expect(body.totalCents).toBe(body.subtotalCents)
+    expect(body.totalCents).not.toBe(1)
+  })
+
+  it('bug-hunt mode stores the forged total; the subtotal stays server-computed; reset restores', async () => {
+    const migrated = createMigratedD1()
+    const hunt = await startHunt(migrated, 'hunt-mass-001')
+    const token = extractSessionCookie(hunt.headers.get('set-cookie'))!
+    await addToCart(migrated, 'sequoia-sleeping-bag', token, 2)
+    const { response, body } = await checkout(migrated, token, { totalCents: 1 })
+    expect(response.status).toBe(201)
+    expect(body.totalCents).toBe(1)
+    // The subtotal and the line totals remain server-computed.
+    expect(body.subtotalCents).not.toBe(1)
+    const items = body.items as Array<{ unitPriceCents: number; quantity: number; lineTotalCents: number }>
+    expect(items[0]?.lineTotalCents).toBe(items[0]!.unitPriceCents * items[0]!.quantity)
+
+    // The confirmation endpoint disagrees with the cart summary: 1 vs server figure.
+    const reference = body.reference as string
+    const detail = await app.request(
+      `/api/v1/orders/${reference}`,
+      { headers: sessionCookieHeader(token) },
+      { DB: migrated.db },
+    )
+    expect(detail.status).toBe(200)
+    const detailBody = (await detail.json()) as { totalCents: number; subtotalCents: number }
+    expect(detailBody.totalCents).toBe(1)
+    expect(detailBody.subtotalCents).toBe(body.subtotalCents)
+
+    // Reset: the field is ignored again.
+    await resetSession(migrated, token)
+    await addToCart(migrated, 'traverse-camp-kitchen-set', token, 1)
+    const retry = await checkout(migrated, token, { totalCents: 1, customerEmail: 'ada@example.net' })
+    expect(retry.response.status).toBe(201)
+    expect(retry.body.totalCents).not.toBe(1)
+    expect(retry.body.totalCents).toBe(retry.body.subtotalCents)
+  })
+
+  it('forged totals never escape the hunting session and stay inside the safe-integer domain', async () => {
+    const migrated = createMigratedD1()
+    const forged = await startHunt(migrated, 'hunt-mass-001')
+    const forgedToken = extractSessionCookie(forged.headers.get('set-cookie'))!
+    await addToCart(migrated, 'sequoia-sleeping-bag', forgedToken, 1)
+
+    // Out-of-domain values are ignored even inside the hunt (documented:
+    // the orders table carries CHECK (total_cents >= 0)). Each approved
+    // checkout empties the cart, so re-add before every attempt.
+    let attempt = 0
+    for (const bogus of [-5, 2.5, 1e20, '1', null, Number.NaN] as const) {
+      attempt += 1
+      await addToCart(migrated, 'sequoia-sleeping-bag', forgedToken, 1)
+      const { response, body } = await checkout(migrated, forgedToken, {
+        totalCents: bogus,
+        customerEmail: `ada-mass-${attempt}@example.com`,
+      })
+      expect(response.status, `totalCents=${String(bogus)}`).toBe(201)
+      expect(body.totalCents).toBe(body.subtotalCents)
+    }
+
+    // A bystander session in clean mode ignores the same field.
+    const added = await addToCart(migrated, 'sequoia-sleeping-bag', undefined, 1)
+    const clean = await checkout(migrated, added.token!, { totalCents: 1 })
+    expect(clean.body.totalCents).toBe(clean.body.subtotalCents)
   })
 })

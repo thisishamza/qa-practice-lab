@@ -88,7 +88,7 @@ const NAME_TERM = 'trekking'
 
 describe('hunt and defect registries (code, not data)', () => {
   it('ships the full P3-M8 hunt set whose defects all exist in the defect registry', () => {
-    expect(HUNTS.length).toBe(7)
+    expect(HUNTS.length).toBe(10)
     expect(new Set(HUNTS.map((hunt) => hunt.id)).size).toBe(HUNTS.length)
     for (const hunt of HUNTS) {
       expect(hunt.id).toMatch(/^[a-z0-9][a-z0-9-]{2,63}$/)
@@ -108,6 +108,9 @@ describe('hunt and defect registries (code, not data)', () => {
       'INVENTORY-001',
       'PRICING-001',
       'CHECKOUT-001',
+      'AUTHN-001',
+      'RBAC-001',
+      'MASS-001',
       'AUTHZ-001',
     ])
     expect(new Set(DEFECTS.map((defect) => defect.id)).size).toBe(DEFECTS.length)

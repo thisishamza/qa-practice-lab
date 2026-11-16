@@ -88,6 +88,30 @@ export const HINTS: Record<string, HuntHints> = {
     level3:
       'Decide what the unowned-reference response proves: whether the second account sees order contents it should not, and whether unknown references are handled identically. Keep the probe to those three cases and capture the exact responses — that is enough for a complete, honest report.',
   },
+  'hunt-authn-001': {
+    level1:
+      'Sign in as a synthetic demo account, mint a practice API token from the API Lab, and make one protected request with it so you know the token works. Then sign out and try the exact same request again — and think about what “signing out” actually changed.',
+    level2:
+      'Work through the token lifecycle one step at a time: mint (the response is shown once), use successfully, sign out, replay. After signing out, compare what happens with the cookie session versus with the API token — both are credentials for the same account, and they may not be treated identically.',
+    level3:
+      'Narrow it to the step that lied: does signing out invalidate everything it issued, or only the browser session? Replay the token after sign-out and record the exact status and body. If it still resolves the account, check whether other protected surfaces behave the same before you write the report.',
+  },
+  'hunt-rbac-001': {
+    level1:
+      'Look at the staff-only inventory view while signed in as a customer-role synthetic account and again as the staff synthetic account. Note what each can see — and remember the shop has both a list view and a restock action, which may not be governed identically.',
+    level2:
+      'Use the API Lab to replay the inventory list request as the customer-role account: first with the cookie, then with an API token for the same account if you have one. Then attempt the restock (PATCH) action as the same account and compare the two outcomes carefully.',
+    level3:
+      'Isolate which half is enforced and which half is not: read versus write, for the same non-staff account, holding every other variable constant. Capture both request-response pairs — the one that is allowed and the one that is refused — and state precisely which role boundary is missing.',
+  },
+  'hunt-mass-001': {
+    level1:
+      'Place an order and follow the same figures from the cart, to the checkout summary, to the order confirmation and its order-detail request. The contract says the client only sends details and a payment outcome — start by checking whether everything on the order actually came from the server.',
+    level2:
+      'Replay the checkout request from the API Lab with an edited body: keep the valid details and payment outcome, but add an extra field claiming a different order total. Compare the confirmation you receive with the checkout summary and with the sum of the line totals.',
+    level3:
+      'Confirm the boundary: does the acceptance depend on the value’s type or sign, and does the subtotal behave the same way, or only the final total? Capture the exact request you sent and the figures on the resulting order — your report should show which number the server invented and which it believed.',
+  },
 }
 
 /** Server-only lookup. Unknown hunt ids resolve to null. */
