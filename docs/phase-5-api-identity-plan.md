@@ -1105,3 +1105,34 @@ from `main` (recommended: `feat/phase-5-m1-foundations`), following the §6 sess
 workflow — read PROJECT_STATE and this plan, verify branch/HEAD/tree, work the P5-M1
 checklist end-to-end including verification and the `PROJECT_STATE.md` handoff, commit as
 one focused commit, stop at the milestone boundary. **Do not start P5-M1 in this session.**
+
+## 16. P5-M3 outcome (2026-11-16)
+
+**P5-M3 is complete.** The full Phase 5 surface was re-reviewed as one coherent deliverable;
+the consolidated verification ran green (837/837 tests, 42 files; `npm run build` clean; local
+`schema_version` 11 on both migration paths; leak scan clean; 67/67 browser checks over system
+Chrome, both themes, 375/768/1024/1440 px; zero unexpected console errors). Three defects were
+found and fixed, all learner-facing **copy/contract** drift, not logic:
+
+1. `public/openapi.json` — `info.description` claimed “No Bearer tokens exist in this phase”,
+   contradicting the `bearerAuth` scheme, the token endpoint and the 401 `token_expired`
+   vocabulary documented in the same document. Fixed.
+2. `src/features/api-reference/ApiReferenceView.tsx` — the “How to use this reference” callout
+   repeated the same stale “there are no Bearer tokens in this phase” sentence. Fixed.
+3. `README.md` — the production-status header described P5-M2 as “on the unmerged branch”
+   (it was merged via PR #7, `f7bf1c3`) and omitted P5-M3. Fixed.
+
+No critical or high-severity security defect was found. Token lifecycle, Bearer precedence,
+bug-hunt isolation, MASS-001 constraints and API Lab same-origin enforcement verified clean.
+The exit audit with all eight §13 criteria verdicts (all PASS) is
+**`docs/phase-5-exit-audit.md`**; the release checklist lives in §14 of that document and is
+deliberately **not executed** — no push, PR, merge, production D1 migration or deploy happened.
+
+**Deviations from this plan (justified):** none beyond the three copy/contract fixes above.
+The P5-M3 checklist was followed as written; two-person review of `customer.ts` was not possible
+in a single-session milestone and is recorded as a recommendation for the maintainer's release
+gate (audit §13 item 11). Production D1 remains `schema_version` 10; nothing of Phase 5 is deployed.
+
+**Exact state:** `feat/phase-5-m3-exit-audit` (branch cut from `main` @ `3b5c090`) carrying one
+focused P5-M3 commit; Phase 5 awaits explicit maintainer approval for the release step (§14 of
+the audit). **Do not push, merge, migrate production or deploy without explicit instruction.**
