@@ -1,0 +1,3899 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "QA Practice Lab — Meridian Outfitters Practice API",
+    "version": "1.0.0",
+    "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`). No Bearer tokens exist in this phase.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min) and practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day).\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.",
+    "contact": {
+      "name": "QA Practice Lab",
+      "url": "/about"
+    },
+    "license": {
+      "name": "Synthetic training environment — not a production API"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same-origin (relative). Requests always target the same origin that served this document."
+    }
+  ],
+  "tags": [
+    {
+      "name": "catalogue",
+      "description": "Read-only product catalogue and categories."
+    },
+    {
+      "name": "cart",
+      "description": "Session-scoped practice cart. Resolved from the mpl_session cookie."
+    },
+    {
+      "name": "checkout",
+      "description": "Checkout summary and simulated order placement (atomic, idempotent). Payment is a deterministic simulation; nothing is really paid for or shipped."
+    },
+    {
+      "name": "orders",
+      "description": "Session-scoped order history, immutable order confirmations and cancellation."
+    },
+    {
+      "name": "auth",
+      "description": "Synthetic demo sign-in, sign-out and the safe demo-account directory. Not a production identity system."
+    },
+    {
+      "name": "account",
+      "description": "Protected customer resources: own profile and own order history."
+    },
+    {
+      "name": "admin",
+      "description": "Staff-only surfaces (inventory management). Exercise requires the synthetic staff demo account."
+    },
+    {
+      "name": "practice",
+      "description": "Practice-session engine, bug-hunt attempts, structured bug reports, hints, gated reveals and learner progress."
+    }
+  ],
+  "paths": {
+    "/api/v1/products": {
+      "get": {
+        "operationId": "listProducts",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "List products",
+        "description": "Page-based catalogue listing. Out-of-range `page`/`perPage` values are clamped, not rejected; unknown `sort` values fall back to `newest`; an unknown `category` slug simply matches zero rows. `q` matches name, description and category name case-insensitively; LIKE wildcards are treated literally.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "1-based page number. Clamped to ≥ 1 and ≤ 10000; non-integer values fall back to 1.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Clamped to 1–48; non-integer values fall back to 12.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 48,
+              "default": 12
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Category slug filter (lower-cased, ≤ 64 chars). An unknown slug yields an empty result set with `total: 0`, not an error.",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Sort order. Unknown values fall back to `newest`.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "name",
+                "price_asc",
+                "price_desc"
+              ],
+              "default": "newest"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Search text (≤ 80 chars after trimming). Matches product name, description and category name; `%`, `_` and `\\` are matched literally.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of products with server-computed pagination metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{slug}": {
+      "get": {
+        "operationId": "getProduct",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "Get one product",
+        "description": "Case-insensitive slug lookup over active products. The slug must match `^[a-z0-9-]{1,80}$` after lower-casing; anything else answers 404, like a well-formed slug that does not exist.",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "description": "Product slug, e.g. `canvas-tote-bag`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,80}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The product.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown or malformed slug. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "tags": [
+          "catalogue"
+        ],
+        "summary": "List categories",
+        "description": "All catalogue categories in display order.",
+        "responses": {
+          "200": {
+            "description": "The full category list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart": {
+      "get": {
+        "operationId": "getCart",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Read the current cart",
+        "description": "Returns the cart belonging to the caller's `mpl_session` cookie. An anonymous or unknown browser answers an empty cart (`itemCount: 0`) and clears any stale cookie. Prices, stock and totals are always recomputed server-side from the catalogue and inventory at read time.",
+        "responses": {
+          "200": {
+            "description": "The current cart (possibly empty).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearCart",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Remove every line from the cart",
+        "description": "Deletes all lines in the caller's cart. Idempotent: an empty or missing cart answers the same empty-cart payload.",
+        "responses": {
+          "200": {
+            "description": "The (now empty) cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items": {
+      "post": {
+        "operationId": "addCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Add a product to the cart",
+        "description": "Adds `quantity` units of a product by slug. Prices and totals are recomputed server-side; the client sends only `{ slug, quantity }`. Mints the `mpl_session` cookie on first use (the first cart mutation creates the anonymous practice session). Lines are only accepted up to available stock.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartItemAddRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body, missing/invalid slug, or quantity outside 1–99 (integer). Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No active product with that slug. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Stock guard rejected the add. Error codes: `out_of_stock` (product has none left) or `insufficient_stock` (would exceed remaining/line cap; the response carries `availableStock`, `maxQuantity` and, where relevant, `currentQuantity`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientStockError"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items/{id}": {
+      "patch": {
+        "operationId": "updateCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Set a line's quantity",
+        "description": "Replaces the quantity of one cart line. `id` is the line's numeric id as returned by `GET /api/v1/cart`; it must be a positive integer. Quantity must be an integer 1–99 and within available stock.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cart line id (positive integer, no leading zero).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartItemUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed line id, body, or quantity. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Quantity exceeds fulfillable stock or the line cap. Error code: `insufficient_stock`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientStockError"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCartItem",
+        "tags": [
+          "cart"
+        ],
+        "summary": "Remove one line from the cart",
+        "description": "Deletes a single line by id. Idempotent only in the sense that a missing line answers 404; it is not silently ignored.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Cart line id (positive integer, no leading zero).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The updated cart.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed line id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line in the caller's cart (or no session). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/checkout": {
+      "get": {
+        "operationId": "getCheckoutSummary",
+        "tags": [
+          "checkout"
+        ],
+        "summary": "Read the checkout summary",
+        "description": "Cart-derived checkout summary: the same lines as `GET /api/v1/cart` plus a `checkoutable` flag. `checkoutable` is true only when the cart is non-empty and every line is fulfillable. An anonymous browser answers an empty, non-checkoutable summary.",
+        "responses": {
+          "200": {
+            "description": "The checkout summary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSummary"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "placeOrder",
+        "tags": [
+          "checkout"
+        ],
+        "summary": "Place a simulated order",
+        "description": "Places the order for the caller's cart. Payment is a deterministic simulation (`approved` places the order, `declined` places nothing); nothing is really paid for or shipped. The order is computed server-side from the catalogue and inventory — the client never dictates prices or totals. Placement is atomic (all-or-nothing) and idempotent: send an `Idempotency-Key` header (or `idempotencyKey` in the body) matching `^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$`; a replay with the same key and the same payload re-answers the recorded outcome (HTTP 201, `Idempotent-Replay: true` response header). Reusing a key for a different payload answers 409. Successful placements return the immutable order confirmation with status 201.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Client-generated idempotency key. 8–128 chars: letters, digits, dashes, underscores; must start with a letter or digit. One is generated server-side when absent.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order placed (or the recorded outcome replayed). The body is the immutable order confirmation. When this response replays a previous submission, the `Idempotent-Replay: true` header is set.",
+            "headers": {
+              "Idempotent-Replay": {
+                "description": "Set to `true` only when this response replays a previously recorded idempotency outcome.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (per-field `fields` map included), or the idempotency key is malformed. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorWithFields"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The idempotency key was already used for a different payload. Error code: `idempotency_conflict`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The order cannot be placed. Error codes: `empty_cart` (nothing to buy / no live session), `payment_declined` (the simulated decline; cart and stock untouched), `cart_unavailable` (one or more lines cannot be fulfilled; carries a `lines` array of `{ slug, name, reason, availableStock }`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CartUnavailableError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many order attempts from this network (30 placements/IP/minute, counted including invalid payloads). Error code: `rate_limited`. `Retry-After` header included. The shared per-IP mutation budget also applies.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the oldest counted attempt ages out of the fixed window.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "tags": [
+          "orders"
+        ],
+        "summary": "List the session's orders",
+        "description": "The caller's order history, newest first, at most 50 entries. Scoped to the practice session; a signed-in customer's account history lives at `GET /api/v1/account/orders`. An anonymous browser answers an empty list.",
+        "responses": {
+          "200": {
+            "description": "The session's orders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{reference}": {
+      "get": {
+        "operationId": "getOrder",
+        "tags": [
+          "orders"
+        ],
+        "summary": "Get an order confirmation",
+        "description": "Immutable order snapshot, readable only by the practice session that placed it (or, when signed in, the customer account that owns it — see `GET /api/v1/account/orders/{reference}`). Unknown references, foreign references and malformed references answer the identical envelope where applicable: existence is never revealed.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
+            "schema": {
+              "type": "string",
+              "pattern": "^ORD-[0-9A-F]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order confirmation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed reference. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{reference}/cancel": {
+      "post": {
+        "operationId": "cancelOrder",
+        "tags": [
+          "orders"
+        ],
+        "summary": "Cancel a placed order",
+        "description": "Transitions `placed → cancelled` exactly once and restores stock exactly once, atomically. Safe to retry: a repeat call replays the already-cancelled order (HTTP 200) without restoring stock twice. Authorization mirrors the read policy: the practice session that placed the order, or the signed-in customer that owns it. Unknown, foreign and unauthorised references alike answer 404. Cancelling mints nothing and accepts no body.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
+            "schema": {
+              "type": "string",
+              "pattern": "^ORD-[0-9A-F]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cancelled (or already-cancelled) order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed reference. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, foreign or unauthorised reference. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/accounts": {
+      "get": {
+        "operationId": "listDemoAccounts",
+        "tags": [
+          "auth"
+        ],
+        "summary": "List the synthetic demo accounts",
+        "description": "Safe directory of the fictional training accounts (name, email, role, status) for the sign-in screen. Never carries password material. The demo passwords are documented in the lab README; they are not secrets and are only useful against this synthetic environment.",
+        "responses": {
+          "200": {
+            "description": "The demo accounts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoAccountListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign in a synthetic demo account",
+        "description": "Authenticates a synthetic demo account. On success the browser receives (or keeps) a `mpl_session` practice-session cookie and a fresh `mpl_customer` customer-session cookie (8h TTL, bound to the practice session). Unknown emails and wrong passwords answer the identical 401 `invalid_credentials` envelope; the unknown-email path still performs a password verification against a dummy hash so timing does not enumerate accounts. Five failed attempts per IP per UTC minute lock further attempts with 429 `login_rate_limited` (a successful sign-in clears the budget). Suspended accounts answer 403 `account_suspended`. This is a training simulation — there is no registration, password reset, MFA or external identity provider.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in. Sets/refreshes the `mpl_session` and `mpl_customer` cookies (HttpOnly, SameSite=Strict, Path=/, `Secure` over HTTPS).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed email/password. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account exists but is suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Five failed attempts from this IP in the current UTC minute. Error code: `login_rate_limited`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the window resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out",
+        "description": "Deletes the caller's `mpl_customer` customer session (if any) and clears the cookie. Idempotent: a guest answers `{ \"ok\": true }` too. The anonymous practice session (`mpl_session`) is unaffected.",
+        "responses": {
+          "200": {
+            "description": "Signed out (or was never signed in).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "getAuthMe",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Read the signed-in customer",
+        "description": "The signed-in synthetic customer's profile. Identical payload to `GET /api/v1/account`. Requires the `mpl_customer` cookie; a guest answers 401, a suspended account answers 403.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The signed-in customer's profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired/bound to another practice session). Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account": {
+      "get": {
+        "operationId": "getAccount",
+        "tags": [
+          "account"
+        ],
+        "summary": "Read the signed-in customer's profile",
+        "description": "Alias of `GET /api/v1/auth/me`: the full protected profile for the signed-in synthetic customer. Identical success and error behaviour.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The signed-in customer's profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in. Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/orders": {
+      "get": {
+        "operationId": "listAccountOrders",
+        "tags": [
+          "account"
+        ],
+        "summary": "List the account's orders",
+        "description": "Order history for the signed-in synthetic customer — every practice session, newest first, at most 50 entries. Distinct from the session-scoped `GET /api/v1/orders`. Requires the `mpl_customer` cookie.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The account's orders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOrderListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in. Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/orders/{reference}": {
+      "get": {
+        "operationId": "getAccountOrder",
+        "tags": [
+          "account"
+        ],
+        "summary": "Get one of the account's orders",
+        "description": "Immutable order confirmation owned by the signed-in customer. Requires both the reference and account ownership; unknown, foreign and not-owned references answer the identical 404 `not_found` envelope. Requires the `mpl_customer` cookie.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "description": "Order reference: `ORD-` followed by 16 upper-case hex characters.",
+            "schema": {
+              "type": "string",
+              "pattern": "^ORD-[0-9A-F]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order confirmation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed reference. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in. Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but the account was suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, foreign or not-owned reference. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/inventory": {
+      "get": {
+        "operationId": "listAdminInventory",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read current stock (staff only)",
+        "description": "Full inventory view for the staff demo account: every product (including discontinued ones) with quantity, low-stock threshold, price and stock status. Requires the `mpl_customer` cookie with the synthetic **staff** role; a guest answers 401 `unauthorized`, a suspended staff account 403 `account_suspended`, and a non-staff active account 403 `staff_required`. Authorization is decided solely from the stored customer row.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The full inventory list and its row count.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminInventoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but not an active staff account. Error codes: `account_suspended`, `staff_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/inventory/{productId}": {
+      "patch": {
+        "operationId": "restockInventory",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Restock a product (staff only)",
+        "description": "Adds units to a product's stock. Staff-only, exactly as the read surface. The adjustment is recorded in an append-only audit trail; the stock update and the audit row commit atomically. The total per product may never exceed 1,000,000 units (`stock_limit_exceeded`). Discontinued (inactive) products may still be restocked.",
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Numeric product id (1–10 digits).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,10}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The restocked inventory row and the recorded adjustment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRestockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed product id, body or quantity/note. Error code: `invalid_request` (per-field `fields` map included).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorWithFields"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but not an active staff account. Error codes: `account_suspended`, `staff_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No product with that id. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The restock would breach the 1,000,000-unit per-product ceiling. Error code: `stock_limit_exceeded` (carries `maxQuantity` and `currentQuantity`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockLimitExceededError"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts": {
+      "get": {
+        "operationId": "listPracticeHunts",
+        "tags": [
+          "practice"
+        ],
+        "summary": "List the registered practice hunts",
+        "description": "Learner-safe list of the bug-hunt exercises available in this deployment: hunt id, title, summary, the wired catalogue scenario id and curriculum metadata. Never carries internal identifiers, hint content or reveal content. Read-only; no session required.",
+        "responses": {
+          "200": {
+            "description": "The registered hunts, in registry order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HuntListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/session": {
+      "get": {
+        "operationId": "getPracticeSession",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Read the current practice mode",
+        "description": "Whether the caller's practice session is in `clean` or `bug_hunt` mode, and (in bug-hunt mode) the learner-safe hunt summary. An anonymous or unknown browser answers clean mode. Read-only; mints nothing.",
+        "responses": {
+          "200": {
+            "description": "The current practice session state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts/{huntId}/start": {
+      "post": {
+        "operationId": "startPracticeHunt",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Enter bug-hunt mode for a hunt",
+        "description": "Re-stamps the caller's live practice session into bug-hunt mode for the given hunt (restarting the same hunt is idempotent and does not consume the daily cap). Takes no body. Unknown hunt ids answer 404. Hunt starts are capped at 20 per IP per UTC day (`hunt_start_cap_reached`); the cap is an abuse control, not a security boundary. Also ensures an in-progress attempt exists for the (session, hunt) pair.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bug-hunt mode is now active for the caller's session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed hunt id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The daily hunt-start cap for this IP was reached. Error code: `hunt_start_cap_reached`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the UTC day rolls over.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/session/reset": {
+      "post": {
+        "operationId": "resetPracticeSession",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Return the session to clean mode",
+        "description": "Non-destructively re-stamps the caller's live session to clean mode (cart, orders and the customer binding are preserved). Mints a fresh clean session when the browser has none. Takes no body. Never counts against the hunt-start cap.",
+        "responses": {
+          "200": {
+            "description": "Clean mode is now active.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeSessionResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts/{huntId}/attempt": {
+      "get": {
+        "operationId": "getHuntAttempt",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Read the caller's attempt for a hunt",
+        "description": "The caller's current attempt state for one hunt: status, hints used, best evaluated score, discovery flag and first submission time. A caller with no attempt answers `{ status: \"none\", hintsUsed: 0, bestQualityScore: null, discovered: false, submittedAt: null }` (200, never 404). Unknown hunt ids answer 404. Never mints an attempt.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The attempt view (or the `none` view).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed hunt id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/attempts": {
+      "get": {
+        "operationId": "listAttempts",
+        "tags": [
+          "practice"
+        ],
+        "summary": "List the caller's attempt history",
+        "description": "Bounded history (≤ 50, newest first) of the caller's attempts: session-scoped rows plus customer-bound rows when signed in. An anonymous or unknown browser answers an empty list. Never exposes internal identifiers.",
+        "responses": {
+          "200": {
+            "description": "The attempt history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts/{huntId}/report": {
+      "post": {
+        "operationId": "submitBugReport",
+        "tags": [
+          "practice"
+        ],
+        "summary": "File a structured bug report",
+        "description": "Persists the structured report, evaluates it deterministically (rule-based, no AI — the client can never influence the score), and returns the stored report with the evaluation. The response carries no internal identifiers. Requires a live practice session. Submissions are capped at 30 per IP per UTC minute; over the cap the answer is 429 `rate_limited` (counted before the body is parsed). The `report:<iphash>` budget and the shared per-IP mutation budget both apply.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BugReportSubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The report was stored and evaluated. The body contains the learner-safe report view and the deterministic evaluation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSubmissionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (per-field `fields` map included). Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorWithFields"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many report submissions from this network (30/minute). Error code: `rate_limited`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the window resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts/{huntId}/hints": {
+      "post": {
+        "operationId": "unlockHuntHint",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Unlock one progressive hint",
+        "description": "Unlocks hint level 1, 2 or 3 for the caller's attempt at the hunt. Level N requires level N−1 already unlocked (`hint_level_locked`); levels cannot be skipped. Re-requesting an already-unlocked level is idempotent (200, no double count). No new level unlocks after the attempt is complete (`hint_attempt_completed`). Requires a live practice session. The hint text is served only for the requested level.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HintRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The unlocked hint and the number of distinct levels used on the attempt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HintResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`level` is not exactly 1, 2 or 3. Error code: `invalid_level` (malformed hunt id answers `invalid_request` instead).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The hint cannot be unlocked. Error codes: `hint_level_locked` (a lower level is missing) or `hint_attempt_completed` (the attempt is no longer in progress).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/hunts/{huntId}/reveal": {
+      "get": {
+        "operationId": "getHuntReveal",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Read the gated solution (if unlocked)",
+        "description": "The gated solution for the caller's attempt at the hunt. Served only when the attempt's report has been submitted or the attempt was explicitly revealed (confirmed give-up); otherwise 403 `reveal_locked`. Never mints an attempt. Hints never unlock the reveal; a score never unlocks the reveal.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The solution reveal plus the learner-safe attempt snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed hunt id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not yet eligible: no submitted report and no confirmed give-up (this also covers having no attempt, and being a guest). Error code: `reveal_locked`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "revealHuntSolution",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Explicitly give up and reveal the solution",
+        "description": "The confirmed give-up path. Body must be exactly `{ \"confirm\": true }`; anything else answers 400. Atomically marks the caller's in-progress attempt `revealed` (a submitted attempt stays `submitted`) and returns the same payload as the GET. Idempotent: repeating preserves prior state. Never awards discovery; submissions, best score and discovery status are preserved untouched.",
+        "parameters": [
+          {
+            "name": "huntId",
+            "in": "path",
+            "required": true,
+            "description": "Hunt id, e.g. `hunt-catalogue-001`. Must match `^[a-z0-9][a-z0-9-]{2,63}$`.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevealConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The solution reveal plus the learner-safe attempt snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`confirm` is not exactly `true` (or the hunt id is malformed). Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such hunt. Error code: `hunt_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
+    "/api/v1/practice/progress": {
+      "get": {
+        "operationId": "getProgress",
+        "tags": [
+          "practice"
+        ],
+        "summary": "Read the caller's learning progress",
+        "description": "Aggregate over the caller's attempts and submitted reports: per-wired-hunt status/discovery/best score, the 10 newest submissions with their deterministic verdicts, and totals. Owner-scoped (session, plus customer binding when signed in); never cross-customer and never admin-readable. A caller with no live session answers an empty, well-formed payload (200) rather than an error. Discovery is never derived from a score and never set by a reveal.",
+        "responses": {
+          "200": {
+            "description": "The progress aggregate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/maintenance/sweep": {
+      "post": {
+        "operationId": "runMaintenanceSweep",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete expired rows (staff-only, operator use)",
+        "description": "Operator-invoked bounded cleanup: deletes expired practice sessions, expired customer sessions, stale hunt-start cap rows and dead rate-limit buckets (≤ 100 rows per table per call). Idempotent. Inventory adjustments and order cancellations are never deleted. Not part of the learner exercise surface; there is no cron on Pages Functions. Requires the synthetic staff role.",
+        "x-internal": true,
+        "security": [
+          {
+            "customerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How many rows were deleted, per table.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceSweepResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in, but not an active staff account. Error codes: `account_suspended`, `staff_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "practiceSessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "mpl_session",
+        "description": "Anonymous practice-session cookie (7-day TTL). Only the SHA-256 hash of the opaque token is stored server-side. Minted automatically by the first cart mutation, an explicit hunt start/reset, or a login. Resolves the practice session that owns the cart, orders, attempts and hint state."
+      },
+      "customerCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "mpl_customer",
+        "description": "Synthetic customer-session cookie (8h TTL), bound to the practice session that established it. Issued only by POST /api/v1/auth/login for the synthetic demo accounts. Carries no intrinsic role — the role is read from the stored customer row on every request."
+      }
+    },
+    "responses": {
+      "PayloadTooLarge": {
+        "description": "The request body declares a Content-Length over the 32 KB cap (or an invalid one). Error code: `payload_too_large`.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "MutateRateLimited": {
+        "description": "Too many mutating requests from this network (shared 120 mutations/IP/minute backstop). Error code: `rate_limited`. `Retry-After` header included.",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds until the oldest counted request ages out of the fixed window.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorCode": {
+        "type": "string",
+        "description": "Every error code this API documents. The catalogue of codes matches the server implementation; unknown codes never appear.",
+        "enum": [
+          "invalid_request",
+          "not_found",
+          "internal_error",
+          "payload_too_large",
+          "rate_limited",
+          "login_rate_limited",
+          "invalid_credentials",
+          "account_suspended",
+          "unauthorized",
+          "staff_required",
+          "out_of_stock",
+          "insufficient_stock",
+          "stock_limit_exceeded",
+          "empty_cart",
+          "cart_unavailable",
+          "payment_declined",
+          "idempotency_conflict",
+          "hunt_not_found",
+          "hunt_start_cap_reached",
+          "session_required",
+          "invalid_level",
+          "hint_level_locked",
+          "hint_attempt_completed",
+          "reveal_locked"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "description": "The documented error envelope. `error` is a stable machine-readable code (see `ErrorCode`); `message` is human-readable and safe to show a learner.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "ErrorWithFields": {
+        "type": "object",
+        "description": "Error envelope with per-field validation messages (validation failures only).",
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "invalid_request"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
+      "InsufficientStockError": {
+        "type": "object",
+        "description": "Error envelope for stock-guard rejections. `availableStock` is the current inventory quantity; `maxQuantity` the effective per-line ceiling; `currentQuantity` (only when adding to an existing line) is the line's quantity before the attempted add.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "type": "string"
+          },
+          "availableStock": {
+            "type": "integer"
+          },
+          "maxQuantity": {
+            "type": "integer"
+          },
+          "currentQuantity": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "additionalProperties": true
+      },
+      "CartUnavailableLine": {
+        "type": "object",
+        "description": "One cart line that blocks checkout.",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "inactive",
+              "insufficient_stock",
+              "out_of_stock"
+            ]
+          },
+          "availableStock": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "reason",
+          "availableStock"
+        ],
+        "additionalProperties": false
+      },
+      "CartUnavailableError": {
+        "type": "object",
+        "description": "Error envelope for `cart_unavailable`: one or more lines cannot be fulfilled right now.",
+        "properties": {
+          "error": {
+            "const": "cart_unavailable"
+          },
+          "message": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartUnavailableLine"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "StockLimitExceededError": {
+        "type": "object",
+        "description": "Error envelope for `stock_limit_exceeded`: the restock would breach the 1,000,000-unit per-product ceiling.",
+        "properties": {
+          "error": {
+            "const": "stock_limit_exceeded"
+          },
+          "message": {
+            "type": "string"
+          },
+          "maxQuantity": {
+            "type": "integer"
+          },
+          "currentQuantity": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "maxQuantity"
+        ],
+        "additionalProperties": false
+      },
+      "OkResponse": {
+        "type": "object",
+        "description": "Minimal acknowledgement body.",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "categorySlug": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "priceCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD"
+          },
+          "stockStatus": {
+            "$ref": "#/components/schemas/StockStatus"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "categorySlug",
+          "categoryName",
+          "priceCents",
+          "currency",
+          "stockStatus"
+        ],
+        "additionalProperties": false,
+        "example": {
+          "id": 1,
+          "slug": "canvas-tote-bag",
+          "name": "Canvas Tote Bag",
+          "description": "Heavy-weight 16oz canvas tote with reinforced handles.",
+          "categorySlug": "accessories",
+          "categoryName": "Accessories",
+          "priceCents": 2400,
+          "currency": "USD",
+          "stockStatus": "in_stock"
+        }
+      },
+      "StockStatus": {
+        "type": "string",
+        "enum": [
+          "in_stock",
+          "low_stock",
+          "out_of_stock"
+        ]
+      },
+      "ProductListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "perPage": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 48
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalPages": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "perPage",
+          "total",
+          "totalPages"
+        ],
+        "additionalProperties": false
+      },
+      "CategorySummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "sortOrder"
+        ],
+        "additionalProperties": false
+      },
+      "CategoryListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategorySummary"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "CartItemAddRequest": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,79}$"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99,
+            "default": 1
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "additionalProperties": false,
+        "example": {
+          "slug": "canvas-tote-bag",
+          "quantity": 2
+        }
+      },
+      "CartItemUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          }
+        },
+        "required": [
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "CartLine": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "productId": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "lineTotalCents": {
+            "type": "integer"
+          },
+          "stockStatus": {
+            "$ref": "#/components/schemas/StockStatus"
+          },
+          "productActive": {
+            "type": "boolean"
+          },
+          "availableStock": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "exceedsStock": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "slug",
+          "name",
+          "unitPriceCents",
+          "currency",
+          "quantity",
+          "lineTotalCents",
+          "stockStatus",
+          "productActive",
+          "availableStock",
+          "exceedsStock",
+          "available"
+        ],
+        "additionalProperties": false
+      },
+      "CartResponse": {
+        "type": "object",
+        "description": "The server-recomputed cart. `subtotalCents` equals `totalCents` today (no shipping, discounts or tax exist in this domain). Lines that cannot be fulfilled stay in the cart flagged `available: false` and block checkout.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartLine"
+            }
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subtotalCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "hasUnavailableItems": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "itemCount",
+          "subtotalCents",
+          "totalCents",
+          "currency",
+          "hasUnavailableItems"
+        ],
+        "additionalProperties": false
+      },
+      "CheckoutSummary": {
+        "type": "object",
+        "description": "Cart summary for the checkout step: everything in `CartResponse` plus `checkoutable`.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartLine"
+            }
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subtotalCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "hasUnavailableItems": {
+            "type": "boolean"
+          },
+          "checkoutable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "itemCount",
+          "subtotalCents",
+          "totalCents",
+          "currency",
+          "hasUnavailableItems",
+          "checkoutable"
+        ],
+        "additionalProperties": false
+      }
+,
+      "OrderItemSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "productId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "productSlug": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "lineTotalCents": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productSlug",
+          "productName",
+          "unitPriceCents",
+          "currency",
+          "quantity",
+          "lineTotalCents"
+        ],
+        "additionalProperties": false
+      },
+      "OrderSummary": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^ORD-[0-9A-F]{16}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "placed",
+              "cancelled"
+            ]
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "declined"
+            ]
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "reference",
+          "status",
+          "paymentStatus",
+          "itemCount",
+          "totalCents",
+          "currency",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "OrderDetail": {
+        "type": "object",
+        "description": "Immutable order confirmation. `status` is `placed` on the wire until a cancellation is recorded, at which point reads derive `cancelled`. `cancelledAt` is the cancellation timestamp or null.",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "pattern": "^ORD-[0-9A-F]{16}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "placed",
+              "cancelled"
+            ]
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "declined"
+            ]
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "totalCents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "shippingLine": {
+            "type": "string"
+          },
+          "shippingCity": {
+            "type": "string"
+          },
+          "shippingPostcode": {
+            "type": "string"
+          },
+          "subtotalCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderItemSnapshot"
+            }
+          }
+        },
+        "required": [
+          "reference",
+          "status",
+          "paymentStatus",
+          "itemCount",
+          "totalCents",
+          "currency",
+          "createdAt",
+          "cancelledAt",
+          "customerName",
+          "customerEmail",
+          "shippingLine",
+          "shippingCity",
+          "shippingPostcode",
+          "subtotalCents",
+          "items"
+        ],
+        "additionalProperties": false,
+        "example": {
+          "reference": "ORD-1A2B3C4D5E6F7089",
+          "status": "placed",
+          "paymentStatus": "approved",
+          "itemCount": 2,
+          "totalCents": 4800,
+          "currency": "USD",
+          "createdAt": "2026-11-16T09:30:00.000Z",
+          "cancelledAt": null,
+          "customerName": "Amara Okafor",
+          "customerEmail": "amara.okafor@example.com",
+          "shippingLine": "12 Practice Lane",
+          "shippingCity": "Lisbon",
+          "shippingPostcode": "1100-341",
+          "subtotalCents": 4800,
+          "items": [
+            {
+              "id": 1,
+              "productId": 1,
+              "productSlug": "canvas-tote-bag",
+              "productName": "Canvas Tote Bag",
+              "unitPriceCents": 2400,
+              "currency": "USD",
+              "quantity": 2,
+              "lineTotalCents": 4800
+            }
+          ]
+        }
+      },
+      "OrderListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/OrderSummary"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "AccountOrderListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/OrderSummary"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "CheckoutRequest": {
+        "type": "object",
+        "description": "Checkout details. Only synthetic data is accepted — never real card, banking or personal-record data; `paymentSimulation` is a deterministic outcome switch, not a payment instrument.",
+        "properties": {
+          "customerName": {
+            "type": "string",
+            "pattern": "^[\\p{L}][\\p{L} .,'-]{1,99}$"
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "shippingLine": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 120
+          },
+          "shippingCity": {
+            "type": "string",
+            "pattern": "^[\\p{L}][\\p{L} .,'-]{1,79}$"
+          },
+          "shippingPostcode": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9\\- ]{2,11}$"
+          },
+          "paymentSimulation": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "declined"
+            ]
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$"
+          }
+        },
+        "required": [
+          "customerName",
+          "customerEmail",
+          "shippingLine",
+          "shippingCity",
+          "shippingPostcode",
+          "paymentSimulation"
+        ],
+        "additionalProperties": false,
+        "example": {
+          "customerName": "Amara Okafor",
+          "customerEmail": "amara.okafor@example.com",
+          "shippingLine": "12 Practice Lane",
+          "shippingCity": "Lisbon",
+          "shippingPostcode": "1100-341",
+          "paymentSimulation": "approved"
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerProfile": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "staff"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          },
+          "addressLine": {
+            "type": "string"
+          },
+          "addressCity": {
+            "type": "string"
+          },
+          "addressPostcode": {
+            "type": "string"
+          },
+          "memberSince": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "role",
+          "status",
+          "addressLine",
+          "addressCity",
+          "addressPostcode",
+          "memberSince"
+        ],
+        "additionalProperties": false
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerProfile"
+          }
+        },
+        "required": [
+          "customer"
+        ],
+        "additionalProperties": false
+      },
+      "DemoAccount": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "staff"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "role",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "DemoAccountListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DemoAccount"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInventoryItem": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "priceCents": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "const": "USD"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lowStockThreshold": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stockStatus": {
+            "$ref": "#/components/schemas/StockStatus"
+          }
+        },
+        "required": [
+          "productId",
+          "slug",
+          "name",
+          "categoryName",
+          "priceCents",
+          "currency",
+          "active",
+          "quantity",
+          "lowStockThreshold",
+          "stockStatus"
+        ],
+        "additionalProperties": false
+      },
+      "AdminInventoryListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminInventoryItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "data",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "RestockRequest": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "InventoryAdjustment": {
+        "type": "object",
+        "description": "The audit row recorded for a restock.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "quantityDelta": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "const": "restock"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorCustomerId": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "quantityDelta",
+          "reason",
+          "note",
+          "actorCustomerId",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminRestockResponse": {
+        "type": "object",
+        "properties": {
+          "inventory": {
+            "$ref": "#/components/schemas/AdminInventoryItem"
+          },
+          "adjustment": {
+            "$ref": "#/components/schemas/InventoryAdjustment"
+          }
+        },
+        "required": [
+          "inventory",
+          "adjustment"
+        ],
+        "additionalProperties": false
+      },
+      "HuntCurriculum": {
+        "type": "object",
+        "description": "Learner-safe curriculum metadata: what to practise, never the answer.",
+        "properties": {
+          "skillArea": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "intermediate",
+              "advanced"
+            ]
+          },
+          "conceptsPracticed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "investigationFocus": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reportFocus": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "skillArea",
+          "difficulty",
+          "conceptsPracticed",
+          "expectedOutcomes",
+          "investigationFocus",
+          "reportFocus"
+        ],
+        "additionalProperties": false
+      },
+      "HuntSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^hunt-[a-z0-9-]+$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "scenarioId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "curriculum": {
+            "$ref": "#/components/schemas/HuntCurriculum"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "scenarioId"
+        ],
+        "additionalProperties": false
+      },
+      "HuntListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HuntSummary"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "PracticeSessionResponse": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "clean",
+              "bug_hunt"
+            ]
+          },
+          "hunt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HuntSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "hunt"
+        ],
+        "additionalProperties": false
+      },
+      "AttemptView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "none",
+              "in_progress",
+              "submitted",
+              "revealed"
+            ]
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "bestQualityScore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "discovered": {
+            "type": "boolean"
+          },
+          "submittedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "status",
+          "hintsUsed",
+          "bestQualityScore",
+          "discovered",
+          "submittedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AttemptHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "huntId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "revealed"
+            ]
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "bestQualityScore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "discovered": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "huntId",
+          "status",
+          "hintsUsed",
+          "bestQualityScore",
+          "discovered",
+          "createdAt",
+          "submittedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AttemptHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/AttemptHistoryEntry"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "ReportFeedbackItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "passed",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ReportEvaluationCheck": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "passed",
+          "message",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "ReportEvaluation": {
+        "type": "object",
+        "description": "The deterministic rule-based evaluation of one submission (score 0–100; ≥80 solid · 50–79 needs-work · <50 incomplete).",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "needs-work",
+              "incomplete"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportEvaluationCheck"
+            }
+          }
+        },
+        "required": [
+          "score",
+          "verdict",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "BugReportSubmission": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "environment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "preconditions": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "steps": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "actual": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "p1",
+              "p2",
+              "p3",
+              "p4"
+            ]
+          },
+          "reproducibility": {
+            "type": "string",
+            "enum": [
+              "always",
+              "sometimes",
+              "once"
+            ],
+            "default": "always"
+          }
+        },
+        "required": [
+          "title",
+          "environment",
+          "steps",
+          "expected",
+          "actual",
+          "severity",
+          "priority"
+        ],
+        "additionalProperties": false
+      },
+      "BugReportView": {
+        "type": "object",
+        "description": "The stored report, echoed back learner-safe. `qualityScore` and `feedback` are the persisted deterministic evaluation — never client-supplied.",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "preconditions": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "steps": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "p1",
+              "p2",
+              "p3",
+              "p4"
+            ]
+          },
+          "reproducibility": {
+            "type": "string",
+            "enum": [
+              "always",
+              "sometimes",
+              "once"
+            ]
+          },
+          "qualityScore": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "feedback": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportFeedbackItem"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "title",
+          "environment",
+          "preconditions",
+          "steps",
+          "expected",
+          "actual",
+          "severity",
+          "priority",
+          "reproducibility",
+          "qualityScore",
+          "feedback",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "ReportSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptView"
+          },
+          "report": {
+            "$ref": "#/components/schemas/BugReportView"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/ReportEvaluation"
+          }
+        },
+        "required": [
+          "attempt",
+          "report",
+          "evaluation"
+        ],
+        "additionalProperties": false
+      },
+      "HintRequest": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "additionalProperties": false
+      },
+      "HintResponse": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "hint": {
+            "type": "string"
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "level",
+          "hint",
+          "hintsUsed"
+        ],
+        "additionalProperties": false
+      },
+      "HuntReveal": {
+        "type": "object",
+        "description": "The solution reveal. Content is served only after reveal eligibility (submitted report or confirmed give-up).",
+        "properties": {
+          "huntId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "reproduction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "verification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commonMisconceptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "huntId",
+          "title",
+          "expected",
+          "actual",
+          "rootCause",
+          "reproduction",
+          "verification",
+          "concepts",
+          "commonMisconceptions"
+        ],
+        "additionalProperties": false
+      },
+      "RevealResponse": {
+        "type": "object",
+        "properties": {
+          "huntId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "reproduction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "verification": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "concepts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "commonMisconceptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attempt": {
+            "$ref": "#/components/schemas/AttemptView"
+          }
+        },
+        "required": [
+          "huntId",
+          "title",
+          "expected",
+          "actual",
+          "rootCause",
+          "reproduction",
+          "verification",
+          "concepts",
+          "commonMisconceptions",
+          "attempt"
+        ],
+        "additionalProperties": false
+      },
+      "RevealConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "ProgressHuntEntry": {
+        "type": "object",
+        "properties": {
+          "huntId": {
+            "type": "string"
+          },
+          "scenarioId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "none",
+              "in_progress",
+              "submitted",
+              "revealed"
+            ]
+          },
+          "discovered": {
+            "type": "boolean"
+          },
+          "bestScore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastSubmittedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "huntId",
+          "scenarioId",
+          "title",
+          "status",
+          "discovered",
+          "bestScore",
+          "hintsUsed",
+          "attempts",
+          "lastSubmittedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ProgressRecentSubmission": {
+        "type": "object",
+        "properties": {
+          "huntId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "needs-work",
+              "incomplete"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "huntId",
+          "title",
+          "score",
+          "verdict",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "ProgressTotals": {
+        "type": "object",
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "inProgress": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "submitted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revealed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reports": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "discovered": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bestScore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "averageBestScore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "attempts",
+          "inProgress",
+          "submitted",
+          "revealed",
+          "reports",
+          "discovered",
+          "hintsUsed",
+          "bestScore",
+          "averageBestScore"
+        ],
+        "additionalProperties": false
+      },
+      "ProgressResponse": {
+        "type": "object",
+        "properties": {
+          "persistence": {
+            "type": "string",
+            "enum": [
+              "session",
+              "customer"
+            ]
+          },
+          "hunts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressHuntEntry"
+            }
+          },
+          "recent": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/ProgressRecentSubmission"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ProgressTotals"
+          }
+        },
+        "required": [
+          "persistence",
+          "hunts",
+          "recent",
+          "totals"
+        ],
+        "additionalProperties": false
+      },
+      "SweepCounts": {
+        "type": "object",
+        "properties": {
+          "customerSessions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "practiceSessions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "huntStartCaps": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rateLimitBuckets": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "customerSessions",
+          "practiceSessions",
+          "huntStartCaps",
+          "rateLimitBuckets"
+        ],
+        "additionalProperties": false
+      },
+      "MaintenanceSweepResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "deleted": {
+            "$ref": "#/components/schemas/SweepCounts"
+          }
+        },
+        "required": [
+          "ok",
+          "deleted"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

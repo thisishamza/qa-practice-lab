@@ -137,6 +137,13 @@ export const guides: Guide[] = [
         language: 'bash',
         code: 'curl -i "https://lab.example/api/v1/catalogue?limit=0"\n# Expect a documented 400 with a stable error envelope',
       },
+      {
+        title: 'The same requests in the API Lab',
+        description:
+          'No curl required — the lab ships a same-origin request console with the raw answer, and a downloadable copy of the contract.',
+        language: 'text',
+        code: '1. Open /api-reference — read the contract for GET /api/v1/products\n2. Open /api-lab — method GET, path /api/v1/products, query perPage=3&sort=price_asc\n3. Send — watch status, headers, elapsed ms and the pretty-printed body\n4. Try page=0, perPage=999, sort=bogus and category=bogus — the documented capping answers\n5. Copy as curl to keep the exact request for your terminal',
+      },
     ],
     steps: [
       {
@@ -159,6 +166,11 @@ export const guides: Guide[] = [
         detail:
           'Record the request, response, and expectation together. If the contract is silent, record a question rather than inventing a defect.',
       },
+      {
+        title: 'Repeat the loop in the API Lab',
+        detail:
+          'Open /api-lab and replay the baseline and one varied request. Read status, headers and body in the response panel — note how the documented envelope, capping and empty-set behaviour show up in the raw answer. Copy any request as curl when you need it in a terminal, and reset the changes with the clear button; history is kept only in the page and never persisted.',
+      },
     ],
     expectedResults: [
       'Each case has a saved request and a response captured with status and headers.',
@@ -169,6 +181,7 @@ export const guides: Guide[] = [
       'Checking only the status code and ignoring the payload shape.',
       'Changing several parameters in one request, which hides the cause of a failure.',
       'Treating an undocumented but plausible behaviour as automatically correct.',
+      'Reading only the pretty body in the API Lab and skipping the status line and headers.',
     ],
     relatedScenarioIds: [
       'api-catalog-pagination',

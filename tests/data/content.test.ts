@@ -145,12 +145,32 @@ describe('scenarios', () => {
     }
   })
 
-  it('keeps unwired scenarios non-runnable (Phase 3 wired hunts excepted)', () => {
+  it('keeps unwired scenarios non-runnable (pagination exercise and wired hunts excepted)', () => {
+    const runnableClean = new Set(['api-catalog-pagination'])
     for (const scenario of scenarios) {
-      if (!scenario.huntId) {
+      if (!scenario.huntId && !runnableClean.has(scenario.id)) {
         expect(scenario.runnable).toBe(false)
         expect(scenario.status).not.toBe('ready')
       }
+    }
+  })
+
+  it('ships the catalogue-pagination exercise as ready, clean and runnable without a hunt', () => {
+    const scenario = scenarios.find((entry) => entry.id === 'api-catalog-pagination')
+    expect(scenario, 'api-catalog-pagination missing').toBeDefined()
+    expect(scenario?.status).toBe('ready')
+    expect(scenario?.runnable).toBe(true)
+    expect(scenario?.mode).toBe('clean')
+    expect(scenario?.huntId).toBeUndefined()
+    expect(scenario?.curriculum).toBeUndefined()
+    expect(scenario?.relatedGuideIds).toContain('guide-api-request-response')
+  })
+
+  it('leaks no defect ids or evaluator internals through the content modules', () => {
+    const corpus = JSON.stringify({ scenarios, tracks: learningTracks, guides })
+    for (const defect of DEFECTS) {
+      expect(corpus).not.toContain(defect.id)
+      expect(corpus).not.toContain(defect.title)
     }
   })
 

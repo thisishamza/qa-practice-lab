@@ -162,15 +162,18 @@ export const scenarios: Scenario[] = [
     categoryId: 'functional',
     difficulty: 'beginner',
     mode: 'clean',
-    status: 'planned',
+    status: 'ready',
     estimatedMinutes: 30,
     objectives: [
       'Verify page size limits and out-of-range page values.',
       'Check filter combinations for consistent totals and ordering.',
       'Confirm error responses use the documented envelope.',
     ],
-    prerequisites: ['An HTTP client or curl', 'Read the catalogue endpoint contract'],
-    runnable: false,
+    prerequisites: [
+      'The API Lab (built into this site) or any HTTP client',
+      'Read the catalogue endpoint contract in the API Reference',
+    ],
+    runnable: true,
     relatedGuideIds: ['guide-api-request-response'],
   },
   {
