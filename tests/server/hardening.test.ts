@@ -266,6 +266,30 @@ describe('global mutation rate limit (120/min per IP)', () => {
     expect(response.headers.get('retry-after')).toBeTruthy()
   })
 
+  it('never trusts x-forwarded-for, even with a full bucket for the spoofed address', async () => {
+    const migrated = createMigratedD1()
+    const spoofed = '203.0.113.99'
+    const ipHash = await sha256Hex(spoofed)
+    const now = Math.floor(Date.now() / 1000)
+    const windowStart = Math.floor(now / 60)
+    migrated.sqlite
+      .prepare('INSERT INTO rate_limit_buckets (key, window_start, count) VALUES (?, ?, 120)')
+      .run(`mutate:${ipHash}`, windowStart)
+
+    const response = await app.request(
+      '/api/v1/cart/items',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': spoofed },
+        body: JSON.stringify({ slug: 'ember-led-lantern', quantity: 1 }),
+      },
+      { DB: migrated.db },
+    )
+    // The limiter must not have consulted the spoofable header: the request
+    // reaches the route instead of being rejected with 429.
+    expect(response.status).not.toBe(429)
+  })
+
   it('does not cap requests without a visible client IP', async () => {
     const migrated = createMigratedD1()
     const ipHash = await sha256Hex(IP)

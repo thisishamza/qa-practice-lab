@@ -10,14 +10,20 @@ export function AboutPage() {
   useDocumentTitle('About this build')
   const location = useLocation()
 
-  // Client-side navigation to /about#evaluation does not scroll on its own;
-  // honour the hash explicitly once the section exists.
+  // Client-side navigation to /about#evaluation does not scroll or move
+  // focus on its own; honour the hash explicitly once the section exists,
+  // including keyboard/screen-reader focus (otherwise callers land on
+  // whatever had focus before, usually document.body).
   useEffect(() => {
     const id = location.hash.replace(/^#/, '')
     if (!id) {
       return
     }
-    document.getElementById(id)?.scrollIntoView({ block: 'start' })
+    const target = document.getElementById(id)
+    target?.scrollIntoView({ block: 'start' })
+    if (target instanceof HTMLElement) {
+      target.focus({ preventScroll: true })
+    }
   }, [location.hash])
 
   return (
@@ -123,6 +129,7 @@ export function AboutPage() {
         id="evaluation"
         className="content-section"
         aria-labelledby="evaluation-title"
+        tabIndex={-1}
       >
         <SectionHeader
           id="evaluation-title"

@@ -103,3 +103,16 @@ export function hintText(huntId: string, level: HintLevel): string | null {
   }
   return level === 1 ? hints.level1 : level === 2 ? hints.level2 : hints.level3
 }
+
+/**
+ * Fail-closed hint lookup. The registries are compile-time aligned and unit
+ * tested, so an unknown id means the code is inconsistent — throwing routes
+ * the failure to onError (500) instead of serving HTTP 200 with a null hint.
+ */
+export function requireHint(huntId: string, level: HintLevel): string {
+  const hint = hintText(huntId, level)
+  if (hint === null) {
+    throw new Error('Hint registry is missing a runnable hunt.')
+  }
+  return hint
+}

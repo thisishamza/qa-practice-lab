@@ -305,3 +305,33 @@ describe('ProgressDashboard — attribution banners', () => {
     expect(html).toMatch(/disabled/)
   })
 })
+
+describe('ProgressDashboard — refresh failure keeps the stale dashboard', () => {
+  it('renders an inline alert and the last good numbers instead of the full-page error', () => {
+    const html = renderDashboard({
+      status: 'ready',
+      data: readyData(),
+      refreshing: false,
+      onRefresh: () => {},
+      refreshError: 'The practice API could not be reached.',
+    })
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('could not be refreshed')
+    expect(html).toContain('The practice API could not be reached.')
+    // The previously rendered dashboard is still there — not wiped.
+    expect(html).toContain('Reports submitted')
+    expect(html).toContain('Recent submissions')
+    expect(html).not.toContain('Your progress could not be loaded')
+  })
+
+  it('renders no inline alert when the refresh succeeded', () => {
+    const html = renderDashboard({
+      status: 'ready',
+      data: readyData(),
+      refreshing: false,
+      onRefresh: () => {},
+      refreshError: null,
+    })
+    expect(html).not.toContain('could not be refreshed')
+  })
+})

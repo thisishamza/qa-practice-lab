@@ -149,7 +149,17 @@ export function RevealPanel({
   const cancelRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const focusHeadingAfterReveal = useRef(false)
+  const mountedRef = useRef(true)
   const baseId = useId()
+
+  // No state updates after unmount; the abort guard only covers callers
+  // that pass a signal (the retry path passes none).
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const loadReveal = useCallback(
     (signal?: AbortSignal) => {
@@ -158,7 +168,7 @@ export function RevealPanel({
       }
       return fetchRevealFlow({ huntId, fetchReveal: () => fetchReveal(huntId, signal) }).then(
         (outcome) => {
-          if (signal?.aborted) {
+          if (signal?.aborted || !mountedRef.current) {
             return
           }
           if (outcome.kind === 'revealed') {
@@ -194,6 +204,11 @@ export function RevealPanel({
   }
 
   function cancelGiveUp() {
+    // While the give-up request is in flight the dialog stays open; dismissing
+    // it would look like the give-up never happened when it lands moments later.
+    if (giveUpInFlight) {
+      return
+    }
     setDialogOpen(false)
     setGiveUpError(null)
   }
@@ -207,16 +222,22 @@ export function RevealPanel({
     try {
       const outcome = await confirmGiveUpFlow({ giveUp: () => giveUpAndReveal(huntId) })
       if (outcome.kind === 'failure') {
-        setGiveUpError(outcome.message)
+        if (mountedRef.current) {
+          setGiveUpError(outcome.message)
+        }
         return
       }
       focusHeadingAfterReveal.current = true
-      setDialogOpen(false)
-      setState({ phase: 'revealed', reveal: outcome.reveal })
-      onRevealed?.()
+      if (mountedRef.current) {
+        setDialogOpen(false)
+        setState({ phase: 'revealed', reveal: outcome.reveal })
+        onRevealed?.()
+      }
     } finally {
       flightRef.current.release()
-      setGiveUpInFlight(false)
+      if (mountedRef.current) {
+        setGiveUpInFlight(false)
+      }
     }
   }
 

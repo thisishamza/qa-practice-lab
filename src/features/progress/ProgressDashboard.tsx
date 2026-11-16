@@ -7,6 +7,9 @@
 
 import { Link } from 'react-router-dom'
 import type { ProgressResponse } from '../../shared/learning'
+import type { ProgressDashboardState } from './progress-types'
+
+export type { ProgressDashboardState } from './progress-types'
 import { recommendedHuntScenarioIds, getScenario } from '../../data/scenarios'
 import { formatProgressDate, formatProgressDateTime } from '../../lib/progressDates'
 import { verdictDisplay } from '../../lib/reportForm'
@@ -20,11 +23,6 @@ import { StatTile } from '../../components/ui/StatTile'
 import { Tag } from '../../components/ui/Tag'
 import { ProgressBar } from '../../components/ui/ProgressBar'
 import { AttemptStatusChip } from '../practice/AttemptStatusChip'
-
-export type ProgressDashboardState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string; onRetry: () => void }
-  | { status: 'ready'; data: ProgressResponse; refreshing: boolean; onRefresh: () => void }
 
 const firstRecommended = getScenario(recommendedHuntScenarioIds[0] ?? '')
 
@@ -98,7 +96,7 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
     )
   }
 
-  const { data, refreshing, onRefresh } = state
+  const { data, refreshing, onRefresh, refreshError } = state
   const { totals } = data
   const isZero = totals.attempts === 0
   const exerciseCount = data.hunts.length
@@ -120,6 +118,19 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
       />
 
       {persistenceBanner(data.persistence)}
+
+      {refreshError ? (
+        <div className="hunt-panel-error" role="alert">
+          <p>
+            <Icon name="alert" size={16} /> The latest numbers could not be refreshed — showing the
+            last ones this server returned. ({refreshError})
+          </p>
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={refreshing}>
+            <Icon name="reset" size={15} />
+            Try again
+          </Button>
+        </div>
+      ) : null}
 
       {isZero ? zeroState() : null}
 

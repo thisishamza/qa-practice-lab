@@ -95,6 +95,7 @@ export function canRequest(level: HintLevel, hintsUsed: number): boolean {
 const LEARNING_MESSAGES: Record<string, string> = {
   invalid_level: 'That hint level is not available.',
   hint_level_locked: 'Use the previous hint first — levels unlock in order.',
+  hint_attempt_completed: 'This attempt is complete — start the hunt again to unlock the remaining hints.',
   session_required: 'Start the exercise before asking for a hint.',
   reveal_locked:
     'The solution stays locked until you submit a report or explicitly give up on this attempt.',

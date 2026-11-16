@@ -9,7 +9,7 @@
 // the real migration SQL — no SQL is mocked.
 import { describe, expect, it } from 'vitest'
 import { app } from '../../src/server/app'
-import { HINTS } from '../../src/server/hints'
+import { HINTS, requireHint } from '../../src/server/hints'
 import { REVEALS } from '../../src/server/reveals'
 import { DEFECTS } from '../../src/server/defects'
 import { HUNTS } from '../../src/server/hunts'
@@ -698,6 +698,76 @@ describe('give-up (explicit confirmed unlock)', () => {
     }
     for (const leak of revealStrings('hunt-cart-001')) {
       expect(text).not.toContain(leak)
+    }
+  })
+})
+
+describe('hints on settled attempts (409 hint_attempt_completed)', () => {
+  it('refuses to open any level after a report is submitted; recorded usage is untouched', async () => {
+    const migrated = createMigratedD1()
+    const { session } = await startHunt(migrated, 'hunt-cart-001')
+    const cookie = session as string
+
+    const submitted = await submitReport(migrated, 'hunt-cart-001', cookie)
+    expect(submitted.status).toBe(201)
+
+    const response = await postHint(migrated, 'hunt-cart-001', 1, cookie)
+    expect(response.status).toBe(409)
+    expect(((await response.json()) as { error: string }).error).toBe('hint_attempt_completed')
+    expect(attemptRow(migrated, 'hunt-cart-001')?.hint_mask).toBe(0)
+  })
+
+  it('keeps already-unlocked levels re-readable after a report (200), but no new level opens', async () => {
+    const migrated = createMigratedD1()
+    const { session } = await startHunt(migrated, 'hunt-cart-001')
+    const cookie = session as string
+
+    expect((await postHint(migrated, 'hunt-cart-001', 1, cookie)).status).toBe(200)
+
+    const submitted = await submitReport(migrated, 'hunt-cart-001', cookie)
+    expect(submitted.status).toBe(201)
+
+    const reread = await postHint(migrated, 'hunt-cart-001', 1, cookie)
+    expect(reread.status).toBe(200)
+    const body = (await reread.json()) as { hintsUsed: number; hint: string }
+    expect(body.hintsUsed).toBe(1)
+    expect(body.hint.length).toBeGreaterThan(0)
+
+    const locked = await postHint(migrated, 'hunt-cart-001', 2, cookie)
+    expect(locked.status).toBe(409)
+    expect(((await locked.json()) as { error: string }).error).toBe('hint_attempt_completed')
+    expect(attemptRow(migrated, 'hunt-cart-001')?.hint_mask).toBe(1)
+  })
+
+  it('refuses new unlocks after a confirmed give-up (409); the idempotent re-read still works', async () => {
+    const migrated = createMigratedD1()
+    const { session } = await startHunt(migrated, 'hunt-inventory-001')
+    const cookie = session as string
+
+    expect((await postHint(migrated, 'hunt-inventory-001', 1, cookie)).status).toBe(200)
+    const giveUp = await postReveal(migrated, 'hunt-inventory-001', cookie)
+    expect(giveUp.status).toBe(200)
+
+    const reread = await postHint(migrated, 'hunt-inventory-001', 1, cookie)
+    expect(reread.status).toBe(200)
+
+    const fresh = await postHint(migrated, 'hunt-inventory-001', 2, cookie)
+    expect(fresh.status).toBe(409)
+    expect(((await fresh.json()) as { error: string }).error).toBe('hint_attempt_completed')
+    expect(attemptRow(migrated, 'hunt-inventory-001')?.hint_mask).toBe(1)
+  })
+})
+
+describe('requireHint (fail-closed registry lookup)', () => {
+  it('throws for unknown hunts instead of serving a null hint', () => {
+    expect(() => requireHint('hunt-nope-999', 1)).toThrow('Hint registry is missing a runnable hunt.')
+  })
+
+  it('returns non-empty text for every runnable hunt and every level', () => {
+    for (const huntId of Object.keys(HINTS)) {
+      for (const level of [1, 2, 3] as const) {
+        expect(requireHint(huntId, level).length).toBeGreaterThan(0)
+      }
     }
   })
 })

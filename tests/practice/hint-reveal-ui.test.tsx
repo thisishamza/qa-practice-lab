@@ -224,6 +224,16 @@ describe('RevealPanelView', () => {
     expect(html).toContain('Keep investigating')
   })
 
+  it('both dialog actions are disabled while a give-up is in flight', () => {
+    const html = renderToStaticMarkup(
+      <RevealPanelView {...revealProps({ dialogOpen: true, giveUpInFlight: true })} />,
+    )
+    // The confirm button must show its busy state and never double-fire.
+    expect(html).toContain('Revealing…')
+    const cancelButton = /<button[^>]*>[^<]*Keep investigating/.exec(html)?.[0] ?? ''
+    expect(cancelButton).toContain('disabled')
+  })
+
   it('the dialog surfaces a give-up failure as an alert without revealing', () => {
     const html = renderToStaticMarkup(
       <RevealPanelView

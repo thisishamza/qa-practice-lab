@@ -9,9 +9,12 @@
 //   sliding-window precision, and that is deliberate — this is an abuse
 //   control, not an exact metering system.
 // - Only a SHA-256 hash of the client IP is stored (never the raw address),
-//   matching the hunt-start cap convention. When no IP is visible (local
-//   development) the limiters are skipped entirely — they are a soft
-//   abuse control, not an authentication boundary.
+//   matching the hunt-start cap convention. The trusted source is
+//   `cf-connecting-ip` (set/overwritten by Cloudflare at the edge);
+//   `x-forwarded-for` is never trusted because it is client-controllable.
+//   When no edge IP is visible (local development) the limiters are
+//   skipped entirely — they are a soft abuse control, not an authentication
+//   boundary.
 // - Callers decide what "consume" means: the generic mutation limiter counts
 //   every mutating request; the login limiter counts only failures and is
 //   reset on success; the checkout limiter counts placements; the report
@@ -39,14 +42,16 @@ export const CHECKOUT_LIMIT = 30 // order placements per IP per minute
 export const REPORT_LIMIT = 30
 const WINDOW_SECONDS = 60
 
-/** Best-effort client IP: cf-connecting-ip, else the first x-forwarded-for hop. */
+/**
+ * Best-effort client IP: `cf-connecting-ip` only — the header Cloudflare
+ * overwrites at the edge on every proxied request, so it cannot be forged
+ * by the caller. `x-forwarded-for` is client-controllable and is therefore
+ * never trusted; without a visible edge IP the limiters are skipped
+ * entirely (local development posture, documented as such).
+ */
 export function clientIp(c: Context<AppEnv>): string | null {
   const direct = c.req.header('cf-connecting-ip')?.trim()
-  if (direct) {
-    return direct
-  }
-  const forwarded = c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
-  return forwarded || null
+  return direct || null
 }
 
 export async function sha256Hex(value: string): Promise<string> {

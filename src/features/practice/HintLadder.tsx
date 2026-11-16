@@ -179,7 +179,15 @@ export function HintLadder({ huntId }: { huntId: string }) {
   const [unlocking, setUnlocking] = useState<HintLevel | null>(null)
   const [levelErrors, setLevelErrors] = useState<Partial<Record<HintLevel, string>>>({})
   const flightRef = useRef(createSingleFlight())
+  const mountedRef = useRef(true)
   const baseId = useId()
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const restore = useCallback(() => {
     if (!flightRef.current.tryAcquire()) {
@@ -187,11 +195,13 @@ export function HintLadder({ huntId }: { huntId: string }) {
     }
     return restoreLadder({ huntId, fetchAttempt, requestHint })
       .then((result) => {
+        if (!mountedRef.current) return
         setHintsUsed(result.hintsUsed)
         setTexts(result.texts)
         setRestoreState('ready')
       })
       .catch((error: unknown) => {
+        if (!mountedRef.current) return
         setRestoreError(learningErrorMessage(error, 'hint'))
         setRestoreState('error')
       })
@@ -223,6 +233,9 @@ export function HintLadder({ huntId }: { huntId: string }) {
     })
     try {
       const outcome = await unlockHint({ huntId, level, request: requestHint })
+      if (!mountedRef.current) {
+        return
+      }
       if (outcome.kind === 'failure') {
         // Never unlock on failure; surface a learner-safe message instead.
         setLevelErrors((prev) => ({ ...prev, [level]: outcome.message }))
@@ -233,7 +246,9 @@ export function HintLadder({ huntId }: { huntId: string }) {
       setOpenLevels((prev) => ({ ...prev, [level]: true }))
     } finally {
       flightRef.current.release()
-      setUnlocking(null)
+      if (mountedRef.current) {
+        setUnlocking(null)
+      }
     }
   }
 

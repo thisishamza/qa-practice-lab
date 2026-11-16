@@ -68,7 +68,7 @@ import {
   type AttemptRow,
 } from './attempts'
 import { findHunt, HUNT_ID_PATTERN } from './hunts'
-import { hintText } from './hints'
+import { requireHint } from './hints'
 import { findReveal } from './reveals'
 import {
   SESSION_COOKIE,
@@ -155,13 +155,26 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
   const now = new Date().toISOString()
   const bit = HINT_BITS[level]
 
+  // The ladder is only writable while the attempt is in progress. After
+  // submission or a confirmed give-up, already-unlocked levels stay
+  // re-readable (the idempotent branch below), but no NEW level unlocks.
   if ((attempt.hint_mask & bit) !== 0) {
     // Idempotent re-read of an already-unlocked level: serve the text
     // again, never double count, and never write.
-    const hint = hintText(hunt.id, level) as string
+    const hint = requireHint(hunt.id, level)
     return c.json(
       { level, hint, hintsUsed: hintsUsedFromMask(attempt.hint_mask) } satisfies HintResponse,
       200,
+    )
+  }
+
+  if (attempt.status !== 'in_progress') {
+    return c.json(
+      {
+        error: 'hint_attempt_completed',
+        message: 'This attempt is complete. Start the hunt again to unlock the remaining hints.',
+      },
+      409,
     )
   }
 
@@ -182,16 +195,27 @@ learningRoutes.post('/practice/hunts/:huntId/hints', async (c) => {
   await c.env.DB.prepare(
     `UPDATE hunt_attempts
      SET hint_mask = hint_mask | ?, updated_at = ?
-     WHERE id = ? AND (hint_mask & ?) = 0`,
+     WHERE id = ? AND (hint_mask & ?) = 0 AND status = 'in_progress'`,
   )
     .bind(bit, now, attempt.id, bit)
     .run()
 
   const updated = await resolveAttemptForView(c.env.DB, session.id, hunt.id)
-  const mask = updated?.hint_mask ?? (attempt.hint_mask | bit)
-  const hint = hintText(hunt.id, level) as string
+  const settledMask = updated?.hint_mask ?? (attempt.hint_mask | bit)
+  if ((settledMask & bit) === 0) {
+    // The attempt closed between our check and our write (a report or
+    // give-up committed first) — no hint is recorded or disclosed here.
+    return c.json(
+      {
+        error: 'hint_attempt_completed',
+        message: 'This attempt is complete. Start the hunt again to unlock the remaining hints.',
+      },
+      409,
+    )
+  }
+  const hint = requireHint(hunt.id, level)
   return c.json(
-    { level, hint, hintsUsed: hintsUsedFromMask(mask) } satisfies HintResponse,
+    { level, hint, hintsUsed: hintsUsedFromMask(settledMask) } satisfies HintResponse,
     200,
   )
 })

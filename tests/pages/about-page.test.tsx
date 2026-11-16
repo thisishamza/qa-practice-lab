@@ -97,3 +97,13 @@ describe('AboutPage — accuracy of the build description', () => {
     expect(html).not.toContain('only live API request')
   })
 })
+
+describe('AboutPage — the evaluation anchor is keyboard-focusable', () => {
+  const html = render('#evaluation')
+
+  it('renders the evaluation section with tabindex="-1" so hash navigation can focus it', () => {
+    expect(html).toContain('id="evaluation"')
+    const section = /<section[^>]*id="evaluation"[^>]*>/.exec(html)?.[0] ?? ''
+    expect(section).toContain('tabindex="-1"')
+  })
+})

@@ -38,6 +38,13 @@ export function Modal({
   const descriptionId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const restoreRef = useRef<HTMLElement | null>(null)
+  // Always invoke the latest onClose without re-running the open/close
+  // effect (and without yanking focus) when the caller re-renders.
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) {
@@ -57,7 +64,7 @@ export function Modal({
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') {
@@ -95,7 +102,7 @@ export function Modal({
       restoreRef.current?.focus?.()
       restoreRef.current = null
     }
-  }, [open, onClose, initialFocusRef])
+  }, [open, initialFocusRef])
 
   if (!open) {
     return null
