@@ -306,3 +306,52 @@ maintainer actions recorded after this audit, never as part of it.
 `npm run check && npm run build`, apply `0010` to the production D1 remotely, `npx wrangler pages
 deploy dist`, then run the §8 post-deploy verification and record it in `PROJECT_STATE.md`. If no:
 the branch remains the deliverable; do not push/merge without explicit instruction.
+
+---
+
+## Addendum — independent release review and performance hardening (2026-11-16, same day)
+
+This document originally audited `86076b7` (release-readiness of the Phase 4 implementation). The
+maintainer subsequently authorized the release and requested an independent code review plus a
+performance investigation before merge. Two follow-up commits were added on the branch:
+
+- `5159b38` **perf: lazy-load route components behind route-level code splitting** — every non-index
+  route is its own chunk; the dashboard stays eager; the Suspense boundary sits inside `AppShell`
+  around `<Outlet />` with an accessible `role="status"` fallback. Measured on the production build:
+  index JS **538.57 kB → 370.33 kB** (gzip **156.15 → 114.62 kB**, −27%), CSS 88.20 → 88.36 kB, and the
+  >500 kB chunk-size advisory no longer fires. No dependencies added; no functionality removed.
+- `bcf76b5` **fix: phase 4 review hardening** — fixes for defects found by the independent review:
+  (1) the hint ladder was writable on settled attempts (new level → `409 hint_attempt_completed`;
+  re-reads stay 200; `UPDATE` requires `status='in_progress'`); (2) the `hintText` unchecked cast could
+  serve HTTP 200 with `hint: null` (new `requireHint()` throws → 500); (3) `clientIp()` trusted
+  first-hop `x-forwarded-for`, letting callers rotate the header past the report/mutation caps
+  (now `cf-connecting-ip` only, else limiters skipped as in local development); (4) `Modal` re-ran its
+  open effect (yanking focus) whenever the caller re-rendered with a new `onClose` identity (now a
+  ref; deps `[open, initialFocusRef]`); (5) the give-up dialog could be dismissed mid-flight, making a
+  pending give-up look aborted (cancel is now refused while in flight); (6) a failed `/progress`
+  refresh wiped a populated dashboard (last good payload kept; inline `role="alert"` + retry; the
+  resolver is exported and unit-tested); (7) `/about#evaluation` scrolled without moving focus
+  (section now `tabindex="-1"` and focused on hash navigation); (8) setState-after-unmount guards on
+  the retry/unlock/restore continuations.
+
+**Re-verification after the fixes:** `npm run check` clean; **733/733 tests green across 37 files**
+(+12 regression tests, including migration fresh/upgrade re-runs); `npm run build` passes; client-bundle
+leak scan clean (the one documented learner-safe shared curriculum string remains); **browser probe
+(system Chrome over CDP, fresh profile, production build): 64/64 checks pass** — the guest journey
+(start → ladder skip 409 → ordered unlock → empty-submit error summary → report → evaluation view →
+reveal unlocked in-place), the give-up journey (cancel → zero requests → still 403; confirm → 200;
+report-after-give-up keeps zero discovery), `/progress` (attribution banners, progress API),
+placeholders unavailable, both themes × 375/768/1024/1440 px (one h1, zero overflow), `/about#evaluation`
+focus, zero unexpected console errors.
+
+**Conclusions reaffirmed:** no defect ids, hint/reveal content or evaluator internals appear in any
+pre-unlock payload or the client bundle; ownership scoping and the reveal/hint gates are unchanged in
+shape; migration 0010 remains additive-only (local `schema_version` 10; production still `schema_version`
+9 until the authorized remote migration runs). Known limitations from the original audit still apply,
+plus one environment note: `wrangler pages dev` exposes `cf-connecting-ip` locally, so the
+20/IP/UTC-day hunt-start cap is active in local probes (verified: it engages at exactly 20).
+
+**Status:** the release steps (push → PR → merge → remote migration 0010 → `wrangler pages deploy` →
+production acceptance) were authorized for this release only; their recorded outcome is in
+`PROJECT_STATE.md` §11. This addendum changes no verdict above — it records the hardening that shipped
+between the audit commit and the release.
