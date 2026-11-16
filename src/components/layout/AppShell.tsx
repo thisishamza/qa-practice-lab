@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { useRouteManagement } from '../../lib/useRouteManagement'
 import { MobileNav } from './MobileNav'
@@ -7,6 +7,15 @@ import { TopBar } from './TopBar'
 import { ModeBanner } from '../../features/practice/ModeBanner'
 
 const SIDEBAR_STORAGE_KEY = 'qa-practice-lab-sidebar-collapsed'
+
+/** Accessible, non-blocking fallback shown while a route chunk downloads. */
+function RouteFallback() {
+  return (
+    <div className="route-fallback" role="status" aria-live="polite">
+      <span className="route-fallback-text">Loading page…</span>
+    </div>
+  )
+}
 
 function readCollapsedPreference(): boolean {
   try {
@@ -100,7 +109,9 @@ export function AppShell() {
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="page-container">
             <ModeBanner />
-            <Outlet />
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
           </div>
 
           <footer className="site-footer">

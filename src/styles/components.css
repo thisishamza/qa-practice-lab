@@ -1412,6 +1412,21 @@
   }
 }
 
+/* Route-level code splitting fallback -------------------------------------- */
+
+.route-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16rem;
+  padding: 2rem 1rem;
+}
+
+.route-fallback-text {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
 /* Health panel ----------------------------------------------------------- */
 
 /* Not found -------------------------------------------------------------- */

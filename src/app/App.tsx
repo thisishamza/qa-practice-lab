@@ -1,30 +1,51 @@
+import { lazy } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { CartProvider } from '../features/cart/CartContext'
 import { AuthProvider } from '../features/auth/AuthContext'
 import { PracticeSessionProvider } from '../features/practice/PracticeSessionProvider'
 import { AppShell } from '../components/layout/AppShell'
-import { CartPage } from '../pages/CartPage'
-import { CheckoutPage } from '../pages/CheckoutPage'
-import { OrderConfirmationPage } from '../pages/OrderConfirmationPage'
-import { LoginPage } from '../pages/LoginPage'
-import { AccountPage } from '../pages/AccountPage'
-import { AccountOrdersPage } from '../pages/AccountOrdersPage'
-import { AccountOrderDetailPage } from '../pages/AccountOrderDetailPage'
 import { ThemeProvider } from '../components/ui/ThemeProvider'
-import { AdminInventoryPage } from '../pages/AdminInventoryPage'
-import { AboutPage } from '../pages/AboutPage'
 import { DashboardPage } from '../pages/DashboardPage'
-import { GuidesPage } from '../pages/GuidesPage'
-import { GuideDetailPage } from '../pages/GuideDetailPage'
-import { NotFoundPage } from '../pages/NotFoundPage'
-import { PracticePage } from '../pages/PracticePage'
-import { ProgressPage } from '../pages/ProgressPage'
-import { ScenarioDetailPage } from '../pages/ScenarioDetailPage'
-import { ScenariosPage } from '../pages/ScenariosPage'
-import { ShopPage } from '../pages/ShopPage'
-import { ShopProductPage } from '../pages/ShopProductPage'
-import { TracksPage } from '../pages/TracksPage'
-import { TrackDetailPage } from '../pages/TrackDetailPage'
+
+// Route-level code splitting: every non-index page is its own chunk, fetched
+// on first navigation instead of up front. The dashboard stays eager because
+// it is the landing route; everything behind the shell is deferrable.
+const CartPage = lazy(() => import('../pages/CartPage').then((m) => ({ default: m.CartPage })))
+const CheckoutPage = lazy(() => import('../pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
+const OrderConfirmationPage = lazy(() =>
+  import('../pages/OrderConfirmationPage').then((m) => ({ default: m.OrderConfirmationPage })),
+)
+const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const AccountPage = lazy(() => import('../pages/AccountPage').then((m) => ({ default: m.AccountPage })))
+const AccountOrdersPage = lazy(() =>
+  import('../pages/AccountOrdersPage').then((m) => ({ default: m.AccountOrdersPage })),
+)
+const AccountOrderDetailPage = lazy(() =>
+  import('../pages/AccountOrderDetailPage').then((m) => ({ default: m.AccountOrderDetailPage })),
+)
+const AdminInventoryPage = lazy(() =>
+  import('../pages/AdminInventoryPage').then((m) => ({ default: m.AdminInventoryPage })),
+)
+const AboutPage = lazy(() => import('../pages/AboutPage').then((m) => ({ default: m.AboutPage })))
+const GuidesPage = lazy(() => import('../pages/GuidesPage').then((m) => ({ default: m.GuidesPage })))
+const GuideDetailPage = lazy(() =>
+  import('../pages/GuideDetailPage').then((m) => ({ default: m.GuideDetailPage })),
+)
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+const PracticePage = lazy(() => import('../pages/PracticePage').then((m) => ({ default: m.PracticePage })))
+const ProgressPage = lazy(() => import('../pages/ProgressPage').then((m) => ({ default: m.ProgressPage })))
+const ScenarioDetailPage = lazy(() =>
+  import('../pages/ScenarioDetailPage').then((m) => ({ default: m.ScenarioDetailPage })),
+)
+const ScenariosPage = lazy(() => import('../pages/ScenariosPage').then((m) => ({ default: m.ScenariosPage })))
+const ShopPage = lazy(() => import('../pages/ShopPage').then((m) => ({ default: m.ShopPage })))
+const ShopProductPage = lazy(() =>
+  import('../pages/ShopProductPage').then((m) => ({ default: m.ShopProductPage })),
+)
+const TracksPage = lazy(() => import('../pages/TracksPage').then((m) => ({ default: m.TracksPage })))
+const TrackDetailPage = lazy(() =>
+  import('../pages/TrackDetailPage').then((m) => ({ default: m.TrackDetailPage })),
+)
 
 export function App() {
   return (
