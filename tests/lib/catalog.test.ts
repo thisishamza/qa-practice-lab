@@ -293,7 +293,7 @@ describe('countScenariosByStatus', () => {
     expect(total).toBe(scenarios.length)
     expect(counts['in-design']).toBe(scenarios.filter((s) => s.status === 'in-design').length)
     expect(counts.planned).toBe(scenarios.filter((s) => s.status === 'planned').length)
-    expect(counts.ready).toBe(8)
+    expect(counts.ready).toBe(12)
   })
 })
 

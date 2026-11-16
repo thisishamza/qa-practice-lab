@@ -18,6 +18,18 @@
 //       live in the same browser. A customer signed in on one practice
 //       session is NOT signed in on another.
 //
+//   Practice API token (`Authorization: Bearer …`, see apiTokens.ts)
+//     - A separate, synthetic opaque 256-bit credential minted by
+//       `POST /api/v1/auth/token`. SHA-256 hash at rest in `api_tokens`;
+//       NOT bound to a practice session (an API credential must outlive
+//       the tab that minted it) but bound to the customer row. When a
+//       Bearer header is present it wins over the cookie; when it is
+//       absent (or malformed) the cookie pair is used exactly as before.
+//       Roles and status come from the stored customer row in both paths —
+//       never from the credential. Expired Bearer tokens answer
+//       401 token_expired; revoked/unknown/malformed credentials answer
+//       401 unauthorized.
+//
 // Token lifecycle:
 //   - Login mints a BRAND-NEW token and inserts it (hashed) together with a
 //     fresh expiry. Before inserting, every customer_sessions row for the
@@ -54,6 +66,7 @@ import {
   hashSessionToken,
   isTokenFormat,
 } from './session'
+import { findLiveApiToken, hashApiToken, isApiTokenFormat } from './apiTokens'
 
 export const CUSTOMER_COOKIE = 'mpl_customer'
 export const CUSTOMER_SESSION_TTL_SECONDS = 8 * 60 * 60
@@ -228,17 +241,81 @@ async function findLiveCustomerSession(
 }
 
 export type CustomerResolution =
-  | { kind: 'ok'; customer: CustomerRow; practiceSessionId: number }
+  | { kind: 'ok'; customer: CustomerRow; practiceSessionId: number | null }
   | { kind: 'none'; clearCookie: boolean }
+  /** A well-formed Bearer token was presented but has expired (401 token_expired). */
+  | { kind: 'bearer-expired' }
 
 /**
- * Resolves the caller's customer identity for this request. Both cookies are
- * required and their binding is verified: the live customer session must be
- * bound to the live practice session presented in the same browser. A valid
- * `mpl_customer` token replayed against another practice session (or with no
- * practice session at all) resolves to `none`.
+ * Resolves an `Authorization: Bearer` credential against `api_tokens`.
+ * Returns 'ok' with the bound customer row, 'expired' when the presented
+ * token is past its TTL, or 'unusable' in every other failure mode. Roles
+ * and status come from the database-backed customer row — never from the
+ * token or any client-supplied claim.
+ */
+async function resolveApiToken(
+  db: D1Database,
+  presented: string,
+): Promise<{ kind: 'ok'; customer: CustomerRow } | { kind: 'expired' } | { kind: 'unusable' }> {
+  if (!isApiTokenFormat(presented)) {
+    return { kind: 'unusable' }
+  }
+  const lookup = await findLiveApiToken(db, await hashApiToken(presented))
+  if (lookup.kind === 'expired') {
+    return { kind: 'expired' }
+  }
+  if (lookup.kind !== 'live') {
+    return { kind: 'unusable' }
+  }
+  const customer = await db
+    .prepare('SELECT * FROM customers WHERE id = ?')
+    .bind(lookup.token.customerId)
+    .first<CustomerRow>()
+  if (!customer) {
+    // Orphaned token (customer row vanished) — drop it rather than trust it.
+    await db.prepare('DELETE FROM api_tokens WHERE id = ?').bind(lookup.token.id).run()
+    return { kind: 'unusable' }
+  }
+  return { kind: 'ok', customer }
+}
+
+const BEARER_PATTERN = /^Bearer\s+(\S+)\s*$/i
+
+/**
+ * Resolves the caller's customer identity for this request. When an
+ * `Authorization: Bearer` header is present it is authoritative and the
+ * cookie is never consulted; otherwise the cookie pair (`mpl_customer` +
+ * `mpl_session`) is resolved exactly as before. An expired Bearer token
+ * answers `bearer-expired`; any other Bearer failure answers `none` —
+ * callers must NOT fall back to the cookie in either case (a presented
+ * credential that cannot be honoured fails closed).
  */
 export async function resolveCustomerContext(c: Context<AppEnv>): Promise<CustomerResolution> {
+  const authHeader = c.req.header('Authorization')
+  if (authHeader !== undefined) {
+    const match = BEARER_PATTERN.exec(authHeader.trim())
+    const presented = match?.[1]
+    if (presented === undefined) {
+      return { kind: 'none', clearCookie: false }
+    }
+    const resolved = await resolveApiToken(c.env.DB, presented)
+    if (resolved.kind === 'expired') {
+      return { kind: 'bearer-expired' }
+    }
+    if (resolved.kind !== 'ok') {
+      return { kind: 'none', clearCookie: false }
+    }
+    // The Bearer token is not practice-session bound; when the browser also
+    // presents a live practice session it is reused for audit attribution.
+    const practiceCookie = getCookie(c, SESSION_COOKIE)
+    let practiceSessionId: number | null = null
+    if (practiceCookie && isTokenFormat(practiceCookie)) {
+      const practice = await findLiveSession(c.env.DB, await hashSessionToken(practiceCookie))
+      practiceSessionId = practice?.id ?? null
+    }
+    return { kind: 'ok', customer: resolved.customer, practiceSessionId }
+  }
+
   const presented = getCookie(c, CUSTOMER_COOKIE)
   if (!presented || !isCustomerTokenFormat(presented)) {
     // Malformed tokens are treated as absent; a presented one is cleared.
@@ -277,15 +354,29 @@ export function applyCustomerCookieClear(c: Context<AppEnv>) {
 /**
  * Shared guard for protected customer endpoints. Returns the active customer
  * or a ready-to-send error response:
- *   401 unauthorized       — no/invalid/expired/cross-practice-session cookie
+ *   401 unauthorized       — no/invalid/revoked/cross-practice-session credential
+ *   401 token_expired      — a presented Bearer token is past its TTL
  *   403 account_suspended  — the customer was suspended after sign-in
  */
 export async function requireActiveCustomer(
   c: Context<AppEnv>,
-): Promise<{ kind: 'ok'; customer: CustomerRow; practiceSessionId: number } | { kind: 'error'; response: Response }> {
+): Promise<{ kind: 'ok'; customer: CustomerRow; practiceSessionId: number | null } | { kind: 'error'; response: Response }> {
   const resolution = await resolveCustomerContext(c)
+  if (resolution.kind === 'bearer-expired') {
+    return {
+      kind: 'error',
+      response: c.json(
+        {
+          error: 'token_expired',
+          message:
+            'This practice API token has expired. Mint a new one — there is no renewal flow by design.',
+        },
+        401,
+      ),
+    }
+  }
   if (resolution.kind !== 'ok') {
-    if (resolution.clearCookie) {
+    if (resolution.kind === 'none' && resolution.clearCookie) {
       applyCustomerCookieClear(c)
     }
     return {

@@ -16,7 +16,10 @@ const HUNT_IDS = [
   'hunt-catalogue-001',
   'hunt-checkout-001',
   'hunt-inventory-001',
+  'hunt-authn-001',
+  'hunt-rbac-001',
   'hunt-authz-001',
+  'hunt-mass-001',
 ] as const
 
 const SCENARIO_IDS: Record<(typeof HUNT_IDS)[number], string> = {
@@ -26,7 +29,10 @@ const SCENARIO_IDS: Record<(typeof HUNT_IDS)[number], string> = {
   'hunt-catalogue-001': 'manual-shop-search',
   'hunt-checkout-001': 'manual-address-edge-cases',
   'hunt-inventory-001': 'api-checkout-exact-stock',
+  'hunt-authn-001': 'api-token-replay',
+  'hunt-rbac-001': 'auth-role-boundaries',
   'hunt-authz-001': 'security-object-access',
+  'hunt-mass-001': 'api-mass-assignment',
 }
 
 function makeData(
@@ -87,7 +93,7 @@ describe('RecommendedPathView — structure and order', () => {
     expect(html).toContain('aria-labelledby="recommended-path-title"')
   })
 
-  it('lists the seven runnable hunts in the approved order', () => {
+  it('lists the runnable hunts in the approved order', () => {
     for (const id of recommendedHuntScenarioIds) {
       expect(html).toContain(`/scenarios/${id}`)
     }
@@ -121,7 +127,7 @@ describe('RecommendedPathView — structure and order', () => {
 describe('RecommendedPathView — progress-derived completion states', () => {
   it('shows Not started for hunts with no attempts', () => {
     const html = render(ready())
-    expect(html.match(/Not started/g)?.length).toBe(7)
+    expect(html.match(/Not started/g)?.length).toBe(10)
     expect(html).not.toContain('Completed')
   })
 

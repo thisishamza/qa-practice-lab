@@ -237,6 +237,36 @@ export const FINDING_GROUPS: Readonly<Record<string, readonly string[]>> = {
     'access control',
     'reference', 'order reference',
   ],
+  'hunt-authn-001': [
+    'token', 'tokens', 'bearer',
+    'api token', 'access token', 'practice token',
+    'replay', 'replayed', 'replays',
+    'logout', 'log out', 'sign out', 'signout',
+    'revoke', 'revoked', 'revocation',
+    'expire', 'expired', 'expiry', 'expiration',
+    'still works', 'still valid', 'still resolves',
+    'authorization header',
+  ],
+  'hunt-rbac-001': [
+    'role', 'roles', 'role boundary',
+    'staff', 'staff only', 'staff access',
+    'customer role', 'admin', 'inventory',
+    'authorization', 'authorisation', 'authorized', 'authorised',
+    'unauthorized', 'unauthorised',
+    'permission', 'permissions',
+    'staff_required', 'forbidden',
+    'wrong role', 'non staff', 'non staff account',
+  ],
+  'hunt-mass-001': [
+    'total', 'totals',
+    'line total', 'order total', 'cart total', 'grand total',
+    'subtotal', 'subtotals',
+    'totalcents', 'total cents',
+    'client supplied', 'client provided', 'client sent', 'client value', 'client figure', 'client total',
+    'mass assignment', 'mass-assignment',
+    'request body',
+    'forged', 'tampered', 'manipulated', 'fabricated',
+  ],
 }
 
 const NORMALIZED_FINDING_GROUPS: ReadonlyMap<string, readonly string[]> = new Map(

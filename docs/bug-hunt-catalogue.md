@@ -261,6 +261,108 @@ every wired scenario is `runnable`, `ready`, `mode: 'bug-hunt'`, carries
 - **Tests:** `tests/server/hunt-set.test.ts` (AUTHZ-001 block: clean 404,
   hunt 200, unknown reference 404).
 
+## Registered hunts (P5-M2 — Phase 5 API & identity)
+
+| Hunt id | Title | Defects | Wired scenario |
+|---|---|---|---|
+| `hunt-authn-001` | Signing out does not end the token’s life | `AUTHN-001` | `api-token-replay` |
+| `hunt-rbac-001` | Staff tools open to the wrong role | `RBAC-001` | `auth-role-boundaries` |
+| `hunt-mass-001` | Checkout trusts the client’s prices | `MASS-001` | `api-mass-assignment` |
+
+### AUTHN-001 — Logout leaves API tokens replayable
+
+- **Surface:** `POST /api/v1/auth/logout` (+ Bearer resolution in
+  `src/server/customer.ts`).
+- **Code site:** `src/server/auth.ts` — the logout handler's customer-scoped
+  `DELETE FROM api_tokens WHERE customer_id = ?` is skipped under
+  `await isDefectActive(c, 'AUTHN-001')`. Bearer resolution
+  (`findLiveApiToken`) is unchanged in both modes.
+- **Expected (clean):** logout revokes the caller account's practice API
+  tokens server-side; a Bearer token replayed after logout answers
+  `401 unauthorized`.
+- **Actual (bug hunt):** logout deletes the customer session but leaves the
+  account's `api_tokens` rows in place, so the replayed Bearer token still
+  resolves the account (`200`).
+- **Reproduction:**
+  1. Start the hunt (launch panel on `/scenarios/api-token-replay`, or the
+     hunt row on `/practice`).
+  2. Sign in as a demo customer; mint a token from the API Lab
+     (`POST /api/v1/auth/token`); prove it with one protected request.
+  3. Sign out. Replay the same request with the token.
+     Expected: `401 unauthorized`. Actual: `200` with the profile.
+  4. Reset and repeat — `401 unauthorized` again.
+- **Isolation:** only the hunting session's logout skips revocation. The
+  tokens are account-scoped, so the defect could expose the hunting
+  account's own data during the hunt window — never another account's.
+  Clean mode (any session) revokes exactly as documented; AUTHN-001 never
+  lives in clean code paths.
+- **Reset:** `POST /api/v1/practice/session/reset` — subsequent logouts
+  revoke normally again.
+- **Tests:** `tests/server/api-tokens.test.ts` and
+  `tests/server/hunt-set.test.ts` (logout-replay blocks, clean/hunt/reset).
+
+### RBAC-001 — Staff inventory read is open to the customer role
+
+- **Surface:** `GET /api/v1/admin/inventory` (read-only).
+- **Code site:** `src/server/staff.ts` — the `role !== 'staff'` branch of
+  `requireStaff` is bypassed under
+  `options.roleBoundaryDefect && await isDefectActive(c, 'RBAC-001')`, and
+  only the GET /admin/inventory route opts in via `{ roleBoundaryDefect: true }`.
+  PATCH /admin/inventory/:productId calls `requireStaff` without the option
+  and is enforced identically in both modes.
+- **Expected (clean):** an authenticated customer-role account answers
+  `403 staff_required` on the inventory list (cookie or Bearer).
+- **Actual (bug hunt):** any authenticated *active* account (either role,
+  either credential) receives `200` with the inventory list. Suspended
+  accounts still answer `403 account_suspended`; guests still answer `401`.
+- **Reproduction:**
+  1. Start the hunt (launch panel on `/scenarios/auth-role-boundaries`, or
+     the hunt row on `/practice`).
+  2. Sign in as a customer-role demo account; GET /api/v1/admin/inventory.
+     Expected: `403 staff_required`. Actual: `200` with the inventory list.
+  3. Control: PATCH /api/v1/admin/inventory/:productId — `403` in both modes.
+  4. Reset and repeat — `403 staff_required` again.
+- **Isolation:** the defective branch grants read access to synthetic
+  inventory figures only, only for the hunting session, and never widens
+  PATCH or any other staff boundary. Staff fixtures are unaffected in both
+  modes.
+- **Reset:** covered in `tests/server/hunt-set.test.ts` (clean 403 → hunt
+  200 → reset → 403; PATCH 403 in both modes).
+- **Tests:** `tests/server/hunt-set.test.ts`.
+
+### MASS-001 — Checkout honours a client-supplied totalCents
+
+- **Surface:** `POST /api/v1/checkout`.
+- **Code site:** `src/server/checkout.ts` — the `totalCents` bound for the
+  orders INSERT is taken from a client `totalCents` field when the hunt is
+  active and the field is a non-negative safe integer; otherwise the
+  server-computed figure is used, exactly as clean mode. The subtotal and
+  line totals are never client-controlled in either mode.
+- **Expected (clean):** the client sends only customer details and
+  `paymentSimulation`; the stored total is always computed server-side.
+  An extra `totalCents` field is ignored entirely.
+- **Actual (bug hunt):** a non-negative integer `totalCents` in the body is
+  stored as the order's total. The confirmation and
+  `GET /api/v1/orders/:reference` report a total disagreeing with the cart,
+  the checkout summary and the sum of line totals.
+- **Reproduction:**
+  1. Start the hunt (launch panel on `/scenarios/api-mass-assignment`, or
+     the hunt row on `/practice`).
+  2. Add products to the cart; note the checkout summary total.
+  3. POST /api/v1/checkout with valid details, `paymentSimulation:
+     approved` and `"totalCents": 1`.
+  4. Open the confirmation — the total is the forged figure.
+     Expected (clean): the extra field is ignored.
+  5. Reset and repeat — the server-computed total is stored again.
+- **Isolation:** forged totals affect only the hunting session's own
+  session-scoped, 7-day-TTL orders (cascade-deleted with the session).
+  The orders table CHECK (`total_cents >= 0`) is untouched — negative
+  forged values are out of domain and ignored exactly as clean mode
+  ignores the field. No payment processor, no shared rows.
+- **Reset:** covered in `tests/server/hunt-set.test.ts` (hunt `1` honoured →
+  reset → server-computed figure) plus the clean-mode forged-field block.
+- **Tests:** `tests/server/hunt-set.test.ts`.
+
 ## Defect coverage against the phase-plan areas
 
 | Area (plan §5) | Defect(s) |
@@ -270,6 +372,9 @@ every wired scenario is `runnable`, `ready`, `mode: 'bug-hunt'`, carries
 | pricing | `PRICING-001` |
 | validation | `CHECKOUT-001` |
 | authZ | `AUTHZ-001` |
+| authN / token lifecycle | `AUTHN-001` |
+| RBAC / role boundaries | `RBAC-001` |
+| mass assignment | `MASS-001` |
 
 ## Maintenance notes
 

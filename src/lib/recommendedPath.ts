@@ -53,7 +53,7 @@ export interface RecommendedPathItem {
 }
 
 /**
- * The seven runnable bug-hunt scenarios in the approved recommended order,
+ * The runnable bug-hunt scenarios in the approved recommended order,
  * with their curriculum metadata attached. Derived from the existing
  * registries; throws nothing — a missing scenario is skipped rather than
  * rendered as a fake entry.

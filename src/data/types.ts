@@ -132,7 +132,7 @@ export interface Scenario {
   huntId?: string
   /**
    * Learner-safe curriculum metadata for the wired hunt (Phase 4, WP1).
-   * Present only on the seven runnable bug-hunt scenarios; single source
+   * Present only on the wired bug-hunt scenarios; single source
    * of truth is src/shared/huntCurriculum.ts. Nothing here reveals the
    * defect's identity or its fix.
    */

@@ -6,7 +6,7 @@
 // submitted against the hunt (`lastSubmittedAt !== null` in the WP1
 // progress payload). Discovery is shown separately and is never inferred
 // from score, hints, status or reveal. Placeholder scenarios are not listed
-// here at all — the seven wired, runnable hunts are the path.
+// here at all — the wired, runnable hunts are the path.
 
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
@@ -138,7 +138,7 @@ export function RecommendedPathView({ state }: { state: ProgressDashboardState }
         ))}
       </ol>
       <p className="panel-note">
-        The remaining 21 catalogue scenarios are labelled placeholders — they are not runnable and
+        The remaining 18 catalogue scenarios are labelled placeholders — they are not runnable and
         cannot be completed yet. Completion means a report was submitted; discovery means the
         finding check passed. The two are never the same signal, and neither is a score or a
         revealed solution.{' '}

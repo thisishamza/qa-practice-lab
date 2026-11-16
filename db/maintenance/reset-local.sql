@@ -9,7 +9,8 @@
 -- It deletes ALL learner state: carts and cart items, orders and order items,
 -- checkout idempotency records, customer sessions, practice sessions, order
 -- cancellation markers, inventory adjustments (audit history of probe work),
--- hunt-start caps and rate-limit buckets. It then restores the seed inventory
+-- hunt-start caps, rate-limit buckets, hunt attempts, bug reports and API
+-- tokens. It then restores the seed inventory
 -- quantities and low-stock thresholds from 0002_commerce_domain.sql.
 --
 -- It keeps: the schema, the catalogue (products/categories), the synthetic
@@ -18,6 +19,12 @@
 -- older than the migration files. This script is not a substitute for the
 -- learner-facing reset button, and it is never invoked by any application code.
 
+-- bug_reports/hunt_attempts are listed explicitly even though the
+-- reference rows cascade from practice_sessions: the file must remain a
+-- complete, honest inventory of what a reset removes.
+DELETE FROM bug_reports;
+DELETE FROM hunt_attempts;
+DELETE FROM api_tokens;
 DELETE FROM order_cancellations;
 DELETE FROM inventory_adjustments;
 DELETE FROM checkout_idempotency;

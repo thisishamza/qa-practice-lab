@@ -31,6 +31,7 @@ const ALL_OPERATIONS: ReadonlyArray<[string, string]> = [
   ['POST', '/api/v1/orders/{reference}/cancel'],
   ['GET', '/api/v1/auth/accounts'],
   ['POST', '/api/v1/auth/login'],
+  ['POST', '/api/v1/auth/token'],
   ['POST', '/api/v1/auth/logout'],
   ['GET', '/api/v1/auth/me'],
   ['GET', '/api/v1/account'],
@@ -82,9 +83,9 @@ describe('ApiReferenceView', () => {
     expect(html).toContain('Operator-only · internal')
   })
 
-  it('links each of the 34 operations into the API Lab', () => {
+  it('links each of the 35 operations into the API Lab', () => {
     const matches = html.match(/\/api-lab\?method=/g) ?? []
-    expect(matches).toHaveLength(34)
+    expect(matches).toHaveLength(35)
     expect(html).toContain('/api-lab?method=GET&amp;path=%2Fapi%2Fv1%2Fproducts')
   })
 

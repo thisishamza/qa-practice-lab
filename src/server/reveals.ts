@@ -13,7 +13,7 @@
 // `title` is the hunt's learner-safe title. The 21 non-runnable placeholder
 // scenarios have no entry here on purpose; a reveal is served only for a
 // registered hunt. tests/server/hints-reveal.test.ts asserts the registry
-// covers exactly the seven runnable hunts.
+// covers exactly the registered runnable hunts.
 
 export interface RevealDefinition {
   expected: string
@@ -211,6 +211,87 @@ export const REVEALS: Record<string, RevealDefinition> = {
     commonMisconceptions: [
       'Assuming sign-in was bypassed — sign-in still works; the ownership check is what is missing.',
       'Assuming the data is public, when only possession of the reference is required.',
+    ],
+  },
+  'hunt-authn-001': {
+    expected:
+      'Signing out should invalidate every credential issued for the account, including practice API tokens, so a token replayed after logout answers the same unauthorized response as any other signed-out request.',
+    actual:
+      'Signing out invalidates the browser session but leaves the account’s practice API tokens valid, so a token captured before sign-out still authenticates protected requests afterwards.',
+    rootCause:
+      'Logout ends the browser session without revoking the account’s separately issued API credentials, so possessing a previously minted token is enough to keep acting as the account.',
+    reproduction: [
+      'Sign in as a synthetic demo account and mint a practice API token.',
+      'Make one protected request with the token to confirm it works.',
+      'Sign out, then replay the same request with the same token.',
+      'Observe the request still resolving the account; compare with a clean session, which answers unauthorized.',
+    ],
+    verification: [
+      'In a clean session, sign out and replay the token — confirm the request answers with the same unauthorized response as a signed-out request.',
+      'Confirm a freshly minted token works in both modes, and that signing out and minting a new token behaves identically everywhere else.',
+    ],
+    concepts: [
+      'Server-side revocation versus client-side session clearing',
+      'Credential lifecycle testing: mint, use, expire, revoke',
+      'Differential testing across authentication paths (cookie versus token)',
+    ],
+    commonMisconceptions: [
+      'Assuming signing out also destroys API tokens, when it only ends the browser session.',
+      'Assuming the token expired on its own — the TTL is unaffected by sign-out.',
+    ],
+  },
+  'hunt-rbac-001': {
+    expected:
+      'The staff inventory view should require the staff role: a customer-role account — however it authenticates — should receive the same forbidden response it gets everywhere else, and no inventory figures should be returned.',
+    actual:
+      'The read-only inventory list is served to any authenticated active account regardless of role; the restock action remains properly forbidden for non-staff accounts.',
+    rootCause:
+      'The role boundary is enforced on the state-changing action but missing on the read-only view, a classic per-route authorization gap: the check exists on one route and was never applied to its sibling.',
+    reproduction: [
+      'Sign in as a customer-role synthetic account.',
+      'Request the staff inventory list with that account’s credentials.',
+      'Observe the full inventory payload being returned; compare with a clean session, which answers with the same forbidden response as before.',
+      'Attempt the restock action as the same account and confirm it is refused in both modes.',
+    ],
+    verification: [
+      'In a clean session, repeat the list request as the customer-role account — confirm it is refused with the same response as before.',
+      'Confirm the staff account can read and restock in both modes, and the customer-role account remains barred from restocking.',
+    ],
+    concepts: [
+      'Per-route versus per-surface authorization design',
+      'Read paths are authorization boundaries too',
+      'Contrast testing across sister routes sharing a data surface',
+    ],
+    commonMisconceptions: [
+      'Assuming sign-in was enough for staff tools, when authentication and authorization are separate checks.',
+      'Assuming the restock path is equally exposed — it is not; only the read side is affected.',
+    ],
+  },
+  'hunt-mass-001': {
+    expected:
+      'The order total should always be computed server-side from the catalogue. No client-supplied figure in the checkout request should change what the order stores or reports.',
+    actual:
+      'A non-negative integer totalCents sent in the checkout request body is stored as the order’s total while the subtotal and line totals stay server-computed, so the confirmation disagrees with the cart, the checkout summary and its own line items.',
+    rootCause:
+      'The server binds a client-controlled figure for the order total instead of deriving it exclusively from the catalogue, so any caller who edits the request body dictates what the order claims to cost.',
+    reproduction: [
+      'Add products to the cart and note the checkout summary total.',
+      'Send the checkout request with a valid payload plus an extra body field carrying a different total.',
+      'Open the confirmation and the order detail request; note the stored total.',
+      'Compare with a clean session, where the same extra field is ignored and the server-computed total is stored.',
+    ],
+    verification: [
+      'In a clean session, repeat the request with the extra field — confirm the server-computed total is stored regardless.',
+      'Confirm the confirmation figures, the subtotal and the line totals agree with each other in all sessions.',
+    ],
+    concepts: [
+      'Mass assignment: binding client fields the contract never declared',
+      'Server-authoritative pricing and totals',
+      'Response-vs-source-of-truth consistency checks',
+    ],
+    commonMisconceptions: [
+      'Assuming the cart or the summary was wrong — the cart is always consistent; only the stored order total is believed from the client.',
+      'Assuming the forged total propagates everywhere — the subtotal and line totals are unaffected.',
     ],
   },
 }

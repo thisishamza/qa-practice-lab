@@ -180,12 +180,12 @@ describe('cart item id pattern is bounded', () => {
 })
 
 describe('migration 0009 (rate_limit_buckets)', () => {
-  it('applies cleanly on a fresh database (schema_version 10, bucket usable)', async () => {
+  it('applies cleanly on a fresh database (schema_version 11, bucket usable)', async () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('10')
+    expect(row.value).toBe('11')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'rate_limit_buckets'")
@@ -211,7 +211,7 @@ describe('migration 0009 (rate_limit_buckets)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('10')
+    expect(after.value).toBe('11')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite
@@ -493,7 +493,7 @@ describe('maintenance sweep', () => {
     expect(sweep.status).toBe(200)
     const body = (await sweep.json()) as {
       ok: boolean
-      deleted: { customerSessions: number; practiceSessions: number; huntStartCaps: number; rateLimitBuckets: number }
+      deleted: { customerSessions: number; practiceSessions: number; huntStartCaps: number; rateLimitBuckets: number; apiTokens: number }
     }
     expect(body.ok).toBe(true)
     expect(body.deleted.practiceSessions).toBeGreaterThanOrEqual(1)
@@ -535,12 +535,13 @@ describe('maintenance sweep', () => {
       { DB: migrated.db },
     )
     const second = (await again.json()) as {
-      deleted: { practiceSessions: number; huntStartCaps: number; rateLimitBuckets: number }
+      deleted: { practiceSessions: number; huntStartCaps: number; rateLimitBuckets: number; apiTokens: number }
     }
     // The staff sign-in created its own live session; the sweep must not
     // touch it. Nothing expired remains, so every count is zero.
     expect(second.deleted.practiceSessions).toBe(0)
     expect(second.deleted.huntStartCaps).toBe(0)
     expect(second.deleted.rateLimitBuckets).toBe(0)
+    expect(second.deleted.apiTokens).toBe(0)
   })
 })

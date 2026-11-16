@@ -37,7 +37,7 @@
     },
     {
       "name": "auth",
-      "description": "Synthetic demo sign-in, sign-out and the safe demo-account directory. Not a production identity system."
+      "description": "Synthetic demo sign-in, sign-out, practice API token mint and the safe demo-account directory. Not a production identity system."
     },
     {
       "name": "account",
@@ -831,6 +831,89 @@
         }
       }
     },
+    "/api/v1/auth/token": {
+      "post": {
+        "operationId": "mintApiToken",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Mint a synthetic practice API token",
+        "description": "Re-authenticates a synthetic demo account (same verification, same dummy-hash timing equalization and the same 5-failures/IP/UTC-minute budget as POST /api/v1/auth/login — the counter is shared, deliberately) and issues an opaque 256-bit practice API token, returned once in the 201 body. Only the token's SHA-256 hash is stored server-side. Send it as `Authorization: Bearer <token>` anywhere this contract accepts the `mpl_customer` cookie; when both are present the Bearer token wins. There is no refresh and no renewal — minting again is the only path. Sign-out revokes every token bound to the account. `expiresInSeconds` is clamped server-side to 15-900 (default 900). Suspended accounts answer 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token minted. The raw token appears in this response exactly once and is never stored or returned again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed email/password, or an expiresInSeconds that is not a finite number. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown email or wrong password (indistinguishable). Error code: `invalid_credentials`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account exists but is suspended. Error code: `account_suspended`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Five failed attempts from this IP in the current UTC minute (shared with sign-in). Error code: `login_rate_limited`. `Retry-After` header included.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the window resets.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "operationId": "logout",
@@ -838,7 +921,7 @@
           "auth"
         ],
         "summary": "Sign out",
-        "description": "Deletes the caller's `mpl_customer` customer session (if any) and clears the cookie. Idempotent: a guest answers `{ \"ok\": true }` too. The anonymous practice session (`mpl_session`) is unaffected.",
+        "description": "Deletes the caller's `mpl_customer` customer session (if any) and clears the cookie. Also revokes every practice API token bound to the account (customer-scoped, deliberately broad and documented — signing out anywhere signs out everywhere). Idempotent: a guest answers `{ \"ok\": true }` too. The anonymous practice session (`mpl_session`) is unaffected.",
         "responses": {
           "200": {
             "description": "Signed out (or was never signed in).",
@@ -870,6 +953,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -884,7 +970,7 @@
             }
           },
           "401": {
-            "description": "Not signed in (or the customer session is unknown/expired/bound to another practice session). Error code: `unauthorized`.",
+            "description": "Not signed in (or the customer session is unknown/expired/bound to another practice session). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -917,6 +1003,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -931,7 +1020,7 @@
             }
           },
           "401": {
-            "description": "Not signed in. Error code: `unauthorized`.",
+            "description": "Not signed in. Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -964,6 +1053,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -978,7 +1070,7 @@
             }
           },
           "401": {
-            "description": "Not signed in. Error code: `unauthorized`.",
+            "description": "Not signed in. Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1011,6 +1103,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -1047,7 +1142,7 @@
             }
           },
           "401": {
-            "description": "Not signed in. Error code: `unauthorized`.",
+            "description": "Not signed in. Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1090,6 +1185,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -1104,7 +1202,7 @@
             }
           },
           "401": {
-            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1137,6 +1235,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -1183,7 +1284,7 @@
             }
           },
           "401": {
-            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1812,6 +1913,9 @@
         "security": [
           {
             "customerCookie": []
+          },
+          {
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -1826,7 +1930,7 @@
             }
           },
           "401": {
-            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`.",
+            "description": "Not signed in (or the customer session is unknown/expired). Error code: `unauthorized`, or `token_expired` for an expired Bearer token.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1868,6 +1972,11 @@
         "in": "cookie",
         "name": "mpl_customer",
         "description": "Synthetic customer-session cookie (8h TTL), bound to the practice session that established it. Issued only by POST /api/v1/auth/login for the synthetic demo accounts. Carries no intrinsic role — the role is read from the stored customer row on every request."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Synthetic practice API token (opaque 256-bit value, SHA-256-hashed at rest). Minted only by POST /api/v1/auth/token for the synthetic demo accounts. Short-lived (15-900 s, clamped server-side) and not bound to a practice session — an API credential must outlive the tab that minted it. The role and status are read from the stored customer row on every request; the token carries no claims and can never elevate them. Revoked on sign-out; expired rows are purged by the operator maintenance sweep."
       }
     },
     "responses": {
@@ -1928,7 +2037,8 @@
           "invalid_level",
           "hint_level_locked",
           "hint_attempt_completed",
-          "reveal_locked"
+          "reveal_locked",
+          "token_expired"
         ]
       },
       "Error": {
@@ -2735,6 +2845,62 @@
         "required": [
           "email",
           "password"
+        ],
+        "additionalProperties": false
+      },
+      "TokenRequest": {
+        "type": "object",
+        "description": "Practice API token mint. Re-authenticates the synthetic demo account exactly like POST /api/v1/auth/login (same shared failure budget, same 429) — minting is a credential issuance, not a registration flow.",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 900,
+            "default": 900,
+            "description": "Desired lifetime in seconds. Clamped server-side to 15-900; out-of-range values are clamped, not rejected. Defaults to 900."
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "ApiTokenResponse": {
+        "type": "object",
+        "description": "201 Created. The raw token appears in this response exactly once — it is never stored, logged or returned again. Minting requires valid credentials; there is no renewal flow (mint a new token instead).",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Opaque 256-bit practice token, hex encoded (64 characters)."
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "Bearer"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "description": "Effective TTL in seconds after the server-side 15-900 clamp."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "token",
+          "tokenType",
+          "expiresIn",
+          "expiresAt"
         ],
         "additionalProperties": false
       },

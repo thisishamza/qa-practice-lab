@@ -8,6 +8,7 @@ import { Icon } from '../components/ui/Icon'
 import { ConsoleForm, type ConsoleFormErrors, type ConsoleFormState } from '../components/api-lab/ConsoleForm'
 import { ResponsePanel, type ConsoleResponseState } from '../components/api-lab/ResponsePanel'
 import { RequestHistory } from '../components/api-lab/RequestHistory'
+import { TokenHelper } from '../components/api-lab/TokenHelper'
 import {
   addHistoryEntry,
   assertSameOriginApiUrl,
@@ -103,6 +104,39 @@ export function ApiLabPage() {
       ...previous,
       headers: previous.headers.filter((row) => row.id !== rowId),
     }))
+  }
+
+  function handleApplyBearer(value: string) {
+    setForm((previous) => {
+      const existing = previous.headers.find(
+        (row) => row.name.trim().toLowerCase() === 'authorization',
+      )
+      if (existing) {
+        return {
+          ...previous,
+          headers: previous.headers.map((row) =>
+            row.id === existing.id ? { ...row, value } : row,
+          ),
+        }
+      }
+      return {
+        ...previous,
+        headers: [...previous.headers, { id: crypto.randomUUID(), name: 'Authorization', value }],
+      }
+    })
+  }
+
+  function handleClearBearer(exactValue: string) {
+    setForm((previous) => {
+      const headers = previous.headers.filter((row) => row.value.trim() !== exactValue)
+      if (headers.length === previous.headers.length) {
+        return previous
+      }
+      return {
+        ...previous,
+        headers: headers.length > 0 ? headers : [emptyHeaderRow(crypto.randomUUID())],
+      }
+    })
   }
 
   function handleAddContentTypeHeader() {
@@ -272,6 +306,8 @@ export function ApiLabPage() {
         saved beyond this page, and response bodies are shown as inert text. Request bodies and
         credentials are never written to browser storage.
       </Callout>
+
+      <TokenHelper onApplyBearer={handleApplyBearer} onClearBearer={handleClearBearer} />
 
       {requestError ? (
         <Callout tone="danger" title="Request failed">

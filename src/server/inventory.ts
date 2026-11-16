@@ -86,7 +86,9 @@ const INVENTORY_SELECT = `SELECT
 export const inventoryRoutes = new Hono<AppEnv>()
 
 inventoryRoutes.get('/admin/inventory', async (c) => {
-  const staff = await requireStaff(c)
+  // The role-boundary defective branch applies to this read-only route
+  // only; PATCH below keeps the stock check enforcement in both modes.
+  const staff = await requireStaff(c, { roleBoundaryDefect: true })
   if (staff.kind === 'error') {
     return staff.response
   }
