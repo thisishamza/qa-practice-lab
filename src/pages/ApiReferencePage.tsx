@@ -69,7 +69,7 @@ export function ApiReferencePage() {
           title="The contract could not be loaded"
           description={state.message}
           action={
-            <Link className="button" to="/api-lab">
+            <Link className="button button-secondary" to="/api-lab">
               Go to the API Lab instead
             </Link>
           }

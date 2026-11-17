@@ -82,7 +82,7 @@ export function HintLadderView({
             <Icon name="alert" size={16} /> {restoreError}
           </p>
           <Button variant="ghost" size="sm" onClick={onRetryRestore}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         </div>
@@ -114,7 +114,7 @@ export function HintLadderView({
                   onClick={() => onUnlock(level)}
                   aria-describedby={error ? `${panelId}-error` : undefined}
                 >
-                  <Icon name="info" size={15} />
+                  <Icon name="info" size={16} />
                   {unlocking === level ? `Unlocking hint ${level}…` : `Unlock hint ${level}`}
                 </Button>
               ) : (

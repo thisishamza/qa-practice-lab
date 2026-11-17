@@ -63,19 +63,19 @@ export function ProductCard({ product }: { product: Product }) {
             'Out of stock'
           ) : added ? (
             <>
-              <Icon name="check" size={15} />
+              <Icon name="check" size={16} />
               Added to cart
             </>
           ) : (
             <>
-              <Icon name="cart" size={15} />
+              <Icon name="cart" size={16} />
               Add to cart
             </>
           )}
         </Button>
         {error ? (
           <p className="cart-line-note" role="alert">
-            <Icon name="alert" size={15} />
+            <Icon name="alert" size={16} />
             <span>{error}</span>
           </p>
         ) : null}

@@ -1,8 +1,9 @@
-// Slim, persistent indicator of the current practice mode (P3-M7).
-// Rendered inside the app shell on every page so a learner always knows
-// whether the commerce app is behaving normally (clean) or intentionally
-// carrying defects (bug hunt). Semantics: role="status" so mode changes are
-// announced politely; never colour alone — icon + text + label always.
+// Slim, contextual indicator of the current Practice App mode (P3-M7).
+// Rendered only on the Meridian commerce surfaces (storefront, cart,
+// checkout, orders, shop-side account/admin/login) where the mode actually
+// changes behaviour; QA labs elsewhere never show it. Semantics:
+// role="status" so mode changes are announced politely; never colour alone —
+// icon + text + label always.
 
 import { Link } from 'react-router-dom'
 import { usePracticeSession } from './usePracticeSession'
@@ -37,10 +38,11 @@ export function ModeBanner() {
       <div className="mode-banner mode-banner-hunt" role="status">
         <Icon name="bug" size={16} />
         <span className="mode-banner-text">
-          <strong>Bug-hunt mode</strong> — {hunt.title}.{' '}
+          <strong>Bug-hunt mode</strong> — {hunt.title}. Deliberate defects are
+          enabled — find and report unexpected behaviour.
           {hunt.id.startsWith('hunt-contract-')
-            ? 'The provider is intentionally deviating — the behaviour is not the spec right now.'
-            : 'Something in the shop is intentionally broken; the behaviour is not the spec right now.'}
+            ? ' The provider is intentionally deviating; the behaviour is not the spec right now.'
+            : null}
         </span>
         <Button
           variant="ghost"
@@ -63,11 +65,12 @@ export function ModeBanner() {
     <div className="mode-banner mode-banner-clean" role="status">
       <Icon name="check" size={16} />
       <span className="mode-banner-text">
-        <strong>Clean mode</strong> — the commerce app behaves as specified.
+        <strong>Clean mode</strong> — shop normally. The commerce app behaves as
+        specified; no deliberate defects are enabled.
       </span>
       <Link className="mode-banner-link" to="/practice">
         Hunt controls
-        <Icon name="arrow-right" size={14} />
+        <Icon name="arrow-right" size={16} />
       </Link>
     </div>
   )

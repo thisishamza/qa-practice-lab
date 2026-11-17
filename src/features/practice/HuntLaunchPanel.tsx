@@ -73,7 +73,7 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
             <Icon name="alert" size={16} /> The exercise could not be loaded. {huntState.message}
           </p>
           <Button variant="ghost" size="sm" onClick={() => setAttempt((n) => n + 1)}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         </div>

@@ -12,6 +12,7 @@ import {
 } from '../lib/shop'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Breadcrumbs } from '../components/ui/PageChrome'
 import { LoadingState, EmptyState, ErrorState } from '../components/ui/States'
 import { Button } from '../components/ui/Button'
 import { Icon } from '../components/ui/Icon'
@@ -156,6 +157,8 @@ export function ShopPage() {
 
   return (
     <div className="stack">
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Practice App' }, { label: 'Meridian Storefront' }]} />
+
       <PageHeader
         eyebrow="Meridian Outfitters"
         title="Shop the catalogue"
@@ -193,7 +196,7 @@ export function ShopPage() {
           }
           action={
             <Button size="sm" onClick={retry}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -215,6 +218,7 @@ export function ShopPage() {
 
       {ready && !outOfRange && ready.data.length > 0 ? (
         <>
+          <h2 className="sr-only">Products</h2>
           <div className="product-grid">
             {ready.data.map((product) => (
               <ProductCard key={product.slug} product={product} />
@@ -241,7 +245,7 @@ export function ShopPage() {
           action={
             hasActiveControls ? (
               <Button size="sm" onClick={handleClearAll}>
-                <Icon name="reset" size={15} />
+                <Icon name="reset" size={16} />
                 Clear all
               </Button>
             ) : undefined

@@ -51,7 +51,7 @@ export function ShopFilterBar({
         <div className="filter-field shop-search" role="search" aria-label="Search products">
           <label htmlFor="shop-search-input">Search products</label>
           <div className="search-input">
-            <Icon name="search" size={17} />
+            <Icon name="search" size={16} />
             <input
               id="shop-search-input"
               type="text"
@@ -128,7 +128,7 @@ export function ShopFilterBar({
           )}
         </p>
         <Button size="sm" variant="secondary" onClick={onClearAll} disabled={!hasActiveControls}>
-          <Icon name="reset" size={15} />
+          <Icon name="reset" size={16} />
           Clear all
         </Button>
       </div>

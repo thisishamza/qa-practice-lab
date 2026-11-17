@@ -67,7 +67,8 @@ export function AccountOrderDetailPage() {
         <Breadcrumbs
           items={[
             { label: 'Dashboard', to: '/' },
-            { label: 'Account', to: '/account' },
+            { label: 'Practice App' },
+            { label: 'Order history', to: '/account/orders' },
             { label: 'Order details' },
           ]}
         />
@@ -77,7 +78,7 @@ export function AccountOrderDetailPage() {
           description={`${loadState.message} Check that the practice API is running, then reload this page.`}
           action={
             <Button size="sm" onClick={refresh}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -92,7 +93,8 @@ export function AccountOrderDetailPage() {
         <Breadcrumbs
           items={[
             { label: 'Dashboard', to: '/' },
-            { label: 'Account', to: '/account' },
+            { label: 'Practice App' },
+            { label: 'Order history', to: '/account/orders' },
             { label: 'Order details' },
           ]}
         />
@@ -108,7 +110,8 @@ export function AccountOrderDetailPage() {
         <Breadcrumbs
           items={[
             { label: 'Dashboard', to: '/' },
-            { label: 'Account', to: '/account' },
+            { label: 'Practice App' },
+            { label: 'Order history', to: '/account/orders' },
             { label: 'Order details' },
           ]}
         />
@@ -122,11 +125,11 @@ export function AccountOrderDetailPage() {
         </p>
         <EmptyState
           title="Sign in to view this order"
-          description="An order can only be read by the account that owns it. Sign in with the fictional account that placed the order."
+          description="An order can only be read by the account that owns it. Sign in with the fictional account that placed the order — guest orders expire with the practice session (7 days) and are never adopted into an account."
           icon="lock"
           action={
             <Link className="button button-small" to="/login">
-              <Icon name="lock" size={15} />
+              <Icon name="lock" size={16} />
               Sign in with a demo account
             </Link>
           }

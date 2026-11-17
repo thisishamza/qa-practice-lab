@@ -15,6 +15,7 @@ export function SecurityExercisePage() {
     return (
       <div className="stack">
         <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Security Testing', to: '/security' }, { label: 'Not found' }]} />
+        <h1 className="sr-only">Exercise not found</h1>
         <Callout tone="danger" title="No such practice exercise">
           The link may be outdated.{' '}
           <Link className="text-link" to="/security">Back to the exercise catalogue</Link>

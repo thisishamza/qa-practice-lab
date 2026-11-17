@@ -142,7 +142,7 @@ export function ResultsTable({ output, outcome, onCopyTsv, onCopyCsv, onClear }:
 
         {truncations > 0 && (
           <p className="sql-status sql-status-note">
-            <Icon name="alert" size={14} className="sql-status-icon" />
+            <Icon name="alert" size={16} className="sql-status-icon" />
             Result sets are capped at 1,000 rows per statement. Refine the query (WHERE, LIMIT) to see the rest.
           </p>
         )}

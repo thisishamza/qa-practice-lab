@@ -62,7 +62,7 @@ export function OrderConfirmationView({
         items={
           crumbs ?? [
             { label: 'Dashboard', to: '/' },
-            { label: 'Shop', to: '/shop' },
+            { label: 'Practice App' },
             { label: 'Order confirmation' },
           ]
         }
@@ -91,7 +91,7 @@ export function OrderConfirmationView({
           }
           action={
             <Button size="sm" onClick={onRetry}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -105,7 +105,7 @@ export function OrderConfirmationView({
           icon="search"
           action={
             <Link className="button button-small" to="/shop">
-              <Icon name="shop" size={15} />
+              <Icon name="shop" size={16} />
               Back to the shop
             </Link>
           }
@@ -144,11 +144,11 @@ export function OrderConfirmationView({
             </div>
             <div className="confirm-reference-tags">
               <span className="confirm-tag confirm-tag-neutral">
-                <Icon name="check" size={14} />
+                <Icon name="check" size={16} />
                 Status: {order.status === 'placed' ? 'Placed' : 'Cancelled'}
               </span>
               <span className="confirm-tag confirm-tag-success">
-                <Icon name="check" size={14} />
+                <Icon name="check" size={16} />
                 Payment (simulated): {order.paymentStatus === 'approved' ? 'Approved' : order.paymentStatus}
               </span>
             </div>
@@ -214,7 +214,7 @@ export function OrderConfirmationView({
                 order. Nothing was emailed or delivered.
               </p>
               <Link className="button button-small" to="/shop">
-                <Icon name="shop" size={15} />
+                <Icon name="shop" size={16} />
                 Continue shopping
               </Link>
               <Link className="button button-ghost button-small" to="/">
@@ -235,7 +235,7 @@ export function OrderConfirmationView({
                         size="sm"
                         onClick={onCancel}
                       >
-                        <Icon name="reset" size={15} />
+                        <Icon name="reset" size={16} />
                         Cancel this order
                       </Button>
                     </>
@@ -267,7 +267,7 @@ export function OrderConfirmationView({
                       </div>
                       {cancelState === 'error' && cancelError ? (
                         <p className="cart-line-note" role="alert">
-                          <Icon name="alert" size={15} />
+                          <Icon name="alert" size={16} />
                           <span>{cancelError}</span>
                         </p>
                       ) : null}

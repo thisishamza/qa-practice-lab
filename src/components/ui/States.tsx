@@ -25,7 +25,7 @@ export function EmptyState({
   return (
     <div className="state state-empty">
       <span className="state-icon" aria-hidden="true">
-        <Icon name={icon} size={22} />
+        <Icon name={icon} size={20} />
       </span>
       <h2>{title}</h2>
       <p>{description}</p>
@@ -46,7 +46,7 @@ export function ErrorState({
   return (
     <div className="state state-error" role="alert">
       <span className="state-icon" aria-hidden="true">
-        <Icon name="alert" size={22} />
+        <Icon name="alert" size={20} />
       </span>
       <h2>{title}</h2>
       <p>{description}</p>

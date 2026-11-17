@@ -22,6 +22,7 @@ export function DatabaseExercisePage() {
             { label: 'Exercise not found' },
           ]}
         />
+        <h1 className="sr-only">Exercise not found</h1>
         <Callout tone="danger" title="No such practice exercise">
           The link may be outdated.{' '}
           <Link className="text-link" to="/database">

@@ -15,7 +15,11 @@
 - **Phase 7 — Contract Testing Lab — is RELEASED TO PRODUCTION (2026-11-17) and MERGED INTO `main` (2026-11-17, PR #11):** the approved plan was implemented, corrected and maintainer-review-approved; the maintainer confirmed D-P7-8 (ACCEPT), F-C7 (ACCEPT WITH DISCLOSURE) and D-P7-1 (ACCEPT) and authorized the production release sequence. **Production D1 migration `0013` (zero DDL) applied 2026-11-17 after a verified pre-migration export** (`/tmp/opencode/backups/qa-practice-lab-db-pre-0013-2026-11-17T08-13-49Z.sql` — 57,655 B, SHA-256 `225c744464fb3426e291c35cb189a46c582e1ff6b2406c7ef24680b32c780730`; structure + all row counts verified); production `schema_version` **13**; Pages deployment **`47680bf9-7290-4c8a-a5c9-25490dff7fc4`** (project `qa-practice-lab`, production branch `main`, source commit **`8000b77`**; the production alias serves `index-KeIJVV6-.js`); production acceptance passed (health `schemaVersion` 13; all 15 core routes 200; OpenAPI 3.1.0 / 1.2.0 / exactly 42 operations / 27 ErrorCodes / four contract paths; validate/compare/verify/evaluate contract API accepted; both hunts 002/007 verified end-to-end via synthetic isolated sessions; browser matrix 40/40 across themes × 4 widths with zero overflow, zero unexpected console errors, zero exceptions; Phase 3–6 smoke passed; probe records cleaned up — see `docs/phase-7-exit-audit.md` §23). `npm run check` green on the release source (**1417/1417**, 70 files). Five routes lazy; validator absent from the eager entry (D-P7-8 accepted). Phase 8 must not be started. The `backup/unpublished-phase6-7-docs` branch must not be deleted, pushed or merged. **Merged (2026-11-17): PR #11 (https://github.com/thisishamza/qa-practice-lab/pull/11) → merge commit `e21108a` ("Merge pull request #11 from thisishamza/feat/phase-7-contract-testing-lab"), parents `eeded31` (previous `main`) and `04a6013` (reviewed head); `main == origin/main == `e21108a`; merged tree identical to `04a6013` (`git diff 04a6013..main` empty); application code (`src/`, `public/`, `db/`, `functions/`, `package.json`, `wrangler.jsonc`) unchanged from the deployed release source `8000b77` — delta documentation-only; migration `0013` remains ordered after `0012`; post-merge `npm run check` green (lint, typecheck ×3, **1417/1417** tests, 70 files) and `npm run build` clean (entry `index-KeIJVV6-.js`, 417.79 kB / gzip 127.74 kB — identical filename/size to the deployed entry). Production was NOT redeployed and NO migration was applied at merge time — the existing Phase 7 deployment remains authoritative.**
 - **Phase 6 planning (2026-11-17):** the Phase 6 — Database & SQL Testing Lab — implementation plan is `docs/phase-6-database-testing-plan.md`. **Deployed** — production `schema_version` was 12; since advanced to **13** by the 2026-11-17 Phase 7 release.
 - **Final development phase — Performance, Security & Microservices/Event-Driven Testing Lab — implemented and verified on branch `feat/performance-security-distributed-testing-lab` (created 2026-11-17 from `main` @ `8258b7e` after pushing the pending Phase 7 documentation commit with explicit authorization); NOT merged, pushed, PR'd, deployed or migrated in production.** Delivered: `/performance` (bounded same-origin load runner — VUs ≤ 8, duration ≤ 30 s, ramp ≤ 10 s, ≤ 150 requests/run, 5 s/request timeout, rps token-bucket guard, p50/p90/p95/p99 nearest-rank gated at n ≥ 20, Markdown report download, local-only history in localStorage; the runner cannot target any origin outside the allowlist), 12-exercise catalogue + three performance bug hunts (`hunt-perf-001..003`); `/security` (inert SQLi/XSS/CSRF/security-header demonstrations incl. a sandboxed iframe XSS render; 12-exercise catalogue + three security bug hunts `hunt-sec-001..003`); `/microservices` (deterministic D1-backed, session-scoped order-pipeline simulator — publish/process/retry with 1s→2s→4s→8s backoff/bounded attempts/duplicate delivery/idempotent consumers/dead-letter queue/replay/webhook delivery simulation/correlation ids/ordered trace/consistency audit; 12-exercise catalogue + three event bug hunts `hunt-event-001..003` gated by `isDefectActive`). Migration `0014_final_phase_lab.sql` (adds `events`, `service_state`, `webhook_deliveries` — session-scoped with `ON DELETE CASCADE`, `schema_version` 13 → **14**; applied to **local D1 only**). Learning integration reuses the Phase 4 engine unchanged (attempts, hints, reveals, reports, progress): the three labs have 36 scored exercises (12/12/12; selection rubric recall 70 / precision 30, pass ≥ 70, scored server-side via `POST /api/v1/labs/evaluate` + `src/server/labExercises.ts` answer keys + `src/server/labLearning.ts` hints/reveals), and hunt set now **34 hunts / 25 defects**. Navigation gains three entries (Performance, Security, Microservices) after Contract Testing; `/progress` gains three sections; three new guides added. OpenAPI **1.3.0 / 53 operations** (11 new operations: `labs/evaluate` + 10 microservices routes) with **zero new error codes**; `npm run check` green (**1473/1473, 74 files**), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB), browser acceptance green (Chrome over raw CDP: 40/40 render matrix across themes × 375/768/1024/1440 with zero overflow and zero console errors; simulator pipeline publish → paid → webhook delivered → consistency OK; exercise flow 100/100 through the real UI; PERF-001 hunt vs reset verified ~400 ms vs ~40 ms in-browser; reset verified; mobile nav confirmed). Migration fresh-install AND upgrade tests included (`migration-0014.test.ts`). No Phase 3–7 functionality regressed. Full as-built record in §17 and plan in `docs/final-phase-performance-security-distributed-testing-plan.md`. **Release discipline: no push/PR/merge/deploy/production migration without explicit maintainer authorization — none has been given; the Phase 7 production deployment remains authoritative.** **Update (2026-11-17): the maintainer opened, pushed and merged PR #12 (merge commit `e11f66e`); the merged tree is byte-identical to the reviewed branch (`3f80b70`); post-merge `npm run check` green 1477/1477; production was NOT redeployed — the release (export → apply 0014 → deploy → acceptance) still requires separate explicit authorization. See §18 and §19.** **RELEASED TO PRODUCTION (2026-11-17): the release was executed before this session began (push of the authorised documentation commit `981176a`, the pre-0014 export, migration `0014` applied to production D1, and Pages deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` from source `981176a`) and was independently verified and documented in this session — see §20. Production D1 `schema_version` **14**; production acceptance ran with one reproducible pre-existing defect found (`/api-reference` horizontal overflow at 375 px — `property-table` min-content width; pre-existing since Phase 5, recorded as **F10**, NOT fixed) and an incomplete browser matrix (local network blocked headless Chrome mid-run; Firefox/WebKit untested). **All planned feature phases are now complete; no additional feature phases are planned.**
-- **Last updated:** 2026-11-17 (final phase RELEASED TO PRODUCTION and release documentation pushed to `origin/main` — `a936017`; F10 accepted by maintainer as a pre-existing maintenance defect — see §20; production remains on deployment `18db4007-…`, source `981176a`, D1 `schema_version` 14).
+- **R3 — Practice experience, progress dashboard & content consolidation — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED on `ui-ux-redesign` (2026-11-18).** Main priority: `/progress` rebuilt around a prioritised hierarchy — a single **Do this next** panel (fixed recommended-path order + own submissions; no second fetch; honest fixed-order-not-AI note; guest 7-day durability framing), a compact overview (existing tiles + derived submitted-exercises line + discovery bar now denominated on the 34 wired hunts, not all 130 attemptable targets), **six collapsible `<details>/<summary>` lab sections** (start expanded only with learner activity; honest per-area counts; page ~2.2–3.1k px vs ~12.3k px before) and a 10-newest submissions list with an honest no-full-history note. `/practice` is now a Bug Hunts landing: "Two modes, one shop" Clean vs Bug-hunt explainer + four-step hunt walkthrough before activation; hunts grouped by first-party surface (storefront/access/database/contract/performance/security/events) with live per-hunt status chips and a "N of 34 attempted · M submitted · D discovered" summary strip. `/scenarios` gains a "How to read this catalogue" callout (clean vs bug-hunt, READY meaning, quick URL links). `/about` gains an on-page anchor TOC, planned-vs-shipped labelling ("Planned — not shipped") and a scoring sub-nav; rubric copy preserved. No backend/API/scoring/migration/route changes; F10 remains excluded. `npm run check` **1504/1504**; `npm run build` clean (entry `index-HFmx9THp.js`, 458.13 kB / gzip 140.96 kB); browser probes **100/100** (guest no-progress, partial progress via a real local report submission, keyboard disclosure toggles, hunt start→report→reset, both themes × 1440/768/375/390, zero console errors, zero overflow). Full record in §25 and the route-inventory post-R3 addendum. **All work remains uncommitted on `ui-ux-redesign`; R4 was authorised and is now implemented — see §26.**
+- **R4 — Visual Polish — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED on `ui-ux-redesign` (2026-11-18).** A coherent visual-language pass, no functional changes: two-surface grammar (raised = actions/inputs, sunken = results/reference/output, tinted = selected) formalized and applied (`.panel-sunken` on About/guide TOCs, code examples, rubric/verdict lists, `/about` panels, sunken dashed empty-state wells); dark/workspace `--surface-selected` retuned (`night-600` → `night-700`); structural mono labels raised from 12 px to 13 px weight 600 (`--text-kicker`), helper/error text to 0.875 rem; density variants (`[data-density="compact|cozy|spacious"]` consuming `--list-gap`/`--row-pad-y`/`--row-pad-x`; compact applied to `/progress` exercise lists, `/practice` hunt lists and the dashboard recommended row list, spacious to the guide article); icons normalised to the 16/20 px pair; one-solid-CTA-per-view audited and enforced (competing solids demoted to secondary); footer now `QA Practice Lab · v0.2.0` with a `Changelog & scoring` link; guest empty states on `/account`, `/account/orders` and `/account/orders/:reference` now state the 7-day durability window and no-migration rule; a stale `/about` sentence ("dashboard still shows labelled demo figures") removed as contradicted by Phase 4; lab-hub page titles get the 2.25 rem step via optional `PageHeader className`; eight invalid-id not-found detail branches gained a visually-hidden `<h1 className="sr-only">` (they previously rendered zero headings). No backend/API/D1/migration/scoring/hunt/route changes. `npm run check` **1504/1504**; `npm run build` clean (entry `index-BA9US9FO.js`, 458.20 kB / gzip 140.99 kB); headless-Chrome sweep over **35 routes × 4 widths × light/dark** — one h1 per page, zero unexpected console errors, zero overflow except the maintainer-accepted **F10 `/api-reference` 375 px overflow (excluded; not investigated)**; a final 72-render confirmation pass on the final build reproduced the same. Full record in §26 and the route-inventory post-R4 addendum. **All work remains uncommitted on `ui-ux-redesign`. F10 remains excluded and unfixed.** A post-R4 follow-up (2026-11-18, §27) then made the commerce-mode banner contextual to the Practice App surfaces and aligned the /practice mode-card copy — still uncommitted, behaviour unchanged.
+- **R4 follow-up (mobile storefront) — the `/shop` grid defect and the 320 px shell overflow are fixed (2026-11-18, §28).** `repeat(auto-fill, minmax(0, 1fr))` had collapsed the grid into ~1 px tracks (cards ~50 px wide); ≤760 px is now one full-width column; the topbar keeps only the QA mark below 400 px. `npm run check` 1504/1504; build clean (`index-CRWZaeVp.js`, 458.41 kB / 141.10 kB gzip). Still uncommitted.
+- **Final UI/UX audit closure verification (2026-11-18, §29).** All R1–R4 milestones, the post-R4 copy correction (§27) and the `/shop` mobile repair (§28) are confirmed implemented and re-verified in this session: **Firefox 155 (108 renders: 72 light across 24 routes × 3 widths + 36 dark across 12 routes × 3 widths) — 0 failures**; 200 % zoom reflow equivalents (CSS viewports 720×450 / 640×400; 72 renders, both themes) — 0 overflow, one h1; `prefers-reduced-motion: reduce` emulation — global override active (transitions forced to 0.01 ms, `scroll-behavior: auto`); keyboard probe — skip link first with a 2 px solid ring, every probed control carries a visible focus affordance (search uses its designed `:focus-within` box-shadow); programmatic landmark/label/heading probes across 19 routes — 1 banner/nav/main/contentinfo, 0 unlabeled controls, 0 heading skips, single h1, skip links present; staff-mode (Rowan Ellison) — Inventory appears under **Practice App** and `/admin/inventory` renders h1 "Inventory"; `/shop` re-measured at 320/375/390/760 px (light/dark) — one full-width column, `scrollWidth === innerWidth`, one h1. **WebKit/Safari could not be tested (Playwright WebKit aborts with a snap-core20 glibc `__libc_pthread_init` symbol conflict in WPENetworkProcess — environment defect, not app); screen readers untested (none installed — none installed); human usability testing not performed.** No new defects were found; no code changes were made beyond `.gitignore` (local audit screenshots now excluded from git). Findings classified in §29; **F10 remains open, accepted, excluded and untouched**; `docs/audit-screenshots/` is untracked, never committed in any branch/history, now git-ignored, 40 files preserved on disk. **Repository is ready for final maintainer staging/commit approval (not staged, not committed).**
+- **Last updated:** 2026-11-18 (final UI/UX audit closure verification, §29 — Firefox cross-browser matrix, 200 % reflow, reduced-motion, keyboard and programmatic a11y probes, staff-mode check, `.gitignore` for `docs/audit-screenshots/`; no application code changes; R4 in §26; copy correction in §27; `/shop` fix in §28; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25; production untouched: deployment `18db4007-…`, source `981176a`, D1 `schema_version` 14). Previously: 2026-11-18 (post-R4 mobile `/shop` fix, §28 — on top of the §27 copy correction; R4 in §26; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25).
 
 ## 2. Product principles
 
@@ -3187,3 +3191,1133 @@ Release documentation (`a936017`) is on `origin/main`; local `main` == `origin/m
 Production remains on deployment `18db4007`, source `981176a`, `schema_version` 14 — untouched.
 All planned feature phases are complete; no additional feature phases are planned; only
 necessary bug fixes and maintenance remain.
+
+## 21. Comprehensive UI/UX audit (2026-11-17) — audit-only; NO application changes applied
+
+> **How to read this section.** A full evidence-based UI/UX audit of the completed platform
+> was performed on 2026-11-17 (branch `main` @ `297a030`, clean tree, existing local
+> `wrangler pages dev` on `:8788` serving the production build of the audited HEAD —
+> byte-current by asset hash `index-CLEs4WAj.js`). **Audit-only: no source, CSS, token, route,
+> dependency, migration, deploy or production write occurred.** Local browser verification via
+> headless Chrome 155 over raw CDP (no installed tooling): 41 routes machine-swept at
+> 1440×900 / 1280×800 / 768×1024 / 390×844 / 375×812 in light and dark themes (overflow, h1,
+> console errors); 41 screenshots captured in `docs/audit-screenshots/`; keyboard/focus,
+> landmark, unlabeled-control and token-contrast probes; one local bug-hunt start→reset cycle
+> (local D1 only, restored to clean). All screenshot paths cited in the reports exist on disk.
+
+### Deliverables
+- `docs/ui-ux-audit.md` — comprehensive audit (baseline, IA, 12 first-time-user walkthroughs,
+  visual/readability, responsive matrix, a11y, design-system review, **24-entry finding register**).
+- `docs/ui-ux-route-inventory.md` — route inventory + inspection status/coverage + sweep table.
+- `docs/ui-ux-redesign-recommendations.md` — A–H: executive summary (five biggest problems),
+  proposed IA (Start / Practise / Labs / My work), visual-hierarchy plan, first-run onboarding
+  spec, component consolidation list, significant-vs-targeted pages, R1–R4 roadmap with
+  dependencies, and an explicit do-not-change list. Functionality/routes/architecture preserved.
+
+### Findings summary (register F-001…F-024; zero P0)
+- **P1 (7):** F-001 flat 15-item sidebar grouping; F-002 "next step" duplicated three ways;
+  F-003 systemic stale pre-launch copy (e.g. "Scenario exercises are not runnable yet",
+  "twenty-four scenarios / six guides", Tracks "121 exercises not runnable", About describing
+  shipped labs as future, nav Progress "Demo progress"); F-004 six competing exercise
+  catalogues, no unified index; F-005 lab-hub instruction text renders with **zero separation**
+  between bold lead-in and body ("Pick the endpointOnly…") in LabHub + ContractHubPage;
+  F-006 `/api-reference` horizontal overflow at 375 px (+186) / 390 px dark (+171) — re-reproduced,
+  = accepted F10; F-007 `/progress` and `/practice` are unstructured walls of identical rows.
+- **P2 (8):** F-008 no action/result surface distinction; F-009 nav label/spelling mismatches
+  ("Catalog" vs "catalogue", opaque "Runtime status"); F-010 clean vs bug-hunt mode never
+  explained pre-activation; F-011 missing breadcrumbs on meta pages; F-012 microcopy variance;
+  F-014 `READY` tag contrast 4.46 (< 4.5); F-015 global search covers scenarios only; F-016
+  About is unnavigable + wrong; F-017 guest durability not signposted; F-021 cart chrome
+  blurs platform purpose.
+- **P3 (6):** F-013 h1→h3 skip on `/scenarios`, `/shop`; F-018 36 px small-button targets;
+  F-019 hand-drawn icon optical inconsistency; F-012/F-020 as logged. Passes: F-022/F-023/F-024
+  (console errors: **zero** on all swept routes, both themes; 404 renders branded).
+- Verified good & preserved (do-not-change list in recommendations doc §H): token architecture,
+  dark theme, workspace-surface panels, self-hosted variable fonts, focus-visible/skip-link/
+  reduced-motion/forced-colors, mobile drawer focus trap, empty states, single-h1 discipline,
+  server-side rubric transparency, search `/` shortcut, localStorage keys, mode-banner semantics.
+
+### Verdict
+Functionally dense, informationally flat: correct-but-unanimated hierarchy, 12 px structural
+typography, one card grammar, and pre-launch copy never updated — first-time users cannot
+form a truthful mental model of what the platform is or what to do next. Fixable by copy
+honesty + IA regroup + two-surface hierarchy; **no design-system replacement needed.**
+
+### Exact next action
+Await maintainer decision on audit outcome. Recommended (in order, per recommendations R1–R4):
+authorize only R1 (truth & breakage sweep — copy honesty registry, LabHub consolidation,
+F10 fix if F10 un-accepted, contrast/heading fixes) as a maintenance-class milestone; treat
+R2–R4 as a separately authorized redesign phase. No code changes may land before that decision.
+Production remains untouched: deployment `18db4007-…`, source `981176a`, D1 `schema_version` 14.
+
+## 22. R1 — UI/UX trust & presentation fixes (2026-11-17) — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED
+
+> **How to read this section.** The maintainer authorised R1 only ("R1 —
+> UI/UX Trust and Presentation Fixes"), the first authorised UI/UX
+> implementation milestone, on the existing `ui-ux-redesign` branch. R2–R4
+> remain unauthorised. Work was done against the R1 brief with the audit
+> (`docs/ui-ux-audit.md`), recommendations (`docs/ui-ux-redesign-recommendations.md`)
+> and route inventory (`docs/ui-ux-route-inventory.md`) as inputs. Every audit
+> finding was verified against the current source before changing anything —
+> note the audit was run on `main` @ `297a030`, and several copy claims had
+> already become stale in different ways by the time R1 ran.
+
+### Scope delivered
+- **A. Stale/misleading pre-launch copy corrected (audit F-003/F-009, partial F-016/F-012):**
+  - `DashboardPage`: hero now derives counts from data ("Twelve learning tracks,
+    53 catalogued scenarios — 39 ready to run — and 11 practical guides"); the
+    under-path note now states 39 of 53 are runnable today; the catalogue
+    section description no longer calls scenarios "placeholders".
+  - `TracksPage`: the note no longer claims exercises are not runnable; states
+    121 mapped exercises and the derived 39-of-53 runnable figure.
+  - `TrackDetailPage`: generic track note and the "Scenarios in this track"
+    description corrected (availability is labelled per card).
+  - `AboutPage`: "What works today" rewritten — 34 runnable bug-hunt exercises,
+    5 clean non-hunt exercises (catalogue pagination, session expiry,
+    contract-consumer drills), 96 scored lab exercises across the five hands-on
+    labs, 14 remaining placeholders; "What comes next" no longer describes the
+    shipped SQL sandbox or performance exercises as future work.
+  - `PracticePage`: "Practice formats" now shows truthful per-format status
+    (4 of 6 live: manual lab, API console, SQL sandbox, performance baseline —
+    ready tags; UI automation target and accessibility audit — not available);
+    safety-boundaries blurb reworded (no longer "later practice features").
+  - `GuideDetailPage`: stale "Exercises are still placeholders" callout replaced
+    with "Put the guide to work" (related exercises carry real status labels).
+  - `RecommendedPath`: "remaining 18" corrected to a derived count (14).
+  - `ScenariosPage` header description ("Every planned exercise…" →
+    "Search the scenario catalogue…"), `NotFoundPage` recovery link detail,
+    `navigation.ts` descriptions made factual (Catalog, Practice, Progress) —
+    labels unchanged (renames are R2 scope).
+  - `ContractHubPage`: "How to practice" markup fix (see B) and stale
+    `Operations` fact corrected 42 → 53 (OpenAPI is now 1.3.0 / 53 operations).
+  - No counts were invented; every number above was verified against the data
+    modules or `public/openapi.json` in this session.
+- **B. Lab instruction spacing fixed (audit F-005):** `LabHub.tsx` and
+  `ContractHubPage.tsx` now render `<strong>Title.</strong> detail` with an
+  explicit space (matching the already-correct `DatabaseHubPage`), and
+  `.database-step-copy` is defined in `src/styles/database.css`
+  (`display: block; min-inline-size: 0`) so the separation is enforced at the
+  styling layer too. Content, functionality and responsive behaviour preserved.
+- **C. Visual/accessibility defects (audit F-014, F-013):** `--green-700`
+  darkened to `#146c34` (identical to the existing `--green-800`; light-theme
+  `--run` pairs that sat at 4.46:1 on green-50 now measure 5.79:1; comment
+  added in `tokens.css`). `sr-only` h2 added before the card grids on
+  `/scenarios` and `/shop` — heading-skip probe now reports 0 skips on both
+  (was 1 each). Focus-visible, keyboard, screen-reader, forced-colors and
+  reduced-motion support untouched.
+- **Explicitly excluded and NOT touched: F10** (`/api-reference` 375 px
+  horizontal overflow — maintainer-accepted pre-existing maintenance defect).
+  `/api-reference` was not modified and was not in the R1 verification matrix.
+
+### Verification
+- `npm run check` — ESLint clean; typecheck ×3 clean; **1477/1477 tests pass
+  (74 files)**. `npm run build` — clean (entry `index-B9mBnHKz.js`, 448.47 kB /
+  gzip 137.59 kB).
+- Browser (headless Chrome 155 over raw CDP, local `wrangler pages dev` on
+  `:8788` serving the R1 build; 17 R1-affected routes × 1440/375/768 light,
+  1440/390 dark — 85 renders): **0 horizontal overflow, 0 console errors,
+  single h1 on every render.** Heading-sequence probe: 0 skips on `/scenarios`,
+  `/shop`. READY-tag computed contrast on `/scenarios`: light 5.79:1, dark
+  11.02:1 (AA pass at 12 px). Visual inspection: `/performance` dark,
+  `/security` light, `/contract` light, `/microservices` dark (how-to blocks
+  read correctly), `/scenarios` light. Content probes confirmed all new copy
+  renders (dashboard hero, tracks note, practice formats, about, recommended
+  path, guide callout).
+- Not performed/unavailable (do not overclaim): Firefox/WebKit; screen-reader
+  testing; 200% zoom; the audit's interactive substates beyond its probes;
+  `/orders/:reference` and `/account/orders/:reference` remain unrendered (no
+  checkout performed); F10 re-verification deliberately out of scope.
+- `docs/ui-ux-route-inventory.md` gained a clearly-labelled **post-change
+  verification addendum (R1, 2026-11-17)**; the original audit rows and
+  screenshots are preserved verbatim.
+
+### Files touched (all uncommitted, branch `ui-ux-redesign`)
+`src/styles/tokens.css`, `src/styles/database.css`, `src/features/labs/LabHub.tsx`,
+`src/features/practice/RecommendedPath.tsx`, `src/lib/navigation.ts`,
+`src/pages/AboutPage.tsx`, `src/pages/ContractHubPage.tsx`,
+`src/pages/DashboardPage.tsx`, `src/pages/GuideDetailPage.tsx`,
+`src/pages/NotFoundPage.tsx`, `src/pages/PracticePage.tsx`,
+`src/pages/ScenariosPage.tsx`, `src/pages/ShopPage.tsx`,
+`src/pages/TrackDetailPage.tsx`, `src/pages/TracksPage.tsx`,
+`docs/ui-ux-route-inventory.md`, `PROJECT_STATE.md`.
+Audit deliverables (`docs/ui-ux-audit.md`, `docs/ui-ux-redesign-recommendations.md`,
+`docs/audit-screenshots/`, this file's audit entry §21) preserved untouched.
+
+### State and next action
+No commit, push, merge, PR, deploy or Cloudflare change was made; all R1 work
+is uncommitted in the working tree alongside the pre-existing uncommitted audit
+deliverables. **F10 remains open and accepted. R2 (navigation & IA regroup,
+search scope, dashboard rebuild — per recommendations R2) is the next milestone
+and requires separate maintainer authorisation. R3, R4 and M9 remain unauthorised.**
+
+## 23. R2 — Navigation & Information Architecture Redesign (2026-11-17) — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED
+
+> **How to read this section.** R2 was authorised by the maintainer on 2026-11-17
+> ("R2 — Navigation & Information Architecture Redesign") for navigation,
+> information architecture, exercise discovery and dashboard guidance only.
+> R3, R4, M9 remain unauthorised. R1 and the audit deliverables are
+> intentionally uncommitted and were preserved verbatim; R2 layers on top of them.
+
+### Delivered
+- **Grouped journey navigation (recommendations §B, Hybrid approach):** `src/lib/navigation.ts`
+  now exports `navGroups` (Start → Overview + Learning paths; Practise →
+  Exercises + Guides; Labs → Practice Shop, API console, API reference, SQL
+  playground, Contract testing, Performance testing, Security testing,
+  Microservices & events; My work → Bug hunts, Progress, Account) plus
+  `utilityNavItem` (About & scoring, rendered at the shell foot). `primaryNav`
+  is kept as a derived flat list. Sidebar and mobile drawer render the same
+  four groups with headings; two-level maximum; staff gating unchanged
+  (Inventory appended to Labs for staff only — untested without staff
+  credentials); no routes removed or renamed — all renames are label-only and
+  deep links are untouched. Mobile drawer keeps the focus trap, Escape
+  handling, focus restore and scrollability; desktop collapsed mode hides
+  headings/labels as before. New CSS: `.side-nav-group`, `.mobile-nav-group(-heading)`.
+- **Label-only renames:** Tracks→Learning paths (`/tracks`), Catalog→Exercises
+  (`/scenarios`, h1 now "Exercises"), API Lab→API console, API Reference→API
+  reference, Database→SQL playground (`/database`), Contract Testing→Contract
+  testing, Performance→Performance testing, Security→Security testing,
+  Microservices→Microservices & events, Practice→Bug hunts (`/practice`, h1
+  now "Bug hunts"), About this build→About & scoring (`/about`, h1 renamed),
+  footer link and Progress empty-state link updated to match. Breadcrumb
+  snippets aligned (`Exercises`, `Learning paths`, `Practice Shop`) and new
+  breadcrumbs added on `/tracks`, `/scenarios`, `/guides`, `/practice`,
+  `/shop`, `/about` and the 404 — every non-root page probed now carries one;
+  the root dashboard intentionally does not (F-011).
+- **Global search (recommendations R2.2):** new pure client-side index
+  `src/lib/siteSearch.ts` (scenarios, guides, labs destinations; AND-semantics
+  token match, title-weighted scoring, per-type cap of 4, no backend, no
+  persistence) with unit tests `tests/lib/site-search.test.ts` (7/7). The top
+  bar is now an accessible combobox (`role="combobox"`, `aria-expanded`,
+  `aria-controls`, `aria-activedescendant`, `aria-autocomplete="list"`) with a
+  `role="listbox"` panel grouped Exercises/Guides/Labs, type identification
+  via group headings plus readiness context on every option, ArrowUp/Down
+  cycling (wraps), Enter activation, Escape-to-clear (preserved), click-outside
+  close, no-results state with a catalogue-search link, and a "See all
+  catalogue matches" footer. `/` shortcut and its ≥1024 px gating preserved;
+  plain Enter remains a catalogue fallback. Verified end-to-end over CDP.
+- **Exercise discovery:** `/scenarios` is now the single user-facing
+  discovery hub — breadcrumb, `Exercises` h1, a visible "Scored lab exercises"
+  section listing the five hands-on labs with live `.length` counts and
+  data-derived hunt counts (`hunt-db-*`, `hunt-contract-*`, `hunt-perf-*`,
+  `hunt-sec-*`, `hunt-event-*` from the wired scenario registry) linking to
+  each lab, an API-console note, and the existing scenario catalogue grid
+  (filters/sort/URL state untouched) beneath. No duplicate catalogue, no new
+  route, no backend change. Heading skips on the page: 0.
+- **Dashboard guidance (recommendations R2.3, minimally invasive):** the
+  duplicated static "Your start path" stepper (F-002) is removed from the
+  dashboard; it is replaced by `src/features/dashboard/NextStepPanel.tsx` —
+  the first incomplete item on the single canonical recommended path
+  (`getRecommendedPath()` + live `useProgress()`), honest
+  loading/error/all-caught-up states, completion chip from server data,
+  guest 7-day durability note with sign-in link only when `persistence ===
+  'session'`, "See the full path" → `/practice`. `/practice` keeps the full
+  Progress-aware `RecommendedPath` and is now titled Bug hunts; its duplicated
+  "Available now" stepper was removed in R2 as well. Hero CTAs and all
+  existing destinations preserved; experienced users keep one-click nav access
+  to every lab. The dashboard catalogue-counts line now shows ready-to-run
+  counts. Progress remains the frozen R3 target — the progress page itself was
+  NOT redesigned.
+- **Heading hierarchy (extends R1/F-013):** `/tracks` had the same h1→h3 skip
+  (1) as `/scenarios` and `/shop`; fixed with an `sr-only` h2 — probe now
+  reports 0 everywhere checked.
+
+### Verification
+- `npm run check` — ESLint clean; typecheck ×3 clean; **1484/1484 tests pass
+  (75 files, incl. 7 new siteSearch tests)**. `npm run build` — clean (entry
+  `index-DpNPjJNz.js`, 456.36 kB / gzip 140.45 kB).
+- Machine sweep (17 affected routes × 1440/375/768 light, 1440/390 dark — 85
+  renders): **0 overflow, 0 console errors, one h1 each**; heading-skip probe
+  0 on /scenarios, /shop, /practice, /about, /guides, /tracks.
+- Interactive CDP probes (all pass): breadcrumbs on 10 non-root routes;
+  search panel groups/listbox role/activedescendant/Enter/plain-Enter/Escape/
+  no-results link/`/` shortcut (≥1024 px)/click-outside close; drawer groups,
+  scroll, Escape, focus restore to the menu button; sidebar groups + collapse
+  toggle both ways; dashboard next-step panel from live guest progress (an
+  IN PROGRESS chip on hunt 03 reflects real local session state); visual
+  inspection of 7 screenshots (dashboard light/dark, exercises, bug hunts,
+  search panel, drawer, collapsed rail).
+- Limitations (do not overclaim): Chrome 155 only; Firefox/WebKit untested;
+  screen readers untested; 200% zoom untested; staff-mode drawer/sidebar
+  rendering untested (gating unchanged); the two `/orders/:reference` routes
+  remain unrendered (no checkout performed); the local D1 gained anonymous
+  practice-session rows from page probes (local only, never production).
+- F10 (`/api-reference` 375 px overflow) remains excluded and unfixed; the
+  route was not in the R2 matrix. `/api-reference` was not modified in R2.
+- R1 corrections (copy, READY contrast, how-to spacing, h2 skips) preserved;
+  audit deliverables untouched; everything R1+R2 uncommitted on
+  `ui-ux-redesign`.
+
+### State and next action
+No commits, pushes, merges, PRs, deploys or Cloudflare changes; all work is in
+the working tree alongside R1 and the audit deliverables.
+**R3 (structure of practice & progress — progress-page rebuild, Bug hunts
+consolidation, scenario catalogue redesign, About split) is the next
+milestone and requires separate maintainer authorisation. R4 and M9 remain
+unauthorised.**
+
+## 24. R2 follow-up — Practice App separated from QA Labs (2026-11-18) — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED
+
+> **How to read this section.** After R2 (§23), the maintainer authorised a
+> focused follow-up on the same day: give the fictional e-commerce application
+> (Meridian Outfitters) its own top-level navigation group, visually and
+> structurally separate from LABS, and make the two account concepts explicit.
+> R3, R4, M9 remain unauthorised. R1, R2 and the audit deliverables were
+> preserved verbatim.
+
+### Delivered
+- **New PRACTICE APP group** (five journey groups total): `Meridian Storefront`
+  (/shop), `Cart` (/cart), `Checkout` (/checkout), `Customer account`
+  (/account/orders — `alsoMatch: ['/orders']`, so the order-confirmation page
+  marks it active). Staff-only `Inventory` moved here from LABS (it is a
+  Meridian Outfitters stock tool; the staff gate is byte-identical — role staff
+  + active — and is NOT weakened). Labs now holds only the seven technical
+  workbenches; the Shop entry was removed from it completely.
+- **Account separation (brief §4):** MY WORK keeps `Account` (/account,
+  `end: true`) described as "Demo sign-in and your learning profile" — the QA
+  platform identity. PRACTICE APP carries `Customer account` (/account/orders)
+  described as "The fictional shopper's order history". No routes changed, no
+  new account system, no authentication changes; /account remains the topbar
+  sign-in destination. Note the app has ONE synthetic identity shared by both
+  surfaces — the distinction is now explicit in labelling, descriptions and
+  active state, not duplicated infrastructure (splitting the profile pages
+  would be new-feature work and was not authorised).
+- **Distinct visual treatment:** PRACTICE APP renders in a dashed, sunken
+  container with a shop glyph in the heading in both sidebar and mobile
+  drawer; explanatory note "The fictional app under test — Meridian
+  Outfitters" (sidebar: hidden in collapsed mode; collapse falls back to an
+  icon-only rail as before — collapsed container is borderless/unpadded).
+  Group heading icons (`navGroups[].icon`) added; no new tokens, fonts, icons
+  or dependencies.
+- **Group notes for all groups** (Start/Practise/Labs/Practice App/My work) —
+  one plain line each, in sidebar and drawer.
+- **Breadcrumbs:** store surfaces now read Dashboard / Practice App / …
+  (Storefront, Cart, Checkout, Order confirmation, Order history, Order
+  details ×3, Inventory staff). Platform `/account` stays Dashboard / Account.
+  No store route inherits a LABS crumb; no lab route inherits a store crumb.
+- **Search:** new `store` result type rendered as a "Practice app" group
+  (Storefront, Cart, Checkout, Customer account — never as Labs). Labs group
+  still matches only QA workbenches. `/` shortcut, listbox semantics,
+  keyboard behaviour and ranking unchanged; placeholder now
+  "Search exercises, guides, labs, store". Unit tests: 8/8 pass (one existing
+  allowed-labels assertion extended with 'Practice app', plus one new
+  store-group assertion).
+- `isNavItemActive` gained an optional `alsoMatch: string[]` on NavItem
+  (used only by Customer account); `primaryNav` stays as the derived flat list;
+  staff item is appended to the PRACTICE APP group for staff only.
+
+### Verification
+- `npm run check` — ESLint clean; typecheck ×3 clean; **1485/1485 tests pass
+  (75 files)**. `npm run build` — clean (entry `index-BMpeB-lo.js`,
+  458.06 kB / gzip 140.96 kB).
+- Machine sweep (17 affected routes × 1440/375 light, 1440/390 dark — 68
+  renders): **0 overflow, 0 console errors, one h1 each** (one dark-seed flake
+  re-ran clean).
+- Probes (CDP, all pass): sidebar/drawer five groups in order; active states
+  on all nested store routes and on platform `/account`; drawer scroll,
+  Escape-close, focus-restore pattern (unchanged), five-group order; breadcrumb
+  strings on 10 store/staff routes; search "Practice app" group present with
+  store-only content, Labs group clean of store entries; collapsed rail
+  icons-only; `/orders/ABC123` renders Order confirmation with Practice App
+  crumb (direct URL; not followed through checkout).
+- Limitations (do not overclaim): Chrome 155 only; Firefox/WebKit untested;
+  screen readers untested; 200% zoom untested; staff-mode rendering untested
+  (no staff credentials; gate unchanged); no checkout performed (order routes
+  probed by URL only); dark-theme Practice App container verified at 1440 px
+  via screenshots (`/tmp/opencode/r2-shots/sidebar-*`), not at 375 px.
+- F10 (`/api-reference` 375 px overflow) remains excluded and unfixed; the
+  route was not in the matrix. R1, R2 and audit deliverables preserved.
+- Local D1 may hold anonymous practice-session rows from probes (local state
+  only, never production).
+
+### State and next action
+No commits, pushes, merges, PRs, deploys or Cloudflare changes; all work is in
+the working tree on `ui-ux-redesign`. **R3 and R4 remain unauthorised.**
+**R3 is the next milestone and requires separate maintainer authorisation.**
+
+## 25. R3 — Practice experience, progress dashboard & content consolidation (2026-11-18) — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED
+
+> **How to read this section.** R3 was authorised by the maintainer on
+> 2026-11-18 ("R3 — Practice Experience, Progress Dashboard & Content
+> Consolidation"). R4 remains unauthorised. R1, R2, the R2 follow-up and
+> the audit deliverables were preserved verbatim; R3 layers on top of them.
+> F10 remains excluded (see below). No backend, API, D1, migration,
+> scoring, hunt-engine or route changes were made.
+
+### Delivered
+- **Progress page rebuilt around a prioritised hierarchy (`/progress`, audit F-007):**
+  - **Do this next** (`src/features/progress/DoThisNext.tsx`) — one prominent
+    panel derived from the already-loaded progress payload (no second fetch):
+    first exercise on the canonical recommended path with no submitted report
+    (`findNextPathItem` added to `src/lib/recommendedPath.ts`; the dashboard
+    `NextStepPanel` now uses the same helper), honest fixed-order/non-AI
+    disclosure, guest 7-day durability note (sign-in link) or signed-in
+    attribution note, `Start here` framing for zero-progress guests,
+    all-caught-up state when every recommended report is submitted. The
+    duplicated "Nothing recorded yet" zero-state callout was removed (the
+    same starting point is now stated once, by Do this next).
+  - **Overview** — existing StatTiles preserved plus a derived line ("reports
+    submitted on X of N attemptable exercises") and the discovery progress
+    bar. Discovery denominators are now the wired bug-hunt targets only
+    (`hunt-*`, 34) — the 96 scored lab exercises carry no defects and would
+    otherwise inflate the ceiling (fix applied client-side; the API payload
+    is unchanged).
+  - **Your work by area** — all seven lists replaced by six native
+    `<details>/<summary>` collapsible sections
+    (`src/features/progress/ProgressDisclosureSection.tsx`): Bug hunts & shop
+    exercises, Database, Contract, Performance, Security, Microservices &
+    Events. Each starts expanded only when the learner has at least one
+    attempt in it (zero-activity profile renders zero open sections);
+    summary shows honest per-area counts (`N of M started · R reported ·
+    P in progress · D discovered`, or "Not started yet") plus a
+    `reported/total` badge. Keyboard and screen-reader accessible out of the
+    box (summary implicit button semantics; chevron rotation respects
+    `prefers-reduced-motion`). Grouping and href resolution extracted to
+    pure `src/features/progress/progressGroups.ts` (unit-tested); the
+    duplicated Database/Contract hand-written sections and
+    `LabProgressSection.tsx` were deleted in favour of one row renderer
+    (`ProgressEntryRow.tsx`).
+  - **Recent submissions** — kept to the 10 newest (server-side limit), the
+    honest no-full-history note added; empty and loading/error states
+    unchanged; every submission keeps its link to the relevant scenario.
+  - **Integrity preserved:** no API/contract/scoring/migration changes;
+    progress response shape untouched; guest TTL copy and banners unchanged;
+    localStorage keys untouched; route contracts untouched.
+- **Bug hunts landing (`/practice`, recommendations R3.2):**
+  - New pre-activation explainer **Two modes, one shop** (Clean mode vs
+    Bug-hunt mode cards with honest copy) plus a numbered four-step
+    "how a bug hunt works" list (start → investigate with 3-level hints →
+    file a report scored deterministically, discovery tracked separately →
+    reset anytime, cart/orders kept).
+  - Hunts are grouped for discovery by first-party surface
+    (`src/features/practice/huntGroups.ts`, pure, unit-tested): Storefront &
+    cart & checkout, Access/roles & accounts, Database, Contract,
+    Performance, Security, Microservices & Events, with per-group hunt
+    counts (unknown future ids bucket as "More hunts").
+  - Live summary strip from server-side attempt state: "N of 34 attempted ·
+    M with a submitted report · D discovered — See your progress" (rendered
+    only once per-hunt statuses have loaded; never guessed).
+  - Header description and CTA reframed for Bug hunts; the Bug hunts
+    page keeps the full progress-aware RecommendedPath (dashboard links to
+    it) and the hunt engine/controls/reset/scoring/report gates are
+    byte-identical; HuntPanel now renders grouped lists with the same
+    rows/actions as before.
+- **Scenario catalogue discovery (`/scenarios`):** "How to read this
+  catalogue" callout — clean vs bug-hunt modes, what READY means,
+  placeholders honesty, quick URL-state links (`?hunt=available`,
+  `?mode=clean`, `/about#evaluation`), filters-in-URL note. Search,
+  filtering, sort, URL state, R2 labs section and all card behaviour
+  preserved; no new routes or data sources.
+- **About & scoring (`/about`):** "On this page" anchor nav (What works
+  today / What comes next / How long progress lasts / Learning &
+  evaluation); sections gained `id` + `tabIndex={-1}`; **What comes next**
+  now explicitly labelled "Planned — not shipped" (nothing below the fold
+  presented as shipped); scoring section gained a chips sub-nav (The ten
+  checks / Verdict bands / Discovery vs score / Hints & reveals) and
+  `scroll-margin-top` on rubric headings; rubric, verdict bands and copy
+  preserved verbatim; accurate product claims and R1 copy retained.
+- **Accessibility:** collapsible controls expose state natively; one h1 per
+  page preserved; focus-visible, reduced-motion, forced-colors, landmarks,
+  sr-only and single-h1 discipline untouched; touch targets and heading
+  order preserved; no colour-alone signalling added.
+
+### Verification
+- `npm run check` — ESLint clean; typecheck ×3 clean; **1504/1504 tests
+  pass (77 files; 19 new tests across `progress-groups`, `hunt-groups` and
+  the extended `progress-page` suite).** One transient failure appeared in a
+  single run (1 test in a time-sensitive server suite); four subsequent
+  full runs were green (1504/1504 each), consistent with the known
+  second-boundary sensitivity of the rate-limit/TTL assertions — no
+  R3-related test ever failed. `npm run build` — clean (entry
+  `index-HFmx9THp.js`, 458.13 kB / gzip 140.96 kB).
+- Machine sweep (7 affected routes × 1440 light, 768 light, 375 light,
+  1440 dark, 390 dark — 35 renders): **0 horizontal overflow, one h1, zero
+  console errors**. `/progress` renders ~2.2k px (zero state) and ~3.1k px
+  (populated) vs ~12.3k px before R3.
+- Browser probes over raw CDP (fresh Chrome profile, local `wrangler pages
+  dev` on :8788, local D1 only): **100/100 checks** — guest-no-progress
+  (Do this next, zero open disclosures, honest counts, empty submissions),
+  partial progress (hunt start → report submit through the real UI →
+  attempt counted, Do this next advanced past step 1, ≥1 disclosure open,
+  recent submissions populated, verdict chip SOLID), discovery earned on the
+  submitted hunt, keyboard disclosure toggle (Enter opens/closes), bug-hunt
+  start → reset cycle restored to clean, Bug hunts explainer/groups/summary
+  rendered, catalogue `?hunt=available` (34 wired hunts) and `?mode=clean`
+  quick links plus legend, About anchors (`#what-works`, `#what-comes-next`,
+  `#durability`, `#evaluation`, `#rubric-checks`, `#verdict-bands`,
+  `#discovery-vs-score`, `#hints-and-reveals`) and `#evaluation` hash
+  focus/scroll, console clean on `/`, `/practice`, `/progress`, `/scenarios`,
+  `/about`.
+- Visual inspection (viewport screenshots): zero + populated `/progress`
+  (light 1440), `/progress` 375 px (no overflow, sections stack, badge
+  hidden), `/progress` dark 1440, `/practice` explainer + hunt groups
+  (1440 light and dark), `/about` header + TOC (light).
+- Manipulated local state only: one local hunt start → report submission →
+  reset cycle on a throwaway anonymous local session (rows persist in local
+  D1 only, never production).
+- Limitations (do not overclaim): Chrome 155 only; Firefox/WebKit untested;
+  screen readers untested; 200% zoom untested; staff-mode rendering
+  untested (gate unchanged); order routes not rendered (no checkout
+  performed); interactive hunt substates beyond the start→report→reset
+  flow not exhaustively exercised; `/api-reference` untouched and **F10
+  remains open, accepted and deliberately unfixed — F10 was explicitly
+  excluded from R3 and is unfixed**; local D1 holds anonymous scratch
+  session rows from probes (local only).
+
+### Files changed (all uncommitted, branch `ui-ux-redesign`)
+`src/features/dashboard/NextStepPanel.tsx`,
+`src/features/progress/ProgressDashboard.tsx` (rewritten),
+`src/features/progress/LabProgressSection.tsx` (**deleted**),
+`src/features/progress/DoThisNext.tsx`,
+`src/features/progress/ProgressDisclosureSection.tsx`,
+`src/features/progress/ProgressEntryRow.tsx`,
+`src/features/progress/progressGroups.ts`,
+`src/features/practice/HuntPanel.tsx` (grouped lists + live summary strip),
+`src/features/practice/huntGroups.ts`,
+`src/lib/recommendedPath.ts` (`findNextPathItem`),
+`src/pages/PracticePage.tsx` (explainer + steps),
+`src/pages/ScenariosPage.tsx` (legend callout),
+`src/pages/AboutPage.tsx` (anchors, TOC, planned-vs-shipped),
+`src/styles/pages.css` (disclosure + overview),
+`src/styles/components.css` (hunt groups, mode cards, TOC, subhead
+scroll-margin),
+`tests/pages/progress-page.test.tsx` (extended),
+`tests/lib/progress-groups.test.ts`, `tests/lib/hunt-groups.test.ts`,
+`PROJECT_STATE.md`, `docs/ui-ux-route-inventory.md` (post-R3 addendum).
+Audit deliverables (`docs/ui-ux-audit.md`,
+`docs/ui-ux-redesign-recommendations.md`, `docs/audit-screenshots/`, §21)
+preserved verbatim.
+
+### State and next action
+No commits, pushes, merges, PRs, deploys or Cloudflare changes; everything
+is in the working tree on `ui-ux-redesign` alongside R1, R2 and the audit
+deliverables. **R1, R2 and the R2 follow-up remain intact. F10 remains open
+and accepted. R4 (visual system polish — typography floor, two-surface
+grammar, icon normalisation, density) is the next milestone and requires
+separate maintainer authorisation.**
+
+## 26. R4 — Visual Polish (2026-11-18) — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED
+
+> **How to read this section.** R4 was authorised by the maintainer on
+> 2026-11-18 ("R4 — Visual Polish") following R1–R3. R1, R2, the R2
+> follow-up, R3 and the audit deliverables were preserved; R4 layers on top
+> of them. No backend, API, D1, migration, scoring, hunt-engine, auth or
+> application-data changes were made. No routes were added, removed or
+> redirected; no dependencies were added (no icon package); the existing
+> hand-written CSS and inline-SVG icon approach was kept. **F10
+> (`/api-reference` 375 px horizontal overflow) was explicitly excluded
+> again — it was not investigated, not modified and remains accepted, open
+> and unfixed.** Everything remains UNCOMMITTED on `ui-ux-redesign`.
+
+### What changed, by area
+
+**1. Visual hierarchy / two-surface grammar (audit F-008, recommendation
+R4.1).**
+- New `.panel-sunken` (components.css) — sunken = results/reference/inline
+  output; applied to: About & scoring reference panels (×4), guide TOCs,
+  code examples, rubric and verdict-band lists. (`.panel-inset` was added,
+  then removed — no consumer; no dead CSS shipped.)
+- Empty states (`.state`) now render as sunken dashed wells with
+  `--text-meta` body text (was 0.84 rem), `--text-h3` heading (was
+  1.05 rem) and a 52 ch measure.
+- Selected/active surfaces consume the tinted `--surface-selected` step
+  consistently: dark + workspace `--surface-selected` retuned `night-600` →
+  `night-700` (subtler, matches the light theme's slate-150 step; emphasis
+  still carried by the 2 px inset accent bars and semibold weights); the
+  active hunt row (`[aria-current='true']`) and the active filter chip
+  (`.filter-chip-active`) now use the tinted selection step instead of the
+  amber warning tint / sunken surface.
+- **One primary (solid) CTA per view audited app-wide**; competing solids
+  demoted to `button-secondary`: `/scenarios/:id` header action
+  (back-to-catalogue; the hunt/API-Lab slot keeps the solid),
+  `/guides/:guideId` and `/tracks/:trackId` header actions, `/api-reference`
+  header action ("Go to the API Lab instead"; the list-end "Open the API
+  Lab" keeps the solid), Contract Validate error action ("Try again"),
+  the microservices simulator's "Process due events" (Publish stays solid),
+  and the dashboard's NextStepPanel "Open the exercise" (the hero "Find a
+  scenario" remains the dashboard's solid CTA). Verified: lab hubs (
+  Contract/Database/Performance/Security/Microservices) each carry exactly
+  one solid CTA; 404 carries one solid CTA; error/empty states keep their
+  single contextual CTA.
+- **Lab-hub page titles** now use `--text-h1-lab` (2.25 rem) via a new
+  optional `PageHeader className` prop (SSR-safe); applied in LabHub,
+  ContractHubPage, DatabaseHubPage.
+
+**2. Typography & readability (recommendation R4.2, §C.1).**
+- New tokens `--text-kicker` (0.8125 rem / 13 px) + `--leading-kicker`; all
+  structural mono labels — kickers/eyebrows, tags, stat labels, fact keys,
+  field + report + checkout labels, table headers (API property tables, SQL
+  results/schema tables), nav/group headings, disclosure badges — moved from
+  12 px to 13 px and normalised to weight 600.
+- Helper/error text moved to `--text-meta` (0.875 rem):
+  `.mode-banner-error-text`, `.hunt-row-link`, `.field-hint`,
+  `.hint-toggle-note`, `.api-endpoint-block h4`.
+- `.tag` height 1.5 → 1.6 rem (13 px uppercase caps).
+- 12 px (`--text-micro`) intentionally retained only for genuinely
+  secondary captions/counts (kbd, hint counters, dense SQL table internals,
+  schema explorer lists, mono paths).
+
+**3. Density variants (recommendation §C.4, R4.2).** Implemented as an
+attribute, never a global setting, with zero persistence:
+`[data-density="compact|cozy|spacious"]` override the new component tokens
+`--list-gap` (0.4 / 0.6 / 0.9 rem), `--row-pad-y` (0.45 / 0.7 / 1 rem) and
+`--row-pad-x` (0.75 / 1 / 1.25 rem) plus `--card-pad` (1 / 1.5 / 2 rem) and
+`--panel-gap` (0.75 / 1 / 1.5 rem); cozy is the `:root` default and equals
+the previous values. Consumed by shared rows/lists: `.card-stack`,
+`.scenario-row(-list)`, `.guide-row`, `.start-step`, `.start-path-list`,
+`.progress-exercise`, `.hunt-row`. Applied: **compact** on `/progress`
+exercise lists, `/practice` hunt lists and the dashboard recommended-row
+list; **spacious** on the guide article (wider section rhythm). Technical
+workspaces untouched (SQL playground, simulator, contract/security labs
+keep their density).
+
+**4/5. Cards, panels, selected states, icons.** Cards/panels normalised
+per the grammar above; `.report-result` (already sunken) untouched; icons
+normalised to the two optical sizes **16 px** (inline/rows/chips/controls)
+and **20 px** (nav/sidebar/drawer items, top-bar actions, theme toggle,
+empty-state glyphs) — the 12/13/14/15/17/18/19/22 px values are gone;
+`Icon.tsx` keeps its uniform 1.75 stroke; no icon dependency added;
+alignment with labels verified via screenshots.
+
+**6. Interaction & responsive polish (recommendation R4.3).** Footer now
+reads `QA Practice Lab · v0.2.0` with a `Changelog & scoring` link to
+`/about` (all routes); nav/drawer/sidebar structure, focus-visible ring,
+skip link, `sr-only`, forced-colours, reduced-motion, drawer focus trap —
+all preserved verbatim; 404 "three popular destinations" (R2) remain in
+place — R4.3's 404 item was already satisfied and is unchanged; hover/
+focus/active/disabled/selected states kept consistent via the shared
+tokens; touch targets unchanged (`--control-h` 2.75 rem).
+
+**7. Guest & empty-state consistency (F-017, recommendation R4.4, D.6).**
+Guest durability copy added to the guest empty states on `/account`,
+`/account/orders` and `/account/orders/:reference`: guests see the
+7-day anonymous practice-session expiry and the no-migration rule. The
+7-day durability wording remains accurate (matches `/about#durability`,
+`/progress` guest banner and Do this next). **One honest-copy fix:** the
+stale `/about` sentence "The dashboard still shows labelled demo figures"
+was removed — the dashboard has shown real server progress since Phase 4;
+the matching test assertion was inverted.
+
+### Verification run (2026-11-18)
+
+- `npm run check` — **green** (lint → typecheck ×3 → **1504/1504** tests,
+  77 files), run three times (after implementation, after the `/about`
+  copy + test edit, and after the not-found h1 fix).
+- `npm run build` — clean; final entry `index-BA9US9FO.js`, 458.20 kB / gzip
+  140.99 kB.
+- Headless Chrome (Playwright; no repo dependencies added), fresh
+  throwaway profiles, `domcontentloaded` + fixed wait:
+  **35 routes** (`/`, `/tracks`, `/tracks/manual-testing`,
+  `/tracks/not-a-track`, `/scenarios`, `/scenarios/api-catalog-pagination`,
+  `/scenarios/not-a-scenario`, `/guides`, `/guides/guide-manual-test-design`,
+  `/guides/not-a-guide`, `/practice`, `/progress`, `/about`,
+  `/api-reference`, `/api-lab`, `/database`, `/database/playground`,
+  `/database/exercises/not-an-exercise`, `/contract`,
+  `/contract/exercises/not-an-exercise`, `/performance`,
+  `/performance/exercises/not-an-exercise`, `/security`,
+  `/security/exercises/not-an-exercise`, `/microservices`,
+  `/microservices/exercises/not-an-exercise`, `/shop`, `/cart`, `/checkout`,
+  `/account`, `/account/orders`, `/login`, `/not-a-page`) × {375×812,
+  768×1024, 1024×768, 1440×900} × {light, dark} — every page renders
+  **exactly one h1** and the `QA Practice Lab · v0.2.0` footer, with
+  **zero console/page errors other than the expected unauthenticated
+  `GET /api/v1/auth/me` 401 guest probe** and **zero horizontal overflow
+  everywhere except `/api-reference` at 375 px in dark — F10,
+  maintainer-accepted, excluded from R4; not investigated, not modified,
+  not re-measured.** A final confirmation pass on the post-h1-fix build
+  (35 app routes + `/api/health`, light 1440 / dark 375; 72 renders)
+  reproduced the same result. `/not-a-page` renders the 404 view with
+  HTTP 200 (SPA fallback, expected).
+- Screenshots reviewed (1440 light/dark): dashboard, practice, progress
+  (full page), about, guide detail, account, db playground, microservices,
+  performance, contract, api-reference; plus 375 px scenarios/404/mobile
+  drawer and 768 px practice. Themes render coherently; sidebar active
+  state, kicker sizing, density and the footer were eyeballed in both
+  themes.
+- **Defect found and fixed during verification (pre-existing):** the
+  invalid-id not-found detail branches rendered **zero headings** (no
+  h1; `EmptyState` renders only an h2, `Callout` renders none) — breaking
+  the site's single-h1-per-route discipline. Eight branches (`/scenarios/:id`,
+  `/tracks/:id`, `/guides/:id`, `/contract/exercises/:id`,
+  `/database/exercises/:id`, `/performance/exercises/:id`,
+  `/security/exercises/:id`, `/microservices/exercises/:id`) now carry a
+  visually-hidden `<h1 className="sr-only">`; verified in both themes ×
+  four widths. No behaviour change; additive only.
+- Keyboard check (headless Chrome, `/` light): Tab order reaches the skip
+  link first (it becomes visible on focus), then the brand link, the global
+  search, cart, account and theme toggle; every probed control shows the
+  global `2 px solid` `:focus-visible` ring (the search field uses its
+  designed `:focus-within` box-shadow instead). Reduced-motion emulation
+  loaded fine; the reduced-motion CSS is unchanged and was not exhaustively
+  re-probed.
+- `/progress` guest surface re-read from the R3 build (Do this next +
+  durability note + disclosure lists with compact density) — unchanged in
+  behaviour; compact density preserves the row layout at 1440 px.
+
+### Limitations (do not overclaim)
+
+Chrome only; **Firefox/WebKit untested**; **screen readers untested**;
+**200 % zoom untested**; **reduced-motion not re-probed in a browser**
+(the media query and every reduced-motion rule are unchanged); staff-mode
+rendering untested (gate unchanged; no staff credentials exercised);
+checkout completion and order routes (`/orders/:reference`,
+`/account/orders/:reference`) not exercised (no checkout performed);
+dark-theme `--surface-selected` eyeballed at 1440 px only; F10 remains
+open, accepted and deliberately unverified; probe ran against local
+`wrangler pages dev` + local D1, never production.
+
+### Files changed this milestone (all uncommitted, branch `ui-ux-redesign`)
+`src/styles/tokens.css` (`--text-kicker`, `--text-h1-lab`, density
+component tokens + `[data-density]` blocks, dark/workspace
+`--surface-selected`), `src/styles/{components,layout,pages,labs,contract,
+database,workspace}.css` (type floor, wells, TOC surfaces, CTA/density
+wiring, nav headings), `src/components/ui/PageHeader.tsx` (optional
+`className`), `src/components/ui/States.tsx`, `ThemeToggle.tsx`, `Callout.tsx`,
+`Tag.tsx` and ~45 app/icon sites (16/20 px normalisation), 
+`src/components/layout/{AppShell,MobileNav,Sidebar,TopBar}.tsx`,
+`src/pages/AboutPage.tsx`, `AccountPage.tsx`, `AccountOrdersPage.tsx`,
+`AccountOrderDetailPage.tsx`, `ScenarioDetailPage.tsx`, `GuideDetailPage.tsx`,
+`TrackDetailPage.tsx`, `ApiReferencePage.tsx`, `DashboardPage.tsx`,
+`ContractValidatePage.tsx`, `ContractHubPage.tsx`, `DatabaseHubPage.tsx`,
+`src/features/dashboard/NextStepPanel.tsx`,
+`src/features/microservices/SimulatorConsole.tsx`,
+`src/features/practice/HuntPanel.tsx`,
+`src/features/progress/ProgressDisclosureSection.tsx`,
+`src/features/labs/LabHub.tsx`, `tests/pages/about-page.test.tsx`,
+`src/pages/ScenarioDetailPage.tsx`, `TrackDetailPage.tsx`,
+`GuideDetailPage.tsx`, `ContractExercisePage.tsx`, `DatabaseExercisePage.tsx`,
+`PerformanceExercisePage.tsx`, `SecurityExercisePage.tsx`,
+`MicroservicesExercisePage.tsx` (visually-hidden h1 in not-found
+branches),
+`PROJECT_STATE.md`, `docs/ui-ux-route-inventory.md` (post-R4 addendum).
+The full uncommitted tree still contains the R1–R3 milestones and the audit
+deliverables verbatim.
+
+### State and next action
+
+No commits, pushes, merges, PRs, deploys or Cloudflare changes were made;
+everything is in the working tree on `ui-ux-redesign` alongside R1–R3.
+**R1–R4 are now all implemented on the working tree. F10 remains open,
+accepted and unfixed. No R5 or further phase exists or is proposed; the
+redesign work is complete pending maintainer review and any separate
+authorisation for commit/merge/deploy.** The next step requires explicit
+maintainer authorisation.
+
+## 27. Post-R4 copy correction — commerce-mode terminology is contextual, not global (2026-11-18)
+
+> **Scope of this entry.** A narrow terminology and UI-placement correction
+> authorised after R4 ("UI Copy Correction — Clean Mode and Bug-Hunt
+> Mode"). Not a redesign phase. No backend, API, D1, migration, scoring,
+> hunt-engine, defect-injection, auth, persistence or routing changes;
+> rendering scope and copy only. **All work remains UNCOMMITTED on
+> `ui-ux-redesign`.** F10 remains excluded and unfixed.
+
+### What was wrong
+`<ModeBanner />` was mounted globally inside the app shell, so every page —
+SQL playground, security lab, guides, dashboard, About — displayed
+"Clean mode — the commerce app behaves as specified" with a "Hunt controls"
+link, implying the whole lab runs in commerce Clean mode.
+
+### What changed
+1. **`src/components/layout/AppShell.tsx`** — the banner renders only when
+   the current pathname matches the commerce Practice App prefix set
+   (`/shop`, `/cart`, `/checkout`, `/orders`, `/account`, `/admin/inventory`,
+   `/login`). Everything else — QA labs (database, contract, performance,
+   security, microservices), API reference/lab, guides, tracks, dashboard,
+   `/practice`, `/progress`, `/about`, 404 — renders no banner. Commerce
+   surfaces match `/shop*`, `/cart`, `/checkout`, `/orders/:reference`,
+   `/account`, `/account/orders`, `/account/orders/:reference`, `/login`,
+   `/admin/inventory`.
+2. **`src/features/practice/ModeBanner.tsx`** — copy aligned to the
+   intended terminology. Clean:
+   "<strong>Clean mode</strong> — shop normally. The commerce app behaves
+   as specified; no deliberate defects are enabled." Bug-hunt:
+   "<strong>Bug-hunt mode</strong> — {hunt title}. Deliberate defects are
+   enabled — find and report unexpected behaviour." plus the
+   contract-provider note for `hunt-contract-*` hunts. "Hunt controls →"
+   link kept (commerce context only). Header comment rewritten.
+3. **`src/pages/PracticePage.tsx`** — the two mode cards and the section
+   description now carry the intended concise definitions ("Shop normally.
+   The commerce app behaves as specified; no deliberate defects are
+   enabled." / "Explore the same app with deliberate defects enabled.
+   Find and report unexpected behaviour — wrong totals, stale stock,
+   broken filters, boundary slips."); PageHeader description tightened.
+4. **Unchanged:** mode activation, defect injection, hunt engine, scoring,
+   /practice and /scenarios hunt-panel/mode-launch UIs, the catalogue
+   legend callout, other labs' own execution-mode terminology (e.g. the
+   microservices simulator's CLEAN status chip, security lab copy).
+   Other labs' copy is unchanged.
+
+### Verification (2026-11-18)
+- `npm run check` — green (**1504/1504**, 77 files).
+- `npm run build` — clean; entry **`index-YGOGZbMN.js`**, 458.41 kB / gzip
+  141.09 kB.
+- **96 renders** (24 routes × 1440×900 & 375×812 × light/dark): commerce
+  routes show the banner; all 16 unrelated routes show none. One h1 and the
+  v0.2.0 footer on all; zero unexpected console/page errors (only the
+  expected `/api/v1/auth/me` 401 guest probe).
+- **Local end-to-end**: started the cart-totals hunt from
+  `/scenarios/manual-cart-totals`; `/shop`, `/cart`, `/checkout`, `/account`
+  render the compact bug-hunt banner ("Bug-hunt mode — Order totals do not
+  add up … find and report unexpected behaviour." + "Reset to clean");
+  `/security` and `/database` render no banner; reset restores the clean
+  banner. HuntPanel, HuntLaunchPanel and `/practice` mode cards unaffected
+  in behaviour (UI verified by eye).
+- Screenshots eyeballed (light/dark × 375/768/1440): `/shop` banner wraps
+  cleanly on mobile; `/practice` renders both mode cards; security/database
+  render with no banner.
+- Local D1 only; no production contact.
+
+### Limitations
+Chrome only; Firefox/WebKit, screen readers and 200% zoom not re-tested;
+`/orders/:reference` exercised only with an unknown reference (no checkout
+performed); staff mode untested (gate unchanged); reduced-motion unchanged
+and not re-probed; F10 untouched and excluded; local D1 holds throwaway
+scratch session rows from the end-to-end probe (local only).
+
+### State and next action
+All R1–R4 work plus this correction remains in the working tree on
+`ui-ux-redesign`; nothing was committed, pushed, merged, PR'd, deployed or
+migrated; no branch was created. The next step requires explicit maintainer
+authorisation.
+
+## 28. Post-R4 mobile UI fix — `/shop` storefront (2026-11-18)
+
+> **Scope.** Targeted responsive repair of the Meridian Storefront product
+> grid on mobile, plus one adjacent shell fix forced by the same
+> 320 px overflow. Not a redesign phase. No backend, API, D1, migration,
+> scoring, hunt-engine, auth, persistence, route or content changes; only
+> responsive CSS. **All work remains UNCOMMITTED on `ui-ux-redesign`.**
+> F10 remains excluded and unfixed.
+
+### Root cause (found by measurement, not by eyeballing margins)
+`@media (max-width: 760px)` in `src/styles/components.css` overrode
+`.product-grid` with `repeat(auto-fill, minmax(0, 1fr))`. With a zero
+minimum track size the auto-fill algorithm created dozens of ~1 px columns
+(measured: 17–42 tracks), so every product card rendered ~50 px wide and
+~569 px tall, with horizontal overflow at 320–760 px — the "merged",
+unreadable catalogue the maintainer reported. (At ≥761 px the desktop
+`minmax(260px, 1fr)` rule was unaffected.) A second, smaller overflow
+existed in the shared shell: at ≤400 px the topbar (brand mark + brand
+copy + hamburger + actions) exceeded 320 px, producing a 46 px horizontal
+scrollbar — visible on every route.
+
+### What changed
+1. **`.product-grid` (≤760 px)** now uses `minmax(0, 1fr)` — one full-width
+   product card per row, deliberate on narrow screens; the broken
+   auto-fill override was deleted. Desktop (≥761 px) unchanged.
+2. **`.product-card`** gained `min-width: 0` (grid-item shrink
+   protection for long unbreakable strings). Card borders, radius,
+   `--surface` background, 1 rem grid gap and internal `--card-pad` were
+   already correct and are unchanged.
+3. **`layout.css`** — below **400 px** the brand copy (name + sub-line)
+   hides, leaving the QA mark + actions; the bar fits every 320 px screen.
+   At 400–640 px the previous appearance is preserved (brand-sub still
+   hidden; wordmark stays).
+
+### Verification (2026-11-18)
+- `npm run check` — **green (1504/1504**, 77 files).
+- `npm run build` — clean; entry `index-CRWZaeVp.js`, 458.41 kB / gzip
+  141.10 kB.
+- Computed-style sweep of `/shop` at 320/375/390/414/500/600/760/768/
+  1024/1280 (light; dark spot-checked): below 761 px the grid is now a
+  single `minmax(0, 1fr)` track; card widths 288–714 px;
+  `scrollWidth === innerWidth` at **every** measured width. Pre-fix, the
+  320 px viewport overflowed by 46 px and the grid collapsed into dozens
+  of ~1 px tracks (cards ~50 px wide, ~569 px tall) at all widths ≤760 px.
+  Desktop (≥761 px) layout is unchanged.
+- Full-page screenshots reviewed at 320/375/390/500/760 px in light and
+  375/500 px in dark: every product is an individual bordered card with
+  clean separation; price/stock row, category meta and full-width
+  add-to-cart button read clearly; out-of-stock state renders disabled
+  correctly; pagination and footer intact; topbar shows mark-only at
+  ≤400 px.
+- Adjacent routes re-verified at 320 px (`/cart`, `/checkout`, `/security`,
+  `/`): `scrollWidth === innerWidth`, one h1 each.
+- Visual hierarchy (price `--text-h3` semibold tabular; stock kicker;
+  category meta) and both themes unchanged in design language; no new
+  colours, shadows, radii or spacing tokens introduced.
+- Local `wrangler pages dev` + local D1 only; no production contact.
+
+### Limitations
+Chrome only; Firefox/WebKit, screen readers and 200 % zoom not re-tested;
+the fix is CSS-only — machine sweeps re-verified overflow and h1 presence
+at all measured widths; touch-target behaviour (buttons stay `sm` height /
+full-width) unchanged.
+
+### State and next action
+All R1–R4 work, the copy correction and this storefront fix remain in the
+working tree on `ui-ux-redesign`; nothing was committed, pushed, merged,
+PR'd, deployed or migrated; no branch was created. The next step requires
+explicit maintainer authorisation.
+
+## 29. Final UI/UX audit closure — verification, disposition of all findings, Git preparation (2026-11-18)
+
+> **Scope.** Closure of the 2026-11-17 comprehensive UI/UX audit
+> (`docs/ui-ux-audit.md`) after the authorised R1–R4 redesign (§22–§26), the
+> post-R4 commerce-mode copy correction (§27) and the post-R4 `/shop` mobile
+> repair (§28). Not a new phase: **no new features, no R5, no backend/API/D1/
+> migration/scoring/hunt-engine/auth/persistence/routing changes, no
+> dependency changes, no design-direction changes.** The only repository
+> changes made in this closure pass are documentation (this file, the
+> route-inventory addendum) and one `.gitignore` rule for local audit
+> screenshots. **F10 remains excluded.** Nothing was staged, committed,
+> pushed, merged, deployed or migrated; no branch was created or changed.
+
+### 29.1 The R1–R4 + follow-up programme — completion status
+
+| Milestone | Delivered | Status |
+|---|---|---|
+| R1 — Truth & breakage sweep (2026-11-17) | §22: stale copy corrected, LabHub word-separation fix, READY contrast, heading skips | Implemented & verified (then and re-verified now — see 29.4) |
+| R2 — Navigation & IA (2026-11-17) | §23: five journey groups (via the R2 follow-up), label renames, breadcrumbs, extended site search, Exercises discovery hub, dashboard NextStepPanel | Implemented & verified |
+| R2 follow-up — Practice App separation (2026-11-18) | §24: PRACTICE APP group, `Customer account` vs `Account` split, dashboard/practice de-duplication preserved | Implemented & verified |
+| R3 — Practice & progress structure (2026-11-18) | §25: `/progress` rebuilt (Do this next, 6 collapsible lab sections, 10 newest submissions), `/practice` Bug-hunts landing, catalogue legend, About anchors | Implemented & verified |
+| R4 — Visual polish (2026-11-18) | §26: two-surface grammar, 13 px kicker floor, density variants, 16/20 px icon normalisation, one-solid-CTA, footer v0.2.0, guest durability notes, sr-only h1 on 8 not-found branches | Implemented & verified |
+| Post-R4 copy correction (2026-11-18) | §27: commerce-mode banner is commerce-only; terms contextual | Implemented & re-verified now (banner scope probe, 29.4) |
+| Post-R4 mobile fix — `/shop` (2026-11-18) | §28: ≤760 px one full-width column; topbar mark-only ≤400 px | **Implemented & re-verified now** (320/375/390/760 px, light & dark: 1 column, `scrollWidth === innerWidth`, 1 h1, 29.4) |
+| Clean/Bug-hunt terminology correction | §27 (same change as above) — verified present in `AppShell.tsx` (commerce prefix set), `ModeBanner.tsx`, `PracticePage.tsx` | Implemented & verified |
+
+### 29.2 Disposition of every audit finding (register F-001…F-024, hypotheses H-1…H-5)
+
+Severity in brackets as logged in the audit.
+
+- **F-001** (P1, flat 15-item sidebar) — **Fixed and verified.** Journey groups render
+  (Start / Practise / Labs / Practice App / My work + foot utility entry); group
+  headings probed live this session (staff account); collapsed rail and mobile drawer
+  re-verified per R2/R2-follow-up.
+- **F-002** (P1, three duplicated steppers) — **Fixed and verified.** One canonical
+  recommended path (`getRecommendedPath()`) feeds both the dashboard `NextStepPanel`
+  and `/practice`'s `RecommendedPath`; the two static duplicates were removed. Real
+  server-side completion state shown.
+- **F-003** (P1, stale pre-launch copy) — **Fixed and verified.** Copy corrected in R1;
+  re-probed in the browser passes (R1–R4 build); no stale runnable-status claims found
+  in the sweeps.
+- **F-004** (P1, six competing catalogues, search scenarios-only) — **Fixed and
+  verified.** `/scenarios` is the single discovery hub (labs section with live counts
+  + hunt-derived entries); global search (`src/lib/siteSearch.ts`, 8/8 unit tests)
+  covers exercises, guides, labs and store destinations with AND semantics,
+  per-type caps and keyboard navigation (verified per R2; `/` shortcut retained).
+- **F-005** (P1, LabHub word separation) — **Fixed and verified** (source re-read
+  this session: `<strong>{title}.</strong> {detail}` with explicit space in both
+  `LabHub.tsx` and `ContractHubPage.tsx`; `.database-step-copy` display:block).
+- **F-006 / F10** (P1, `/api-reference` 375 px overflow) — **Accepted and excluded
+  by the maintainer (2026-11-17); not fixed, not re-measured, not in any verification
+  matrix this session.** It remains open, accepted, documented (`PROJECT_STATE.md` §20–§28,
+  audit §5/register, route inventory F10 rows). **Do not fix without explicit
+  re-authorisation.**
+- **F-007** (P1, walls of rows on `/progress`, `/practice`, `/scenarios`) — **Fixed and
+  verified.** `/progress` rebuilt (Do this next, 6 `<details>` sections with honest
+  counts, 10-item submissions); `/practice` hunt lists grouped by surface; `/scenarios`
+  gained the legend callout. Page height ~2.2–3.1 k px vs ~12.3 k px before.
+- **F-008** (P2, no tonal distinction action vs result) — **Fixed and verified.** Two-surface
+  grammar (raised = actions/inputs, sunken = results/reference, tinted = selected,
+  workspace dark = technical panels) formalised in R4 and applied to About/guide/track
+  surfaces, empty-state wells and selected rows/chips; one-solid-CTA-per-view enforced.
+- **F-009** (P2, label/spelling mismatches) — **Fixed and verified.** Label-only renames
+  (Learning paths, Exercises, SQL playground, API console, API reference, Bug hunts,
+  About & scoring, …); UK spelling in user-facing catalogue copy; factual nav
+  descriptions; routes unchanged.
+- **F-010** (P2, Clean vs Bug-hunt never explained pre-activation) — **Fixed and
+  verified.** `/scenarios` carries the "How to read this catalogue" callout (Clean vs
+  Bug-hunt, READY meaning, placeholders honesty, quick links); `/practice` carries
+  "Two modes, one shop" + a 4-step activation walkthrough before any hunt starts;
+  About explains scoring/reveal semantics (`#evaluation`).
+- **F-011** (P2, breadcrumbs absent) — **Fixed and verified.** Breadcrumbs probed on
+  all non-root routes checked in R2 (10 routes) and re-checked indirectly in this
+  session's landmark/heading probes; no regression observed.
+- **F-012** (P3, copy/terminology consistency) — **Fixed and verified** (R1 + R2
+  labels + §27 contextual commerce terms + §28 storefront pass). Minor editorial
+  variance may remain; no functional or trust impact identified.
+- **F-013** (P3, h1→h3 skip on `/scenarios`, `/shop`) — **Fixed and verified** (R1).
+  Extended to `/tracks` (R2) and 8 not-found detail branches (R4). This session:
+  heading-skip probe reports **0 skips on all 19 probed routes** (see 29.4).
+- **F-014** (P2, READY tag 4.46 < 4.5) — **Fixed and verified** (R1: `--green-700`
+  → `#146c34`; light 5.79 : 1, dark 11.02 : 1, AA pass).
+- **F-015** (P2, search scenarios-only) — **Fixed and verified** (see F-004; R2).
+- **F-016** (P2, About unnavigable + stale) — **Fixed and verified** (R1 copy; R3
+  anchor TOC, "Planned — not shipped" labelling, scoring sub-nav; R4 removed a
+  contradicting demo-data sentence; rubric content preserved).
+- **F-017** (P3, guest durability not signposted) — **Fixed and verified** (R4: guest
+  empty states on `/account`, `/account/orders`, `/account/orders/:reference` state the
+  7-day expiry and no-migration rule).
+- **F-018** (P3, `--control-h-sm` 36 px < 44 px guidance) — **Accepted / not changed.**
+  Audit marked it "Marginal; desktop acceptable"; no authorised milestone changed it;
+  recorded here as a known, accepted, desktop-density trade-off (not a defect).
+- **F-019** (P3, icon optical inconsistency) — **Fixed and verified** (R4: normalised to
+  the 16 px / 20 px pair, uniform 1.75 stroke; no dependency added).
+- **F-020** (P3, reduced-motion unverified) — **Fixed and verified in emulation** this
+  session: `prefers-reduced-motion: reduce` emulated in Chromium — global `0.01 ms !important`
+  override active (chevron transition computes `1e-05 s`), `scroll-behavior: auto`, disclosure
+  toggles remain fully functional. (Simulator/load-runner internals not exhaustively re-probed;
+  no reduced-motion-specific user report exists.)
+- **F-021** (P2, cart chrome on every page) — **Partially addressed; residual recorded, not
+  changed.** The sidebar now isolates all commerce chrome under the PRACTICE APP group
+  (R2 follow-up) and the mode banner is commerce-scoped (§27). The **top-bar cart icon/badge
+  remains visible on all routes by design** (QA usage: the shop is the app under test from
+  any lab); moving or hiding it was not in any authorised milestone and would be a
+  functional/visual change — recorded for maintainer review, not implemented.
+- **F-022 / F-023 / F-024** (passes) — **Still pass.** Zero unexpected console errors in
+  every sweep this session; 404 renders branded with single h1.
+- **H-1** (rail mode ≤1024 px) — **Resolved as designed.** ≤1023 px uses the focus-trapped
+  drawer (verified, incl. Escape-close this session); desktop rail collapse retained (R2/R4).
+- **H-2** (reduced-motion neutralises animations) — **Verified (emulated).** See F-020.
+- **H-3** (SR output of `role="status"` banner; route-change focus) — **Fixed but NOT fully
+  verified.** `role="status"` / `aria-live` are present where designed (commerce banners;
+  `/practice`, `/scenarios` carry `aria-live="1"` regions); `useRouteManagement` updates the
+  document title and focus target on route change. **No screen reader is installed in this
+  environment — announcements were not heard.** Unverified: actual SR UX.
+- **H-4** (13 px kicker floor viable) — **Implemented (R4).** 13 px weight-600 structural
+  labels everywhere; user-facing copy still uses 12 px only for captions/counts.
+- **H-5** (200 % zoom) — **Verified as reflow equivalents** (CSS viewport halved:
+  720 × 450 ≈ 1280 @200 %, 640 × 400 ≈ 1280 @200 %; 18 routes × 2 themes, 72 renders,
+  0 overflow, one h1 — **`/api-reference` excluded per F10**). Browser-native 200 % zoom
+  UI not separately exercised.
+
+### 29.3 Accessibility & cross-browser verification — what was and was not done
+
+**Done this session (all on local `wrangler pages dev` serving the production build of
+the working tree; local D1 only; no production contact):**
+
+- **Firefox 155 (Playwright)** — 108 renders: light theme 24 routes × {375, 768, 1440}
+  (72 renders) + dark theme 12 key routes × the same three widths (36 renders).
+  **0 overflow, 1 h1, 0 unexpected console/page errors (the expected guest
+  `/api/v1/auth/me` 401 probe is filtered out).**
+- **WebKit/Safari — NOT VERIFIED (environment).** Playwright WebKit (webkit-2388) aborts
+  during startup with `WPENetworkProcess: symbol lookup error:
+  /snap/core20/current/lib/x86_64-linux-gnu/libpthread.so.0: undefined symbol:
+  __libc_pthread_init, version GLIBC_PRIVATE`, including with `LD_LIBRARY_PATH` stripped.
+  The snap core20 glibc leaking into the WebKit process is an environment defect; fixing it
+  would require system-level changes outside this task's authority. Safari-on-macOS remains
+  untested. Any WebKit claim in future release notes must stay labelled unverified until a
+  working WebKit runs.
+- **Chromium (system Google Chrome via CDP/Playwright)** — reflow/"200 % zoom" equivalents
+  (above), reduced-motion emulation (above), keyboard probe (above), staff-mode (below),
+  `/shop` 320→760 px measurements (above), mode-banner scope probe on 15 routes (commerce
+  routes render the banner; all others render none — matches §27).
+- **Keyboard (1440 px)** — Tab order: skip link first → brand → search → cart → account →
+  theme toggle → sidebar items; every probed stop shows a visible focus affordance
+  (2 px solid `:focus-visible` ring; the search input uses its designed
+  `:focus-within` box-shadow — verified in `layout.css:105`); mobile drawer opens at 390 px,
+  traps focus, **Escape closes** (verified this session).
+- **Programmatic a11y probes on 19 routes** — exactly one `banner` / `main` / `contentinfo`
+  landmark set (nav counts 1–4 as designed: shell + page-level navs), **0 unlabeled
+  controls** (the two `/login` inputs initially flagged carry proper `<label htmlFor>`
+  associations — confirmed in source; probe did not count them), **0 heading skips**,
+  **single h1 everywhere**, skip link present everywhere, `role="status"` present on
+  commerce banners.
+- **Reduced motion — emulated** (above).
+- **Staff mode** — signed in locally as **Rowan Ellison** (documented synthetic staff
+  account, README); the `Inventory` entry appears in the **Practice App** group of the
+  sidebar and `/admin/inventory` renders h1 "Inventory". Gate unchanged; no credentials
+  beyond the local synthetic fixture were used. (Staff session rows persist in local D1
+  only.)
+- **Screen readers — NOT TESTED.** None installed (no NVDA/VoiceOver/Orca); no axe/pa11y
+  was installed (per repo policy). Findings H-3 stays "fixed, not fully verified".
+- **Human usability testing — NOT PERFORMED.** No participants were available or arranged;
+  the audit's walkthroughs were expert walkthroughs. This remains the largest evidence gap,
+  accepted and recorded.
+- **Touch/target-size at 44 px guidance** — unchanged from the audit (F-018 accepted).
+
+**Verification caveats that still apply (do not overclaim):**
+
+1. WebKit/Safari and real assistive technology are unverified.
+2. 200 % reflow was verified by halving the CSS viewport, not via the browser zoom UI.
+3. Order routes (`/orders/:reference`, `/account/orders/:reference`) not exercised
+   (no checkout performed); practised via direct URL only in earlier milestones.
+4. F10 `/api-reference` 375 px overflow — excluded, not re-measured.
+5. This session verified the production build of the **working tree** (R1–R4 + follow-ups),
+   not production (which remains untouched at deployment `18db4007-…`, source `981176a`,
+   `schema_version` 14).
+
+### 29.4 Checks actually performed this session
+
+- `npm run check` — **green: lint → typecheck ×3 → 1504/1504 tests (77 files).**
+- `npm run build` — **clean; entry `index-CRWZaeVp.js`, 458.41 kB / gzip 141.10 kB**
+  (byte-identical entry name to §28's record; working tree source unchanged by this
+  session apart from `.gitignore`, which does not affect the bundle).
+- Playwright/Chromium reflow, reduced-motion, keyboard, staff, `/shop` and banner-scope
+  probes as listed in 29.3 — all performed, results as recorded (no assumed results).
+- Playwright/Firefox sweep (108 renders) — performed, 0 failures (above).
+- Screenshot folder inspection and Git history audit — performed (29.6).
+
+### 29.5 Known limitations (carried forward, not re-opened)
+
+- F10 (`/api-reference` 375 px overflow) — **accepted, open, excluded; not fixed.**
+- F-018 (36 px small-button height) — accepted desktop-density trade-off.
+- F-021 residual (global top-bar cart badge) — recorded for maintainer review.
+- The audit's "41 screenshots" figure vs **40 files actually on disk** in
+  `docs/audit-screenshots/` — one screenshot cited in the audit narrative appears to
+  have never been saved or was lost; **no file was deleted**; the figure is recorded
+  here for honesty and the route-inventory addendum notes it. All 43 image paths
+  cited across the four audit documents resolve to files on disk (checked this
+  session).
+- WebKit/Safari, screen readers, human usability — unverified (above).
+- Local D1 holds throwaway local session rows from this session's probes
+  (staff sign-in) — local state only, never production.
+
+### 29.6 `docs/audit-screenshots/` — Git tracking decision
+
+- **Never tracked:** no commit in any branch or history contains the folder
+  (`git log --all --oneline -- docs/audit-screenshots/` → empty).
+- **Never staged:** the index is empty; the folder was untracked in `git status`.
+- **Action taken:** `docs/audit-screenshots/` added to `.gitignore`. The folder is
+  now invisible to `git status` and cannot be re-staged accidentally.
+- **Preserved locally:** all 40 PNGs (~25 MB) remain on disk untouched; the audit
+  documents keep referencing them as local evidence (they are not runtime assets —
+  no application code, build config or test references them).
+- **This commit requires NO file deletions** for the screenshots (unlike had they
+  been tracked, an index-only `git rm --cached` would have been required — it is not).
+- **Do not delete the local folder.** If maintainers later want it elsewhere
+  (e.g. asset storage), that is a separate, explicit decision.
+
+### 29.7 Current branch and working-tree state
+
+- Branch: **`ui-ux-redesign`** @ `297a030` (same as `main` @ `297a030`; the redesign
+  has never been merged). **No branch was created, switched, reset, rebased, amended or
+  squashed.**
+- Working tree: **89 changed paths** before this closure pass (74 modified, 1 deleted
+  (`src/features/progress/LabProgressSection.tsx` removed in R3), 14 untracked — the 3
+  audit docs, the 2 new test files + 5 new src files under `features/progress`,
+  `features/dashboard/`, `lib/siteSearch.ts`, `features/practice/huntGroups.ts`,
+  `features/progress/{DoThisNext,ProgressDisclosureSection,ProgressEntryRow,progressGroups}.ts`);
+  this closure pass adds **`.gitignore`** (modified) and `PROJECT_STATE.md` (modified) +
+  the route-inventory addendum. `docs/audit-screenshots/` is now ignored (no longer listed).
+- Staging area: **empty** (nothing staged).
+- Production: untouched — deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source
+  `981176a`, `schema_version` 14, alias https://qa-practice-lab.pages.dev.
+
+### 29.8 Ready for final staging and commit?
+
+**Yes — pending explicit maintainer approval; nothing has been staged or committed.**
+Recommended: **one cohesive commit** for the completed UI/UX closure work (the R1–R4
++ follow-ups are interdependent layers of one redesign; splitting them risks staging
+half a redesign). A reasonable single message:
+
+> `feat: complete the authorised UI/UX redesign (R1–R4, copy correction, /shop mobile repair)`
+
+with a body enumerating R1/R2/R2-follow-up/R3/R4/§27/§28 and the closure verification.
+Alternative two-commit split if preferred: (1) application code + tests
+(`src/`, `tests/`), (2) documentation (`docs/ui-ux-*.md`, `PROJECT_STATE.md`,
+`.gitignore`) — but one commit is simpler and matches how the work was delivered.
+
+**Proposed commit contents (add):**
+
+- `.gitignore` (audit-screenshots ignore rule)
+- `PROJECT_STATE.md` (all R1–R4 + follow-up + closure records)
+- `docs/ui-ux-audit.md`, `docs/ui-ux-redesign-recommendations.md`,
+  `docs/ui-ux-route-inventory.md` (audit deliverables + addenda)
+- `src/` modifications and new files (component/pages/styles/lib changes,
+  `LabProgressSection.tsx` deletion)
+- `tests/pages/about-page.test.tsx`, `tests/pages/progress-page.test.tsx`,
+  `tests/lib/site-search.test.ts`, `tests/lib/hunt-groups.test.ts`,
+  `tests/lib/progress-groups.test.ts`
+
+**Excluded (must not be staged):**
+
+- `docs/audit-screenshots/` (local evidence; now git-ignored)
+- any `dist/` output, `node_modules/`, `.wrangler/` (already ignored)
+- no secrets/credentials/environment files exist in the tree (scanned).
+
+**Before committing, maintainer approval is required** (this task's mandate ends at
+the prepared report). On approval: stage exactly the list above, run
+`npm run check` once more if anything changed since 2026-11-18, then commit —
+**no push, no PR, no merge, no deploy** without separate explicit authorisation.

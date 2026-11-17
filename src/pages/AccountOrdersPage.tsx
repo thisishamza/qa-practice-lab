@@ -77,7 +77,7 @@ export function AccountOrdersPage() {
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Account', to: '/account' },
+          { label: 'Practice App' },
           { label: 'Order history' },
         ]}
       />
@@ -97,11 +97,11 @@ export function AccountOrdersPage() {
       {effectiveStatus === 'guest' ? (
         <EmptyState
           title="Sign in to see order history"
-          description="Order history is a protected customer resource. Sign in with a fictional demo account to see the orders that account owns."
+          description="Order history is a protected customer resource. Sign in with a fictional demo account to see the orders that account owns — guest orders expire with the practice session (7 days) and never move into an account."
           icon="lock"
           action={
             <Link className="button button-small" to="/login">
-              <Icon name="lock" size={15} />
+              <Icon name="lock" size={16} />
               Sign in with a demo account
             </Link>
           }
@@ -119,7 +119,7 @@ export function AccountOrdersPage() {
           } Check the API is running, then try again.`}
           action={
             <Button size="sm" onClick={() => (loadState.status === 'error' ? refresh() : setAttempt((value) => value + 1))}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -133,7 +133,7 @@ export function AccountOrdersPage() {
           icon="cart"
           action={
             <Link className="button button-small" to="/shop">
-              <Icon name="shop" size={15} />
+              <Icon name="shop" size={16} />
               Browse the shop
             </Link>
           }
@@ -160,7 +160,7 @@ export function AccountOrdersPage() {
                 </Tag>
                 <Tag tone="neutral">Status: {order.status === 'placed' ? 'Placed' : order.status}</Tag>
               </div>
-              <Icon name="chevron-right" size={18} />
+              <Icon name="chevron-right" size={16} />
             </li>
           ))}
         </ul>

@@ -123,6 +123,7 @@ export function DatabaseHubPage() {
 
       <PageHeader
         eyebrow="Learn · Database testing"
+        className="lab-hub"
         title="Database Testing"
         description="Practice the query-and-compare loop behind every database test — reconciliation, orphan detection, duplicate hunts — against a realistic, isolated commerce snapshot, with checked answers and no setup."
         actions={

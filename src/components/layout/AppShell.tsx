@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useRouteManagement } from '../../lib/useRouteManagement'
 import { MobileNav } from './MobileNav'
 import { Sidebar } from './Sidebar'
@@ -7,6 +7,29 @@ import { TopBar } from './TopBar'
 import { ModeBanner } from '../../features/practice/ModeBanner'
 
 const SIDEBAR_STORAGE_KEY = 'qa-practice-lab-sidebar-collapsed'
+
+/**
+ * Clean / bug-hunt mode is a property of the Meridian commerce Practice App
+ * only. The mode banner renders exclusively on the commerce surfaces where
+ * the mode actually changes behaviour — the storefront, cart, checkout,
+ * orders and the shop-side account/admin/login flows. Unrelated QA labs
+ * never see it.
+ */
+const COMMERCE_ROUTE_PREFIXES = [
+  '/shop',
+  '/cart',
+  '/checkout',
+  '/orders',
+  '/account',
+  '/admin/inventory',
+  '/login',
+] as const
+
+function isCommerceModeRoute(pathname: string): boolean {
+  return COMMERCE_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}
 
 /** Accessible, non-blocking fallback shown while a route chunk downloads. */
 function RouteFallback() {
@@ -26,6 +49,7 @@ function readCollapsedPreference(): boolean {
 }
 
 export function AppShell() {
+  const { pathname } = useLocation()
   const [collapsed, setCollapsed] = useState(readCollapsedPreference)
   const [mobileOpen, setMobileOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -108,15 +132,15 @@ export function AppShell() {
 
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="page-container">
-            <ModeBanner />
+            {isCommerceModeRoute(pathname) ? <ModeBanner /> : null}
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
           </div>
 
           <footer className="site-footer">
-            <p>QA Practice Lab · Preview build</p>
-            <Link to="/about">About this build</Link>
+            <p>QA Practice Lab · v0.2.0</p>
+            <Link to="/about">Changelog &amp; scoring</Link>
           </footer>
         </main>
       </div>

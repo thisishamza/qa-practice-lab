@@ -115,7 +115,7 @@ export function LabExerciseWorkspace({ exercise }: { exercise: LabExerciseDef })
                   aria-pressed={selections.includes(item.id)}
                   onClick={() => toggle(item.id)}
                 >
-                  <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={15} />
+                  <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={16} />
                   <span>{item.label}</span>
                 </button>
               ))}
@@ -143,7 +143,7 @@ export function LabExerciseWorkspace({ exercise }: { exercise: LabExerciseDef })
                 <ul className="checklist" aria-label="Per-check results">
                   {result.checks.map((check) => (
                     <li key={check.id} className="checklist-item" aria-pressed={check.passed}>
-                      <Icon name={check.passed ? 'check' : 'alert'} size={15} />
+                      <Icon name={check.passed ? 'check' : 'alert'} size={16} />
                       <span>
                         <strong>{check.id}</strong> — {check.points} pts — {check.message}
                       </span>

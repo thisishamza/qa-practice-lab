@@ -27,12 +27,12 @@ export function Pagination({
     <nav className="pagination" aria-label={`${label} pages`}>
       {page > 1 ? (
         <Link className="pagination-step" to={buildPageTo(page - 1)} rel="prev">
-          <Icon name="chevron-right" size={15} className="pagination-flip" />
+          <Icon name="chevron-right" size={16} className="pagination-flip" />
           Previous
         </Link>
       ) : (
         <span className="pagination-step is-disabled" aria-hidden="true">
-          <Icon name="chevron-right" size={15} className="pagination-flip" />
+          <Icon name="chevron-right" size={16} className="pagination-flip" />
           Previous
         </span>
       )}
@@ -55,12 +55,12 @@ export function Pagination({
       {page < totalPages ? (
         <Link className="pagination-step" to={buildPageTo(page + 1)} rel="next">
           Next
-          <Icon name="chevron-right" size={15} />
+          <Icon name="chevron-right" size={16} />
         </Link>
       ) : (
         <span className="pagination-step is-disabled" aria-hidden="true">
           Next
-          <Icon name="chevron-right" size={15} />
+          <Icon name="chevron-right" size={16} />
         </span>
       )}
     </nav>

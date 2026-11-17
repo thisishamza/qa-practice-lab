@@ -1,14 +1,16 @@
 import { learningTracks } from '../data/tracks'
 import { scenarios } from '../data/scenarios'
-import { countScenariosByTrack } from '../lib/catalog'
+import { countScenariosByTrack, countScenariosByStatus } from '../lib/catalog'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Breadcrumbs } from '../components/ui/PageChrome'
 import { TrackCard } from '../features/tracks/TrackCard'
 
 export function TracksPage() {
   useDocumentTitle('Learning tracks')
 
   const counts = countScenariosByTrack(scenarios)
+  const availability = countScenariosByStatus(scenarios)
   const totalPlanned = learningTracks.reduce(
     (sum, track) => sum + track.plannedExerciseCount,
     0,
@@ -16,6 +18,8 @@ export function TracksPage() {
 
   return (
     <div className="stack">
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Learning paths' }]} />
+
       <PageHeader
         eyebrow="Curriculum"
         title="Learning tracks"
@@ -23,10 +27,12 @@ export function TracksPage() {
       />
 
       <p className="tracks-note">
-        {totalPlanned} exercises are planned across the twelve tracks. Each track lists two
-        representative placeholders — exercises are not runnable yet.
+        {totalPlanned} exercises are mapped across the twelve tracks. Availability is labelled on
+        every page — {availability.ready} of the {scenarios.length} catalogued scenarios are
+        runnable today.
       </p>
 
+      <h2 className="sr-only">Learning tracks</h2>
       <div className="track-grid">
         {learningTracks.map((track) => (
           <TrackCard

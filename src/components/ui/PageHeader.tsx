@@ -5,11 +5,13 @@ interface PageHeaderProps {
   title: string
   description?: ReactNode
   actions?: ReactNode
+  /** Extra class on the <header> — e.g. "lab-hub" for tool-UI page titles. */
+  className?: string
 }
 
-export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, actions, className }: PageHeaderProps) {
   return (
-    <header className="page-header">
+    <header className={className ? `page-header ${className}` : 'page-header'}>
       <div className="page-header-copy">
         {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>

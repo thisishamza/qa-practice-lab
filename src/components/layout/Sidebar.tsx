@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { isNavItemActive, primaryNav, staffNavItem } from '../../lib/navigation'
+import { isNavItemActive, navGroups, staffNavItem, utilityNavItem } from '../../lib/navigation'
 import { useAuth } from '../../features/auth/useAuth'
 import { Icon } from '../ui/Icon'
 
@@ -14,7 +14,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const isStaff = customer?.role === 'staff' && customer.status === 'active'
   const aboutActive = pathname === '/about'
 
-  function renderItems(items: typeof primaryNav) {
+  function renderItems(items: typeof navGroups[number]['items']) {
     return items.map((item) => {
       const active = isNavItemActive(item, pathname)
 
@@ -27,7 +27,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             aria-label={collapsed ? item.label : undefined}
             title={collapsed ? item.label : undefined}
           >
-            <Icon name={item.icon} size={18} />
+            <Icon name={item.icon} size={20} />
             <span className="side-link-label">{item.label}</span>
           </Link>
         </li>
@@ -38,26 +38,32 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   return (
     <aside className="sidebar">
       <nav className="side-nav" aria-label="Primary">
-        <p className="side-nav-heading">Learn</p>
-        <ul>{renderItems(primaryNav.slice(0, 4))}</ul>
-
-        <p className="side-nav-heading">Workspace</p>
-        <ul>
-          {renderItems(primaryNav.slice(4))}
-          {isStaff ? renderItems([staffNavItem]) : null}
-        </ul>
+        {navGroups.map((group) => (
+          <div key={group.id} className={`side-nav-group side-nav-group-${group.id}`}>
+            <p className="side-nav-heading">
+              {group.icon ? (
+                <Icon name={group.icon} size={16} className="side-nav-heading-icon" />
+              ) : null}
+              {group.label}
+            </p>
+            <p className="side-nav-note">{group.note}</p>
+            <ul>
+              {renderItems(group.id === 'practice-app' && isStaff ? [...group.items, staffNavItem] : group.items)}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="side-utility">
         <Link
-          to="/about"
+          to={utilityNavItem.to}
           className={`side-link${aboutActive ? ' is-active' : ''}`}
           aria-current={aboutActive ? 'page' : undefined}
-          aria-label={collapsed ? 'About this build' : undefined}
-          title={collapsed ? 'About this build' : undefined}
+          aria-label={collapsed ? utilityNavItem.label : undefined}
+          title={collapsed ? utilityNavItem.label : undefined}
         >
-          <Icon name="info" size={18} />
-          <span className="side-link-label">About this build</span>
+          <Icon name={utilityNavItem.icon} size={20} />
+          <span className="side-link-label">{utilityNavItem.label}</span>
         </Link>
 
         <button
@@ -67,7 +73,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <Icon name="panel-left" size={17} />
+          <Icon name="panel-left" size={20} />
           <span className="side-link-label">
             {collapsed ? 'Expand' : 'Collapse'}
           </span>

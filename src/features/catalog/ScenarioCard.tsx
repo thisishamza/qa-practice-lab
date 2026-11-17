@@ -22,13 +22,13 @@ export function ScenarioCard({ scenario }: { scenario: Scenario }) {
 
       <Meta>
         <span className="meta-item">
-          <Icon name="target" size={14} />
+          <Icon name="target" size={16} />
           {track?.name ?? scenario.trackId}
         </span>
         <span className="meta-item">{difficultyLabels[scenario.difficulty]}</span>
         <span className="meta-item">{scenarioModeLabels[scenario.mode]}</span>
         <span className="meta-item">
-          <Icon name="clock" size={14} />
+          <Icon name="clock" size={16} />
           {formatMinutes(scenario.estimatedMinutes)}
         </span>
         {category ? <span className="meta-item">{category.name}</span> : null}

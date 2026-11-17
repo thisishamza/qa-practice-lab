@@ -13,7 +13,7 @@ export function ThemeToggle() {
       className="theme-toggle"
       onClick={toggleTheme}
     >
-      <Icon name={theme === 'light' ? 'moon' : 'sun'} size={18} />
+      <Icon name={theme === 'light' ? 'moon' : 'sun'} size={20} />
     </IconButton>
   )
 }

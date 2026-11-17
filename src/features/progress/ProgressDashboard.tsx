@@ -1,18 +1,24 @@
-// Presentational shell of the real /progress dashboard (P4-M3 WP1). Pure:
-// every value comes from the caller (the ProgressPage container fetches it
-// from GET /api/v1/practice/progress). Discovery is never inferred from
-// scores; attempt status uses the shared chip vocabulary; guest vs
-// signed-in durability copy is chosen from the server's `persistence`
-// field, never from browser state.
+// Presentational shell of the real /progress dashboard (P4-M3 WP1,
+// re-structured in R3). Pure: every value comes from the caller (the
+// ProgressPage container fetches it from GET /api/v1/practice/progress).
+// Discovery is never inferred from scores; attempt status uses the shared
+// chip vocabulary; guest vs signed-in durability copy is chosen from the
+// server's `persistence` field, never from browser state.
+//
+// R3 structure: one prioritised next step ("Do this next"), a compact
+// activity overview, then collapsible per-lab sections that start
+// collapsed until the learner has an attempt in them — the page no longer
+// renders every row by default.
 
 import { Link } from 'react-router-dom'
 import type { ProgressResponse } from '../../shared/learning'
 import type { ProgressDashboardState } from './progress-types'
 
 export type { ProgressDashboardState } from './progress-types'
-import { LabProgressSection } from './LabProgressSection'
-import { recommendedHuntScenarioIds, getScenario } from '../../data/scenarios'
-import { formatProgressDate, formatProgressDateTime } from '../../lib/progressDates'
+import { ProgressDisclosureSection } from './ProgressDisclosureSection'
+import { DoThisNext } from './DoThisNext'
+import { splitProgressEntries } from './progressGroups'
+import { formatProgressDateTime } from '../../lib/progressDates'
 import { verdictDisplay } from '../../lib/reportForm'
 import { Breadcrumbs, SectionHeader } from '../../components/ui/PageChrome'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -23,13 +29,6 @@ import { Icon } from '../../components/ui/Icon'
 import { StatTile } from '../../components/ui/StatTile'
 import { Tag } from '../../components/ui/Tag'
 import { ProgressBar } from '../../components/ui/ProgressBar'
-import { AttemptStatusChip } from '../practice/AttemptStatusChip'
-
-const firstRecommended = getScenario(recommendedHuntScenarioIds[0] ?? '')
-
-function attemptCountLabel(attempts: number): string {
-  return attempts === 1 ? '1 attempt' : `${attempts} attempts`
-}
 
 function persistenceBanner(persistence: ProgressResponse['persistence']) {
   if (persistence === 'customer') {
@@ -47,22 +46,6 @@ function persistenceBanner(persistence: ProgressResponse['persistence']) {
       Everything on this page belongs to this browser&rsquo;s anonymous practice session and
       expires with it (7 days, then deleted). It is never copied into an account and never carries
       over when you sign in. Sign in with a demo account to attribute new reports to that account.
-    </Callout>
-  )
-}
-
-function zeroState() {
-  return (
-    <Callout tone="info" title="Nothing recorded yet">
-      No attempt at any hunt exists yet. Your statuses, scores and discoveries will appear here
-      once you start a hunt and submit a report.{' '}
-      {firstRecommended ? (
-        <Link to={`/scenarios/${firstRecommended.id}`}>
-          Start with {firstRecommended.title}
-        </Link>
-      ) : (
-        <Link to="/practice">Go to the practice environment</Link>
-      )}
     </Callout>
   )
 }
@@ -88,7 +71,7 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
           description={`${state.message} Check the practice API is running, then try again.`}
           action={
             <Button size="sm" onClick={state.onRetry}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -99,43 +82,13 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
 
   const { data, refreshing, onRefresh, refreshError } = state
   const { totals } = data
-  const isZero = totals.attempts === 0
   const exerciseCount = data.hunts.length
+  // Discovery only exists on wired bug-hunt targets (ids `hunt-*`); scored
+  // lab exercises carry no defects, so they would inflate the ceiling.
+  const wiredHuntCount = data.hunts.filter((entry) => entry.huntId.startsWith('hunt-')).length
   const huntScenarioIds = new Map(data.hunts.map((hunt) => [hunt.huntId, hunt.scenarioId]))
-  // Database Testing groups the SQL exercises and SQL hunts beneath the hunt list.
-  const isDatabaseTarget = (id: string) => id.startsWith('sql-') || id.startsWith('hunt-db-')
-  const isContractTarget = (id: string) => id.startsWith('contract-') || id.startsWith('hunt-contract-')
-  const isPerformanceTarget = (id: string) => id.startsWith('perf-') || id.startsWith('hunt-perf-')
-  const isSecurityTarget = (id: string) => id.startsWith('sec-') || id.startsWith('hunt-sec-')
-  const isEventTarget = (id: string) => id.startsWith('evt-') || id.startsWith('hunt-event-')
-  const labTargets = (id: string) =>
-    isDatabaseTarget(id) || isContractTarget(id) || isPerformanceTarget(id) || isSecurityTarget(id) || isEventTarget(id)
-  const huntEntries = data.hunts.filter((entry) => !labTargets(entry.huntId))
-  const databaseEntries = data.hunts.filter((entry) => isDatabaseTarget(entry.huntId))
-  const contractEntries = data.hunts.filter((entry) => isContractTarget(entry.huntId))
-  const performanceEntries = data.hunts.filter((entry) => isPerformanceTarget(entry.huntId))
-  const securityEntries = data.hunts.filter((entry) => isSecurityTarget(entry.huntId))
-  const eventEntries = data.hunts.filter((entry) => isEventTarget(entry.huntId))
-  const databaseHref = (entry: { huntId: string }): string =>
-    entry.huntId.startsWith('hunt-db-')
-      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
-      : `/database/exercises/${entry.huntId}`
-  const contractHref = (entry: { huntId: string }): string =>
-    entry.huntId.startsWith('hunt-contract-')
-      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
-      : `/contract/exercises/${entry.huntId}`
-  const performanceHref = (entry: { huntId: string }): string =>
-    entry.huntId.startsWith('hunt-perf-')
-      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
-      : `/performance/exercises/${entry.huntId}`
-  const securityHref = (entry: { huntId: string }): string =>
-    entry.huntId.startsWith('hunt-sec-')
-      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
-      : `/security/exercises/${entry.huntId}`
-  const eventHref = (entry: { huntId: string }): string =>
-    entry.huntId.startsWith('hunt-event-')
-      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
-      : `/microservices/exercises/${entry.huntId}`
+  const reportedCount = data.hunts.filter((entry) => entry.lastSubmittedAt !== null).length
+  const groups = splitProgressEntries(data.hunts)
 
   return (
     <div className="stack">
@@ -146,7 +99,7 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
         description="Real numbers from your own practice attempts on this server — nothing sampled, nothing stored beyond the practice session."
         actions={
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={refreshing}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </Button>
         }
@@ -161,13 +114,13 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
             last ones this server returned. ({refreshError})
           </p>
           <Button variant="ghost" size="sm" onClick={onRefresh} disabled={refreshing}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         </div>
       ) : null}
 
-      {isZero ? zeroState() : null}
+      <DoThisNext data={data} />
 
       <section className="content-section" aria-labelledby="activity-title">
         <SectionHeader
@@ -180,7 +133,7 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
           <StatTile label="Reports submitted" value={totals.reports} hint="one row per submission" />
           <StatTile
             label="Defects discovered"
-            value={`${totals.discovered} of ${exerciseCount}`}
+            value={`${totals.discovered} of ${wiredHuntCount}`}
             hint="finding-check evidence only"
           />
           <StatTile label="Hints used" value={totals.hintsUsed} hint="never lowers a score" />
@@ -195,222 +148,45 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
             hint="over scored attempts"
           />
         </div>
+        <p className="panel-note progress-overview-note">
+          You have submitted at least one report on{' '}
+          <strong>
+            {reportedCount} of {exerciseCount}
+          </strong>{' '}
+          attemptable exercises — each section below keeps its own count.
+        </p>
         <div className="progress-discovery">
           <ProgressBar
             label="Defects discovered"
             value={totals.discovered}
-            max={exerciseCount}
+            max={wiredHuntCount}
             tone="success"
           />
         </div>
       </section>
 
-      <section className="content-section" aria-labelledby="exercises-title">
+      <section className="content-section" aria-labelledby="lab-progress-title">
         <SectionHeader
-          id="exercises-title"
-          title="Your hunts"
-          description="Each wired exercise with your own state — select one to open it."
+          id="lab-progress-title"
+          title="Your work by area"
+          description="Collapsed until you open an attempt. Expand a section to see every exercise with your own state."
         />
-        <ul className="progress-exercise-list">
-          {huntEntries.map((hunt) => (
-            <li key={hunt.huntId} className="progress-exercise">
-              <div className="progress-exercise-body">
-                {hunt.scenarioId ? (
-                  <Link className="progress-exercise-title" to={`/scenarios/${hunt.scenarioId}`}>
-                    {hunt.title}
-                  </Link>
-                ) : (
-                  <span className="progress-exercise-title">{hunt.title}</span>
-                )}
-                <span className="progress-exercise-meta">
-                  {attemptCountLabel(hunt.attempts)} ·{' '}
-                  {hunt.lastSubmittedAt
-                    ? `last submitted ${formatProgressDate(hunt.lastSubmittedAt)}`
-                    : 'not submitted yet'}
-                </span>
-              </div>
-              <div className="progress-exercise-flags">
-                {hunt.discovered ? (
-                  <Tag tone="ready" icon="check">
-                    Discovered
-                  </Tag>
-                ) : (
-                  <Tag tone="neutral">Not discovered</Tag>
-                )}
-                <AttemptStatusChip status={hunt.status} bestQualityScore={hunt.bestScore} />
-                <span className="progress-exercise-stat">
-                  {hunt.bestScore !== null ? (
-                    <>
-                      <span aria-hidden="true">Best {hunt.bestScore}</span>
-                      <span className="sr-only">Best score {hunt.bestScore} out of 100</span>
-                    </>
-                  ) : (
-                    <>
-                      <span aria-hidden="true">Best —</span>
-                      <span className="sr-only">No score yet</span>
-                    </>
-                  )}
-                </span>
-                <span className="progress-exercise-stat">
-                  {hunt.hintsUsed === 1 ? '1 hint' : `${hunt.hintsUsed} hints`}
-                </span>
-              </div>
-              {hunt.scenarioId ? (
-                <Link
-                  className="progress-exercise-go"
-                  to={`/scenarios/${hunt.scenarioId}`}
-                  aria-label={`Open the ${hunt.title} exercise`}
-                >
-                  <Icon name="chevron-right" size={16} />
-                </Link>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        {groups.map((group) => (
+          <ProgressDisclosureSection
+            key={group.id}
+            title={group.title}
+            description={group.description}
+            entries={group.entries}
+            hrefFor={group.hrefFor}
+          />
+        ))}
       </section>
 
-      <section className="content-section" aria-labelledby="database-title">
-        <SectionHeader
-          id="database-title"
-          title="Database Testing"
-          description="Your state on the SQL exercises and database bug hunts — practice happens in the isolated SQL lab."
-        />
-        <ul className="progress-exercise-list">
-          {databaseEntries.map((hunt) => (
-            <li key={hunt.huntId} className="progress-exercise">
-              <div className="progress-exercise-body">
-                <Link className="progress-exercise-title" to={databaseHref(hunt)}>
-                  {hunt.title}
-                </Link>
-                <span className="progress-exercise-meta">
-                  {attemptCountLabel(hunt.attempts)} ·{' '}
-                  {hunt.lastSubmittedAt
-                    ? `last submitted ${formatProgressDate(hunt.lastSubmittedAt)}`
-                    : 'not submitted yet'}
-                </span>
-              </div>
-              <div className="progress-exercise-flags">
-                {hunt.discovered ? (
-                  <Tag tone="ready" icon="check">
-                    Discovered
-                  </Tag>
-                ) : (
-                  <Tag tone="neutral">Not discovered</Tag>
-                )}
-                <AttemptStatusChip status={hunt.status} bestQualityScore={hunt.bestScore} />
-                <span className="progress-exercise-stat">
-                  {hunt.bestScore !== null ? (
-                    <>
-                      <span aria-hidden="true">Best {hunt.bestScore}</span>
-                      <span className="sr-only">Best score {hunt.bestScore} out of 100</span>
-                    </>
-                  ) : (
-                    <>
-                      <span aria-hidden="true">Best —</span>
-                      <span className="sr-only">No score yet</span>
-                    </>
-                  )}
-                </span>
-                <span className="progress-exercise-stat">
-                  {hunt.hintsUsed === 1 ? '1 hint' : `${hunt.hintsUsed} hints`}
-                </span>
-              </div>
-              <Link
-                className="progress-exercise-go"
-                to={databaseHref(hunt)}
-                aria-label={`Open ${hunt.title}`}
-              >
-                <Icon name="chevron-right" size={16} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="content-section" aria-labelledby="contract-title">
-        <SectionHeader
-          id="contract-title"
-          title="Contract Testing"
-          description="Your state on the contract exercises and contract bug hunts — validate, diff and consumer-verify in the contract lab."
-        />
-        <ul className="progress-exercise-list">
-          {contractEntries.map((entry) => (
-            <li key={entry.huntId} className="progress-exercise">
-              <div className="progress-exercise-body">
-                <Link className="progress-exercise-title" to={contractHref(entry)}>
-                  {entry.title}
-                </Link>
-                <span className="progress-exercise-meta">
-                  {attemptCountLabel(entry.attempts)} ·{' '}
-                  {entry.lastSubmittedAt
-                    ? `last submitted ${formatProgressDate(entry.lastSubmittedAt)}`
-                    : 'not submitted yet'}
-                </span>
-              </div>
-              <div className="progress-exercise-flags">
-                {entry.discovered ? (
-                  <Tag tone="ready" icon="check">
-                    Discovered
-                  </Tag>
-                ) : (
-                  <Tag tone="neutral">Not discovered</Tag>
-                )}
-                <AttemptStatusChip status={entry.status} bestQualityScore={entry.bestScore} />
-                <span className="progress-exercise-stat">
-                  {entry.bestScore !== null ? (
-                    <>
-                      <span aria-hidden="true">Best {entry.bestScore}</span>
-                      <span className="sr-only">Best score {entry.bestScore} out of 100</span>
-                    </>
-                  ) : (
-                    <>
-                      <span aria-hidden="true">Best —</span>
-                      <span className="sr-only">No score yet</span>
-                    </>
-                  )}
-                </span>
-                <span className="progress-exercise-stat">
-                  {entry.hintsUsed === 1 ? '1 hint' : `${entry.hintsUsed} hints`}
-                </span>
-              </div>
-              <Link
-                className="progress-exercise-go"
-                to={contractHref(entry)}
-                aria-label={`Open ${entry.title}`}
-              >
-                <Icon name="chevron-right" size={16} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <LabProgressSection
-        id="performance-title"
-        title="Performance Testing"
-        description="Your state on the performance exercises and performance bug hunts — measure in the bounded load runner."
-        entries={performanceEntries}
-        hrefFor={performanceHref}
-      />
-      <LabProgressSection
-        id="security-title"
-        title="Security Testing"
-        description="Your state on the security exercises and security bug hunts — inert demos, scored exercises and seeded defects."
-        entries={securityEntries}
-        hrefFor={securityHref}
-      />
-      <LabProgressSection
-        id="microservices-title"
-        title="Microservices & Events"
-        description="Your state on the event-driven exercises and event bug hunts — practice happens in the deterministic simulator."
-        entries={eventEntries}
-        hrefFor={eventHref}
-      />
       <section className="content-section" aria-labelledby="recent-title">
         <SectionHeader
           id="recent-title"
           title="Recent submissions"
-          description="Your 10 newest reports, with the score the deterministic evaluator persisted."
+          description="Your 10 newest reports, with the score the deterministic evaluator persisted. Older reports stay recorded but are not listed here — there is no full history view yet."
         />
         {data.recent.length === 0 ? (
           <p className="progress-empty-note">No reports submitted yet.</p>

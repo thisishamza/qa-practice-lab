@@ -151,6 +151,72 @@ function readyData(overrides: Partial<ProgressResponse> = {}): ProgressResponse 
   })
 }
 
+describe('ProgressDashboard — R3 structure', () => {
+  const zeroHtml = renderDashboard({
+    status: 'ready',
+    data: makeData(),
+    refreshing: false,
+    onRefresh: () => {},
+  })
+  const populatedHtml = renderDashboard({
+    status: 'ready',
+    data: readyData(),
+    refreshing: false,
+    onRefresh: () => {},
+  })
+
+  it('leads with a single "Do this next" action section', () => {
+    expect(populatedHtml).toContain('Do this next')
+    expect(populatedHtml).toContain('Open the exercise')
+    expect(populatedHtml).toContain('not intelligent personalisation')
+  })
+
+  it('shows a starting point for guests with no progress', () => {
+    expect(zeroHtml).toContain('Nothing recorded yet')
+    expect(zeroHtml).toContain('/scenarios/manual-cart-add-quantity')
+    expect(zeroHtml.match(/Do this next/g)?.length).toBe(1)
+  })
+
+  it('renders collapsible lab sections that start closed with no activity', () => {
+    const details = zeroHtml.match(/<details[^>]*class="progress-disclosure"[^>]*>/g) ?? []
+    expect(details.length).toBeGreaterThanOrEqual(6)
+    // Fresh profile: no attempt anywhere, so nothing starts expanded.
+    expect(zeroHtml).not.toMatch(/<details[^>]*open/)
+    expect(zeroHtml).toContain('Not started yet')
+  })
+
+  it('starts sections expanded once an attempt exists', () => {
+    expect(populatedHtml).toMatch(/<details[^>]*open/)
+    expect(populatedHtml).toContain('Database Testing')
+    expect(populatedHtml).toContain('Microservices &amp; Events')
+  })
+
+  it('exposes counts in the collapsed headers', () => {
+    // hunts group: 3 of 7 attempted in readyData (submitted + in_progress + revealed)
+    expect(populatedHtml).toMatch(/3 of 7 started/)
+    expect(populatedHtml).toContain('reported')
+  })
+
+  it('notes the recent-submissions limit honestly', () => {
+    expect(populatedHtml).toContain('10 newest')
+    expect(populatedHtml).toContain('no full history view yet')
+  })
+
+  it('renders one h1 and a named disclosure per area', () => {
+    expect(populatedHtml.match(/<h1/g)?.length).toBe(1)
+    for (const title of [
+      'Bug hunts &amp; shop exercises',
+      'Database Testing',
+      'Contract Testing',
+      'Performance Testing',
+      'Security Testing',
+      'Microservices &amp; Events',
+    ]) {
+      expect(populatedHtml).toContain(title)
+    }
+  })
+})
+
 describe('ProgressDashboard — loading and error states', () => {
   it('announces the loading state', () => {
     const html = renderDashboard({ status: 'loading' })

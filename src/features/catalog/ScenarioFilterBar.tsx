@@ -361,7 +361,7 @@ export function ScenarioFilterBar({
       <div className="filter-search">
         <label htmlFor={`${baseId}-search`}>Search scenarios</label>
         <div className="search-input">
-          <Icon name="search" size={17} />
+          <Icon name="search" size={16} />
           <input
             id={`${baseId}-search`}
             type="search"
@@ -383,7 +383,7 @@ export function ScenarioFilterBar({
               onClick={() => onFiltersChange({ ...filters, query: '' })}
               aria-label="Clear search"
             >
-              <Icon name="close" size={15} />
+              <Icon name="close" size={16} />
             </button>
           ) : null}
         </div>
@@ -440,7 +440,7 @@ export function ScenarioFilterBar({
                 aria-label={`Remove filter ${chip.label}`}
               >
                 {chip.label}
-                <Icon name="close" size={13} />
+                <Icon name="close" size={16} />
               </button>
             </li>
           ))}
@@ -452,7 +452,7 @@ export function ScenarioFilterBar({
           Showing <strong>{resultCount}</strong> of {pluralize(totalCount, 'scenario')}
         </p>
         <Button variant="ghost" size="sm" onClick={onClearAll} disabled={!active}>
-          <Icon name="reset" size={15} />
+          <Icon name="reset" size={16} />
           Clear all
         </Button>
       </div>
@@ -495,7 +495,7 @@ export function ScenarioFilterBar({
             </div>
             <div className="filter-drawer-foot">
               <Button variant="ghost" size="sm" onClick={onClearAll} disabled={!active}>
-                <Icon name="reset" size={15} />
+                <Icon name="reset" size={16} />
                 Clear all
               </Button>
               <Button size="sm" onClick={() => setDrawerOpen(false)}>

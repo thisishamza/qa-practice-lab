@@ -1,20 +1,21 @@
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
+import { Breadcrumbs } from '../components/ui/PageChrome'
 import { Icon } from '../components/ui/Icon'
 
 const recoveryLinks = [
   {
     to: '/scenarios',
-    kicker: 'Catalogue',
-    title: 'Scenario catalogue',
-    detail: 'Search every planned exercise',
+    kicker: 'Exercises',
+    title: 'Exercises',
+    detail: 'Search the scenario catalogue',
     icon: 'scenarios' as const,
   },
   {
     to: '/tracks',
     kicker: 'Curriculum',
-    title: 'Learning tracks',
+    title: 'Learning paths',
     detail: 'Browse the twelve disciplines',
     icon: 'tracks' as const,
   },
@@ -32,6 +33,9 @@ export function NotFoundPage() {
 
   return (
     <div className="stack">
+      <Breadcrumbs
+        items={[{ label: 'Dashboard', to: '/' }, { label: 'Page not found' }]}
+      />
       <section aria-labelledby="not-found-title">
         <PageHeader
           eyebrow="Error · 404"

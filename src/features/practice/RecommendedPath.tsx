@@ -11,6 +11,7 @@
 import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { getRecommendedPath, completionForEntry, progressByHuntId } from '../../lib/recommendedPath'
+import { scenarios } from '../../data/scenarios'
 import type { RecommendedCompletion } from '../../lib/recommendedPath'
 import { difficultyLabels } from '../../lib/labels'
 import { useProgress } from '../progress/useProgress'
@@ -22,6 +23,7 @@ import { Tag } from '../../components/ui/Tag'
 import type { ProgressHuntEntry } from '../../shared/learning'
 
 const items = getRecommendedPath()
+const remainingPlaceholders = scenarios.filter((scenario) => !scenario.runnable).length
 
 const completionDisplay: Record<
   RecommendedCompletion,
@@ -106,7 +108,7 @@ export function RecommendedPathView({ state }: { state: ProgressDashboardState }
             guessed. The path below is unchanged. {state.message}
           </p>
           <Button variant="secondary" size="sm" onClick={state.onRetry}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         </div>
@@ -138,8 +140,8 @@ export function RecommendedPathView({ state }: { state: ProgressDashboardState }
         ))}
       </ol>
       <p className="panel-note">
-        The remaining 18 catalogue scenarios are labelled placeholders — they are not runnable and
-        cannot be completed yet. Completion means a report was submitted; discovery means the
+        The remaining {remainingPlaceholders} catalogue scenarios are labelled placeholders — they
+        are not runnable and cannot be completed yet. Completion means a report was submitted; discovery means the
         finding check passed. The two are never the same signal, and neither is a score or a
         revealed solution.{' '}
         <Link to="/about#evaluation">How reports are evaluated</Link>.

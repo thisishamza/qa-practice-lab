@@ -32,7 +32,7 @@ export function ProductError({ message, onRetry }: { message: string; onRetry: (
       description={message}
       action={
         <Button size="sm" onClick={onRetry}>
-          <Icon name="reset" size={15} />
+          <Icon name="reset" size={16} />
           Try again
         </Button>
       }

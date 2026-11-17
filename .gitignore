@@ -8,3 +8,5 @@ coverage/
 *.tsbuildinfo
 __pycache__/
 *.py[cod]
+# Local audit evidence — not for repository history (kept on disk only)
+docs/audit-screenshots/

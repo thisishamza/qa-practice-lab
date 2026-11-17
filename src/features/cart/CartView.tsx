@@ -113,13 +113,13 @@ function CartLineRow({
         </span>
         {unavailableNote ? (
           <p className="cart-line-note" role="alert">
-            <Icon name="alert" size={15} />
+            <Icon name="alert" size={16} />
             <span>{unavailableNote}</span>
           </p>
         ) : null}
         {error ? (
           <p className="cart-line-note" role="alert">
-            <Icon name="alert" size={15} />
+            <Icon name="alert" size={16} />
             <span>{error}</span>
           </p>
         ) : null}
@@ -133,7 +133,7 @@ function CartLineRow({
           disabled={decreaseDisabled}
           aria-label={`Decrease quantity of ${line.name}`}
         >
-          <Icon name="minus" size={15} />
+          <Icon name="minus" size={16} />
         </button>
         <input
           className="cart-qty-input"
@@ -165,7 +165,7 @@ function CartLineRow({
           disabled={increaseDisabled}
           aria-label={`Increase quantity of ${line.name}`}
         >
-          <Icon name="plus" size={15} />
+          <Icon name="plus" size={16} />
         </button>
       </div>
 
@@ -210,7 +210,7 @@ export function CartView({
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Shop', to: '/shop' },
+          { label: 'Practice App' },
           { label: 'Cart' },
         ]}
       />
@@ -238,7 +238,7 @@ export function CartView({
           }
           action={
             <Button size="sm" onClick={onRetry}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -252,7 +252,7 @@ export function CartView({
           icon="cart"
           action={
             <Link className="button button-small" to="/shop">
-              <Icon name="shop" size={15} />
+              <Icon name="shop" size={16} />
               Browse the shop
             </Link>
           }
@@ -302,7 +302,7 @@ export function CartView({
 
               {clearError ? (
                 <p className="cart-line-note" role="alert">
-                  <Icon name="alert" size={15} />
+                  <Icon name="alert" size={16} />
                   <span>{clearError}</span>
                 </p>
               ) : null}
@@ -313,22 +313,22 @@ export function CartView({
                 onClick={() => void handleClear()}
                 loading={pending}
               >
-                <Icon name="reset" size={15} />
+                <Icon name="reset" size={16} />
                 Clear cart
               </Button>
               {cart.hasUnavailableItems ? (
                 <p className="cart-line-note">
-                  <Icon name="alert" size={15} />
+                  <Icon name="alert" size={16} />
                   <span>Adjust the highlighted lines to unlock checkout.</span>
                 </p>
               ) : (
                 <Link className="button button-small" to="/checkout">
-                  <Icon name="lock" size={15} />
+                  <Icon name="lock" size={16} />
                   Proceed to checkout
                 </Link>
               )}
               <Link className="button button-secondary button-small" to="/shop">
-                <Icon name="arrow-right" size={15} />
+                <Icon name="arrow-right" size={16} />
                 Continue shopping
               </Link>
             </aside>

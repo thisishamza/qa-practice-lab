@@ -125,7 +125,7 @@ function AnswerPanel({
             aria-pressed={selections.includes(item.id)}
             onClick={() => toggle(item.id)}
           >
-            <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={15} />
+            <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={16} />
             <span>{item.label}</span>
           </button>
         ))}
@@ -157,7 +157,7 @@ function AnswerPanel({
                   aria-pressed={selections.includes(item.id)}
                   onClick={() => toggle(item.id)}
                 >
-                  <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={15} />
+                  <Icon name={selections.includes(item.id) ? 'check' : 'grid'} size={16} />
                   <span>{item.label}</span>
                 </button>
               ))}
@@ -355,6 +355,7 @@ export function ContractExercisePage() {
             { label: 'Not found' },
           ]}
         />
+        <h1 className="sr-only">Exercise not found</h1>
         <EmptyState
           title="No such contract exercise"
           description="The link may be outdated. The full catalogue lives on the contract hub."
@@ -434,7 +435,7 @@ export function ContractExercisePage() {
                 <ul className="checklist" aria-label="Per-check results">
                   {result.checks.map((check) => (
                     <li key={check.id} className="checklist-item" aria-pressed={check.passed}>
-                      <Icon name={check.passed ? 'check' : 'alert'} size={15} />
+                      <Icon name={check.passed ? 'check' : 'alert'} size={16} />
                       <span>
                         <strong>{check.id}</strong> — {check.points} pts — {check.message}
                       </span>

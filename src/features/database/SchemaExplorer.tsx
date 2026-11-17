@@ -21,7 +21,7 @@ function TableSection({ table }: { table: SchemaTable }) {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} className="schema-table-icon" />
+        <Icon name={open ? 'chevron-down' : 'chevron-right'} size={16} className="schema-table-icon" />
         <span className="schema-table-name">{table.name}</span>
         <span className="schema-table-meta">{table.columns.length} cols{pkColumns.length > 0 ? ` · PK ${pkColumns.join(', ')}` : ''}</span>
       </button>

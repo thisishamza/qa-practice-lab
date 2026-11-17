@@ -319,7 +319,7 @@ export function SimulatorConsole() {
             <button type="button" className="button button-secondary" onClick={onReplay} disabled={processing || byStatus.dead === 0}>
               Replay dead letters
             </button>
-            <button type="button" className="button" onClick={onProcess} disabled={processing}>
+            <button type="button" className="button button-secondary" onClick={onProcess} disabled={processing}>
               {processing ? 'Processing…' : 'Process due events'}
             </button>
           </div>

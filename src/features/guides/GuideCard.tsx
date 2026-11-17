@@ -20,7 +20,7 @@ export function GuideCard({ guide }: { guide: Guide }) {
           <span>{pluralize(guide.steps.length, 'step')}</span>
         </Meta>
       </div>
-      <Icon name="chevron-right" size={18} />
+      <Icon name="chevron-right" size={16} />
     </article>
   )
 }

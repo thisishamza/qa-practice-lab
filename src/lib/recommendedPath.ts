@@ -81,3 +81,28 @@ export function progressByHuntId(
 ): Map<string, ProgressHuntEntry> {
   return new Map(hunts.map((entry) => [entry.huntId, entry]))
 }
+
+/**
+ * The next exercise on the recommended path: the first entry whose hunt has
+ * no submitted report yet. `null` means one of two things, and callers
+ * distinguish them by the argument they passed:
+ *
+ * - `progressByHunt === null` — progress is unavailable; callers treat this
+ *   as "show the first item without claiming completion state".
+ * - otherwise — every recommended item is complete; callers treat this as
+ *   the all-caught-up state.
+ *
+ * Simple fixed-order rule — no personalisation, no scoring, no AI.
+ */
+export function findNextPathItem(
+  progressByHunt: ReadonlyMap<string, ProgressHuntEntry> | null,
+): RecommendedPathItem | null {
+  const items = getRecommendedPath()
+  if (!progressByHunt) {
+    return items[0] ?? null
+  }
+  return (
+    items.find(({ huntId }) => completionForEntry(progressByHunt.get(huntId)) !== 'completed') ??
+    null
+  )
+}

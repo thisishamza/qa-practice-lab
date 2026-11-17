@@ -19,6 +19,7 @@ import { Icon } from '../../components/ui/Icon'
 import { Tag } from '../../components/ui/Tag'
 import { SectionHeader } from '../../components/ui/PageChrome'
 import { scenarios } from '../../data/scenarios'
+import { groupHunts } from './huntGroups'
 import { PracticeApiError } from './api'
 import type { HuntSummary } from '../../shared/practice'
 import type { AttemptView } from '../../shared/learning'
@@ -142,13 +143,42 @@ export function HuntPanel() {
                 {huntsState.message}
               </p>
               <Button variant="ghost" size="sm" onClick={() => setHuntsAttempt((n) => n + 1)}>
-                <Icon name="reset" size={15} />
+                <Icon name="reset" size={16} />
                 Try again
               </Button>
             </div>
           ) : (
-            <ul className="hunt-list" aria-label="Available bug-hunt exercises">
-              {huntsState.hunts.map((entry) => {
+            <>
+              {Object.keys(statuses).length > 0 ? (
+                <p className="panel-note hunt-progress-summary" role="status">
+                  {(() => {
+                    const views = Object.values(statuses).filter((v) => v !== 'unavailable')
+                    const attempted = views.filter((v) => v.status !== 'none').length
+                    const reported = views.filter((v) => v.submittedAt !== null).length
+                    const discovered = views.filter((v) => v.discovered).length
+                    return (
+                      <>
+                        {attempted} of {huntsState.hunts.length} attempted · {reported} with a
+                        submitted report · {discovered} discovered —{' '}
+                        <Link to="/progress">See your progress</Link>
+                      </>
+                    )
+                  })()}
+                </p>
+              ) : null}
+              {groupHunts(huntsState.hunts).map((group) => (
+              <div
+                key={group.id}
+                className="hunt-group"
+                role="group"
+                aria-labelledby={`hunt-group-${group.id}`}
+              >
+                <h3 className="hunt-group-title" id={`hunt-group-${group.id}`}>
+                  {group.title}
+                  <Tag tone="neutral">{group.hunts.length}</Tag>
+                </h3>
+                <ul className="hunt-list" aria-label={group.title} data-density="compact">
+                  {group.hunts.map((entry) => {
                 const isActive = bugHuntActive && hunt.id === entry.id
                 const statusEntry = statuses[entry.id]
                 const statusView =
@@ -173,13 +203,13 @@ export function HuntPanel() {
                       {scenario ? (
                         <Link className="hunt-row-link" to={`/scenarios/${scenario.id}`}>
                           Scenario: {scenario.title}
-                          <Icon name="chevron-right" size={14} />
+                          <Icon name="chevron-right" size={16} />
                         </Link>
                       ) : null}
                       {entry.id.startsWith('hunt-db-') ? (
                         <Link className="hunt-row-link" to="/database/playground">
                           Investigate in the SQL playground
-                          <Icon name="chevron-right" size={14} />
+                          <Icon name="chevron-right" size={16} />
                         </Link>
                       ) : null}
                     </div>
@@ -223,7 +253,10 @@ export function HuntPanel() {
                   </li>
                 )
               })}
-            </ul>
+                </ul>
+              </div>
+              ))}
+            </>
           )}
 
           {bugHuntActive ? (

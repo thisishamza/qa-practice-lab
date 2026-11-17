@@ -70,7 +70,7 @@ export function ShopProductPage() {
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Shop', to: '/shop' },
+          { label: 'Practice App' }, { label: 'Storefront', to: '/shop' },
           { label: title },
         ]}
       />

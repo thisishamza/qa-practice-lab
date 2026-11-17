@@ -25,16 +25,17 @@ export function TrackDetailPage() {
         <Breadcrumbs
           items={[
             { label: 'Dashboard', to: '/' },
-            { label: 'Learning tracks', to: '/tracks' },
+            { label: 'Learning paths', to: '/tracks' },
             { label: 'Not found' },
           ]}
         />
+        <h1 className="sr-only">Learning track not found</h1>
         <EmptyState
           title="That learning track does not exist"
           description="The track may have been renamed, or the link may be incomplete."
           icon="tracks"
           action={
-            <Link className="button" to="/tracks">
+            <Link className="button button-secondary" to="/tracks">
               Back to all tracks
             </Link>
           }
@@ -60,7 +61,7 @@ export function TrackDetailPage() {
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Learning tracks', to: '/tracks' },
+          { label: 'Learning paths', to: '/tracks' },
           { label: track.name },
         ]}
       />
@@ -74,11 +75,11 @@ export function TrackDetailPage() {
       <div className="meta-row">
         <LevelMeter level={track.difficulty} />
         <span className="meta-item">
-          <Icon name="target" size={15} />
+          <Icon name="target" size={16} />
           {pluralize(track.plannedExerciseCount, 'exercise')} planned
         </span>
         <span className="meta-item">
-          <Icon name="scenarios" size={15} />
+          <Icon name="scenarios" size={16} />
           {pluralize(trackScenarios.length, 'listed', 'listed')}
         </span>
         {track.categoryIds.map((categoryId) => {
@@ -94,7 +95,7 @@ export function TrackDetailPage() {
       <p className="tracks-note">
         {track.id === 'database-testing'
           ? 'Objectives, scenarios and exercises are real and runnable in the SQL lab — open /database to begin.'
-          : 'Objectives and listed scenarios are real; exercises are not runnable yet — each scenario carries its own availability status.'}
+          : 'Objectives and listed scenarios are real — each scenario carries its own availability status, and many are runnable today.'}
       </p>
 
       <div className="detail-layout">
@@ -114,7 +115,7 @@ export function TrackDetailPage() {
               {track.objectives.map((objective) => (
                 <li key={objective}>
                   <span className="check-list-icon" aria-hidden="true">
-                    <Icon name="check" size={14} />
+                    <Icon name="check" size={16} />
                   </span>
                   <span>{objective}</span>
                 </li>
@@ -144,11 +145,11 @@ export function TrackDetailPage() {
             <SectionHeader
               id="track-scenarios"
               title="Scenarios in this track"
-              description="Representative placeholders from the scenario catalogue."
+              description="Representative scenarios from the catalogue — availability shown on each card."
               action={
                 <Link className="text-link" to={`/scenarios?track=${track.id}`}>
                   {pluralize(trackScenarios.length, 'scenario')} in the catalogue
-                  <Icon name="arrow-right" size={14} />
+                  <Icon name="arrow-right" size={16} />
                 </Link>
               }
             />
@@ -211,7 +212,7 @@ export function TrackDetailPage() {
                 {relatedTracks.map((entry) => (
                   <li key={entry.id}>
                     <Link to={`/tracks/${entry.id}`}>
-                      <Icon name={entry.icon} size={15} />
+                      <Icon name={entry.icon} size={16} />
                       <span>
                         {entry.name}
                         <span className="aside-link-meta">

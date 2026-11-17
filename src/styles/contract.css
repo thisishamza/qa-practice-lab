@@ -31,6 +31,9 @@
 }
 
 .contract-capability-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin: 0;
   color: var(--ink);
   font-size: var(--text-body-strong);
@@ -92,7 +95,7 @@
 
 .contract-exercise-meta {
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
 }
 
 /* ------------------------------------------------ assertion list */
@@ -156,7 +159,8 @@
   border-radius: var(--radius-sm);
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
 }
 
 .assertion-item-body {
@@ -168,8 +172,8 @@
 
 .assertion-item-body dt {
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -247,8 +251,8 @@
 .findings-group-title {
   margin: 0;
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -276,7 +280,7 @@
   border-radius: var(--radius-sm);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   font-weight: var(--weight-strong);
 }
 
@@ -308,8 +312,8 @@
 .finding-impact-label {
   display: block;
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -358,8 +362,8 @@
 
 .contract-field-label {
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }

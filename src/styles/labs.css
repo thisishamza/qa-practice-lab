@@ -61,7 +61,7 @@
 
 .sim-log-item strong {
   text-transform: uppercase;
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   letter-spacing: 0.05em;
 }
 
@@ -148,7 +148,7 @@
 .sim-trace-seq {
   color: var(--ink-subtle);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
 }
 
 .sim-trace-error {
@@ -158,7 +158,7 @@
 .sim-trace-meta {
   display: block;
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
+  font-size: var(--text-meta);
 }
 
 /* --------------------------------------- performance runner */
@@ -179,9 +179,10 @@
 .metric-cell dt {
   margin: 0;
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: var(--weight-semibold);
 }
 
 .metric-cell dd {
@@ -216,7 +217,8 @@
 .sim-status-class {
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
 }
 
 .sim-bar {
@@ -243,8 +245,9 @@
 .sim-status-count {
   color: var(--ink-strong);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   text-align: right;
+  font-weight: var(--weight-semibold);
 }
 
 /* --------------------------------------- history */
@@ -270,12 +273,12 @@
 .sim-history-meta {
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
 }
 
 .sim-history-time {
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
+  font-size: var(--text-meta);
 }
 
 @media (max-width: 640px) {
