@@ -446,3 +446,41 @@ acceptance per the Phase 5/6 protocol).
 1. Accept D-P7-8 / F-C9 (index-chunk non-identity) in writing or require a split of the scenario wiring into a lazy chunk.
 2. Accept F-C7 (ReDoS residual risk) explicitly — no practical fix exists on the JS engine.
 3. Optional: request a full browser re-probe of all five contract routes × both themes × 4 widths after this correction (recommendation: yes, cheap).
+
+---
+
+## §22 — Final maintainer review & release-gate verification (2026-11-17, review session `43a7d3e`)
+
+> Appended by the final maintainer-review session AFTER the correction session
+> (§21). No application code was changed in this session; the browser matrix
+> and consolidated checks were re-run on commit `43a7d3e`. Production remains
+> the Phase 6 release (`schema_version` 12). The release remains **not
+> authorized**; this section is evidence for a separate release-approval
+> decision, not a release decision.
+
+**Reverification commands/runs (2026-11-17, this session):**
+
+- `npm run check` → lint ✓ · typecheck ×3 ✓ · **1417/1417 (70 files)**.
+- `npm run build` → clean; `dist/index-*.js` eager entry re-measured: **raw 417,794 B; gzip 127,366 B** (against the Phase 6 baseline recorded in the audit: 397.20 kB / 122.66 KB gzip — **+20.6 kB raw / +≈4.7–5.1 KB gzip**, wiring-only, D-P7-8 stands). `@cfworker/json-schema` absent from the eager chunk (0 matches); contract routes dynamic-import (`import("./Contract…Page")` ×5 in the entry); validator present only in lazy chunks.
+- Browser matrix (local isolated environment, `wrangler pages dev :8793` on the fresh `dist/`, local D1 `schema_version` 13, headless Chrome over CDP):
+  - **40/40 matrix checks PASS** — 5 routes (`/contract`, `/contract/validate`, `/contract/compare`, `/contract/consumer`, `/contract/exercises/contract-bgn-required-01`) × 2 themes (light/dark) × 4 widths (375/768/1024/1440): **zero horizontal overflow** (all diffs ≤ 0), all route markers rendered, **zero console errors and zero page exceptions**; 40 screenshots captured to `/tmp/opencode/review-shots/` (ephemeral; several inspected: hub-light-375, validate-dark-375, compare-dark-768, consumer-dark-375, exercise-light-1440, hub-dark-1024).
+  - **14/14 functional checks PASS** — live `/openapi.json` validation (invalid payload fires `/priceCents type` assertion; valid payload validates clean); compare pairs: v1→v2-compatible ⇒ **REVIEW REQUIRED**, v1→v2-breaking ⇒ **BREAKING** (rule-id findings render), v2-required (request locus) ⇒ **BREAKING**; consumer guided verify ⇒ holds; `provider-product-v2-latest` in clean mode resolves additive and holds; exercise `contract-bgn-required-01` check-work ⇒ pass; reveal gated pre-submit; `prefers-reduced-motion` page renders and is interactable.
+  - Prior hunt-contract-002 end-to-end probe (correction session): **13/13 PASS** (reused, not re-run — no new attempts minted in this session).
+- dist leak scan (this session): **zero** `CONTRACT-00[1-7]`; **zero** historical answer-bearing exampleEvidence strings; reveal/rubric/delta modules absent from the bundle.
+- OpenAPI invariants re-verified: **3.1.0, `info.version` 1.2.0, exactly 42 operations, 27 `ErrorCode`s**, four `/api/v1/contract/*` paths. No migration, table, binding or dependency added.
+
+**F-C8 call-graph security-boundary assessment (verified this session):** `internalDocument` exists only in `src/shared/contractValidation.ts` and is used at exactly one call site — `src/pages/ContractValidatePage.tsx` (`isLive ? { internalDocument: true } : {}`). The server never passes options (grep across `src/server`: no `internalDocument`); learner-pasted schemas/expectations/payloads therefore remain under the normal 2,000-node / depth-16 schema and 5,000-node / depth-32 payload budgets, and the payload budget is not widened by the option (`validatePayload` always calls `assertPayloadBudget` with defaults). The privileged path validates only the literal same-origin `/openapi.json` fetched via `loadContract()` (hard-coded URL, no learner-controlled document, no API surface, no alternate helper). Test coverage exists for both budgets (`tests/lib/contract-validation.test.ts`, Finding 8 block: 3,452-node live doc throws `complexity_limit` by default; compiles and validates end-to-end under `internalDocument`). **Verdict: PASS — the restriction is structural, not conventional.**
+
+**Exact rubric scores (re-scored this session):** worked example 100 PASS · false-negative 65 FAIL (C6=0) · each of `id`/`description`/`categorySlug`/`categoryName` added as required extra ⇒ **65 FAIL** · 8-of-9 near-clone ⇒ **65 FAIL** · full 9-of-9 clone ⇒ **60 FAIL** · optional extra property ⇒ **100 PASS** · const→enum / integer→number / reordered `required` equivalents ⇒ **100 PASS** · closed ⇒ 65 FAIL · vacuous `{}` ⇒ 45 FAIL.
+
+**Compatibility engine (re-verified this session):** sibling identical changes and nested identical changes at distinct pointers **both remain distinct** (4 findings incl. `/properties/a`+`/properties/b`, `/properties/x`+`/properties/y`); shared-`$ref` duplicate (two `$ref:'#/definitions/shared'` sites, `minimum 1→0`) collapses to **one** finding justified by shared ref origin; one-sided `type` added/removed ⇒ **REVIEW (R19)** both directions; `anyOf` added/removed/changed ⇒ **REVIEW**; byte-equal reordered composites ⇒ zero findings; `oneOf` identical ⇒ none; `allOf` removed ⇒ **REVIEW**; boolean `items` toggle and boolean↔schema ⇒ **REVIEW**; request/response loci R1 (request ⇒ breaking) and R9 (response ⇒ review / request ⇒ compatible) intact; output byte-deterministic; **ledger fixture outputs byte-identical** to the review record. **Verdict: PASS.**
+
+**Remaining deviation recommendations (for maintainer sign-off):**
+1. **D-P7-8 (index chunk not byte-identical)** — **ACCEPT** (recommended): the +≈5 KB gzip is mandatory wiring content (tracks/scenarios/curriculum for the seven hunts), no new eager dependency, contract chunks lazy. Alternative if rejected: split the scenario-wiring data into a lazy chunk — measure first; do not rearchitect in the release step.
+2. **F-C7 (ReDoS residual risk)** — **ACCEPT with disclosure** (recommended): 256-character cap bounds pattern size, not regex cost; JS `RegExp` has no possessive quantifiers; mitigation is the Pages Functions CPU-time limit (server) and tab freeze risk (browser); the ReDoS-shaped test fixture was planned but never implemented (recorded as an unimplemented test, not a passing one); learner-facing warning shipped in `/contract/validate`. No blacklist is implemented or advised.
+3. **D-P7-1 (60/65 caps)** — **ACCEPT** (recommended): the plan's own exit criteria 13/14/15 ("score < 70") were unreachable with pure weights; the caps are tested against every canonical wrong answer and every legitimate equivalent representation; the deviation and rationale are recorded in plan §19/§20/§21 and the gates are load-bearing (findings from the independent review confirmed the need). The caps do **not** reject the correct contract or any recorded equivalence to it.
+4. **Criterion 28** — re-verified this session as PASS-locally (40/40 matrix + 14/14 functional); a full production-build browser re-probe **after** the approved release remains desirable.
+
+**Acceptance matrix status after this review (changes only):** 1–3 PASS; 4–27 PASS; **28 → PASS (local isolated probe, this session)**; **29 → PARTIAL (waived only by D-P7-8 acceptance — open)**; 30–32 PASS. No criterion regressed. **31 → PASS** (per §21 and this session's check-work/hint evidence).
+
+**Release remains NOT approved.** Before any release: maintainer sign-off on (1)–(3); explicit approval for the release sequence (verified pre-migration export → `0013` on production → `npm run check && npm run build && npx wrangler pages deploy dist` → production acceptance, incl. hunt-002 browser flow in production and the §10 acceptance list). Production stays the Phase 6 release until then; migration 0013 remains local-only.

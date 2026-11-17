@@ -1550,3 +1550,45 @@ OpenAPI still **1.2.0 / 42 operations / 27 error codes**. No migration
 added, no D1 table, no binding, no dependency. All 24 reference answers and
 24 plausible-wrong answers re-verified through the real evaluators inside
 `npm run check`.
+
+---
+
+## 21. Final maintainer review verification & release-decision evidence (2026-11-17)
+
+> Appended by the final review session. Implementation is unchanged from
+> `43a7d3e`; this section records the last verification pass on that exact
+> commit — no code was modified in this session.
+
+- **Build/bundle:** `dist/index-*.js` eager entry raw **417,794 B**, gzip
+  **127,366 B** (gzip -9), vs the Phase 6 baseline 397.20 kB / 122.66 KB
+  recorded in the exit audit — **+20.6 kB raw, +≈4.7–5.1 KB gzip**, wiring
+  only (D-P7-8). `@cfworker/json-schema` absent from the eager chunk; all
+  five contract routes dynamic-import; validator present only in lazy
+  chunks (`contract-*.js`, `ContractConsumerPage`, `ContractExercisePage`).
+  Contract chunks remain within the ≤ 60 KB gzip budget (unchanged).
+  Byte-identity to `eeded31` is NOT claimed — see F-C9 / exit audit §22.
+- **Invariants (re-verified this session):** OpenAPI 3.1.0, `info.version`
+  **1.2.0**, exactly **42** operations, **27** `ErrorCode` entries, four
+  `/api/v1/contract/*` paths, no new error codes; no migration, D1 table,
+  binding or dependency; `0013` zero-DDL, local-only; production remains
+  `schema_version` 12; dist leak scan clean; all 24 reference answers
+  100/100 and all 24 plausible-wrong answers rejected (in-suite, 1417/1417).
+- **Browser evidence (local isolated build):** 5 contract routes × 2
+  themes × widths 375/768/1024/1440 = **40/40 PASS** (zero horizontal
+  overflow, zero console errors, zero page exceptions, markers render);
+  plus **14/14** functional checks (live `/openapi.json` validate red and
+  green, all three compare pairs incl. locus semantics, consumer verify
+  incl. the clean-mode `provider-product-v2-latest` alias, exercise
+  check-work pass, reveal gated pre-submit, reduced-motion honoured).
+  hunt-contract-002 bug-report probe from the correction session stands
+  at 13/13 (not re-run; no new attempts minted).
+- **Deviation recommendations for the maintainer:** D-P7-8 —
+  **accept** (or require a lazy-wiring split first; do not rearchitect in
+  the release step); F-C7 — **accept with disclosure** (no honest fix on
+  JS `RegExp`; the planned ReDoS fixture is unimplemented — recorded, not
+  claimed); D-P7-1 — **accept** (plan's own criteria 13/14/15 were
+  unreachable with pure weights; caps tested at 60/65 against every
+  canonical wrong answer and every legitimate equivalent). None of these
+  may be claimed satisfied silently — see exit audit §22.
+- **Status:** implementation verified at the maintainer-review level;
+  **release NOT approved**; production unchanged; Phase 8 not started.
