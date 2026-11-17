@@ -271,13 +271,13 @@ export const guides: Guide[] = [
     id: 'guide-contract-testing-basics',
     title: 'Contract testing without the ceremony',
     trackId: 'contract-testing',
-    level: 'advanced',
+    level: 'intermediate',
     readingMinutes: 12,
     summary:
       'Capture the promises that matter between a consumer and a provider, then verify them fast.',
     introduction: [
       'Contract testing asks a narrow question: can this consumer and this provider still understand each other? It does not replace end-to-end tests, and it does not verify business rules. Its value is early, precise feedback when an interface changes.',
-      'A good contract is small. It contains what the consumer uses, not everything the provider can return.',
+      'This lab ships three workspaces and a guided catalogue: the validate workspace (assertion-level diagnostics against a fixture or the live contract), the compare workspace (breaking / compatible / review with per-finding rationale), and the consumer workspace (write a minimal expectation and watch the provider verify against it). The best first exercise is contract-bgn-required-01; the best advanced one is contract-adv-consumer-expect-01.',
     ],
     concepts: [
       {
@@ -298,16 +298,28 @@ export const guides: Guide[] = [
       {
         term: 'Breaking change',
         explanation:
-          'A change that removes or alters something a consumer relies on, such as a field rename, type change, or status-code change.',
+          'A change that removes or alters something a consumer relies on, such as a field rename, type change, or status-code change. Classify it: breaking, backward-compatible, or review-required.',
+      },
+      {
+        term: 'Compatibility rule table',
+        explanation:
+          'R1–R21: request-side required additions break (R1); response-side property removal breaks (R3); type narrowing breaks (R6); enum widening is always review (R9); annotation-only deltas are never findings (R21).',
       },
     ],
     examples: [
       {
         title: 'Minimal consumer expectation',
         description:
-          'Only the fields the search results screen reads are included.',
+          'Only the fields the POS adapter reads are included — nothing else.',
         language: 'json',
-        code: '{\n  "consumer": "catalogue-search",\n  "provider": "catalogue-api",\n  "request": { "path": "/catalogue", "query": { "category": "audio" } },\n  "response": {\n    "status": 200,\n    "body": { "items": [{ "id": "string", "name": "string", "price": "number" }] }\n  }\n}',
+        code: '{\n  "type": "object",\n  "required": ["slug", "name", "priceCents", "currency", "stockStatus"],\n  "properties": {\n    "slug": { "type": "string" },\n    "name": { "type": "string" },\n    "priceCents": { "type": "integer", "minimum": 0 },\n    "currency": { "const": "USD" },\n    "stockStatus": { "enum": ["in_stock", "low_stock", "out_of_stock"] }\n  }\n}',
+      },
+      {
+        title: 'An enum widening is review, never silently compatible',
+        description:
+          'A provider adding a value is additive; your consumer’s closed switch is what breaks.',
+        language: 'text',
+        code: 'status: posted | pending | reversed  →  + scheduled\nverdict: REVIEW REQUIRED — closed-set consumers hit the unknown value',
       },
     ],
     steps: [
@@ -319,33 +331,124 @@ export const guides: Guide[] = [
       {
         title: 'Write the contract at that boundary',
         detail:
-          'Keep the expectation minimal. Do not include fields that merely happen to exist in a sample response.',
+          'Keep the expectation minimal — the rubric (C1–C7) enforces it. Do not include fields that merely happen to exist in a sample response.',
       },
       {
         title: 'Verify the provider',
         detail:
-          'Run provider verification against the contract. A failure should name the field or behaviour that no longer matches.',
+          'Run provider verification against the expectation. A failure should name the field or behaviour that no longer matches — see contract-adv-consumer-broken-01.',
       },
       {
-        title: 'Change one thing deliberately',
+        title: 'Diff the versions before you ship',
         detail:
-          'Rename a field in a safe environment and confirm the contract fails before an end-to-end test does.',
+          'Use the compare workspace on any contract pair (or a pasted candidate) and apply the rule table. Any breaking finding means BREAKING — no voting.',
       },
     ],
     expectedResults: [
       'The contract records the consumer’s real needs, not the provider’s full schema.',
       'Provider verification fails with a precise message on a breaking change.',
       'Adding an unused provider field does not fail the contract.',
+      'A compatibility review names rule, path, classification and both perspectives.',
     ],
     commonMistakes: [
       'Copying an entire response example into the contract.',
       'Using contract tests to verify business calculations.',
       'Letting one contract speak for consumers with different needs.',
+      'Calling an enum widening "compatible" because the provider only added a value.',
     ],
     relatedScenarioIds: [
       'contract-catalog-consumer',
       'contract-breaking-change',
       'microservices-order-trace',
+    ],
+  },
+  {
+    id: 'guide-consumer-driven-contracts',
+    title: 'Consumer-driven contracts end to end',
+    trackId: 'contract-testing',
+    level: 'advanced',
+    readingMinutes: 14,
+    summary:
+      'Write a minimal consumer expectation, verify the provider fixture, and triage the drift when it happens.',
+    introduction: [
+      'Consumer-driven contracts invert the usual direction: the consumer declares what it needs, and the provider verifies against that declaration. Nothing about the provider’s other fields matters to this contract — the provider may change or drop them freely.',
+      'The whole technique stands on one habit: pin only what you read. This guide walks the complete loop with the Meridian Ledger fixtures — author, verify, break, triage.',
+    ],
+    concepts: [
+      {
+        term: 'Expectation',
+        explanation:
+          'The consumer’s JSON Schema (2020-12) over the payload it reads: required critical fields, correct types/consts/enums, no extra pins. It is deliberately open — additionalProperties stays absent.',
+      },
+      {
+        term: 'Verification',
+        explanation:
+          'The provider fixture payload is validated against your expectation. Pass means this consumer survives this provider today; fail means somebody moved something — the assertion list says where.',
+      },
+      {
+        term: 'Break/fix',
+        explanation:
+          'Swapping the provider fixture v1 → v2-latest in the workspace shows the same expectation passing, then failing — drill contract-adv-consumer-broken-01 encodes the exact triage.',
+      },
+      {
+        term: 'The C1–C7 rubric',
+        explanation:
+          'Compiles (10), critical fields required (25), no non-critical required (15), types match (20), open contract (10), passes provider v1 (10), fails the drift (10). 100 is the complete answer; 70 or less is a failing contract.',
+      },
+    ],
+    examples: [
+      {
+        title: 'The working expectation',
+        description:
+          'Five critical fields, nothing else — the answer to contract-adv-consumer-expect-01.',
+        language: 'json',
+        code: '{\n  "type": "object",\n  "required": ["slug", "name", "priceCents", "currency", "stockStatus"],\n  "properties": {\n    "slug": { "type": "string" },\n    "name": { "type": "string" },\n    "priceCents": { "type": "integer", "minimum": 0 },\n    "currency": { "const": "USD" },\n    "stockStatus": { "enum": ["in_stock", "low_stock", "out_of_stock"] }\n  }\n}',
+      },
+      {
+        title: 'Triage when the provider drifts',
+        description:
+          'Read the failing assertion before you conclude anything.',
+        language: 'text',
+        code: 'assertion: /categoryName — required — missing\ntriage: the provider renamed the category field (R3) and re-cased an enum member (R9).\nverdict: the expectation is the pin; the fix is provider-side.\naction: coordinate the rename or restore the field; never weaken the pin.',
+      },
+    ],
+    steps: [
+      {
+        title: 'Author the expectation',
+        detail:
+          'In /contract/consumer, use guided mode (check the critical fields) or write the raw schema. Verify against provider-product-v1 — it must pass.',
+      },
+      {
+        title: 'Break it on purpose',
+        detail:
+          'Switch the fixture selector to v2 latest in bug-hunt mode (hunt-contract-007) or to the named drift drill. Read the failing assertions — required and enum — before concluding anything.',
+      },
+      {
+        title: 'Classify and comment',
+        detail:
+          'R3 (property rename), a provider-side break. The one-line reviewer comment names the side that moved and the fix — restore the documented field or coordinate a version boundary.',
+      },
+      {
+        title: 'Know when not to do this',
+        detail:
+          'Contract tests do not replace end-to-end tests. They pin interface promises; business correctness belongs elsewhere. When a contract fails, believe it — and check who moved what.',
+      },
+    ],
+    expectedResults: [
+      'Your expectation passes provider-product-v1 and fails the drifted payload.',
+      'You can say, from the assertion list alone, which side of the contract moved.',
+      'Your report names the R-rule and the fix — without touching the expectation.',
+    ],
+    commonMistakes: [
+      'Pinning the entire provider document — minimalism is the technique, not a style.',
+      'Weakening the expectation to get a green run — the red run is the evidence.',
+      'Using contract verification as an integration test — it checks interface, not business logic.',
+      'Blaming the consumer for a provider-side rename.',
+    ],
+    relatedScenarioIds: [
+      'contract-catalog-consumer',
+      'contract-breaking-change',
+      'contract-hunt-consumer-drift',
     ],
   },
   {

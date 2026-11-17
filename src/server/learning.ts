@@ -71,6 +71,8 @@ import { HUNT_ID_PATTERN } from './hunts'
 import { resolveAttemptTarget } from './attemptTargets'
 import { requireHint } from './hints'
 import { sqlHintText } from './sqlHints'
+import { contractHintText } from './contractHints'
+import { contractRevealDefinition } from './contractReveals'
 import { findReveal } from './reveals'
 import { findSqlReveal } from './sqlReveals'
 import {
@@ -84,7 +86,25 @@ const HINT_BITS: Record<HintLevel, number> = { 1: 1, 2: 2, 3: 4 }
 
 function buildRevealResponse(huntId: string, title: string, row: AttemptRow): RevealResponse {
   // SQL exercises and SQL hunts reveal the reference/finding query as well;
-  // Phase 3/4 hunts never carry one.
+  // contract exercises and contract hunts reveal the reference mechanism
+  // and fix; Phase 3/4 hunts never carry one.
+  const contractReveal = contractRevealDefinition(huntId)
+  if (contractReveal) {
+    return {
+      huntId,
+      title,
+      expected: contractReveal.expected,
+      actual: contractReveal.actual,
+      rootCause: contractReveal.rootCause,
+      reproduction: [...contractReveal.reproduction],
+      verification: [...contractReveal.verification],
+      concepts: [...contractReveal.concepts],
+      commonMisconceptions: [...contractReveal.commonMisconceptions],
+      solution: contractReveal.solution,
+      explanation: contractReveal.explanation,
+      attempt: attemptView(row),
+    }
+  }
   const sqlReveal = findSqlReveal(huntId)
   if (sqlReveal) {
     return {
@@ -122,11 +142,15 @@ function buildRevealResponse(huntId: string, title: string, row: AttemptRow): Re
   }
 }
 
-/** Hint lookup unified across the Phase 3/4 and Phase 6 SQL registries. */
+/** Hint lookup unified across the Phase 3/4, Phase 6 SQL and Phase 7 contract registries. */
 function requireAnyHint(id: string, level: HintLevel): string {
   const sqlHint = sqlHintText(id, level)
   if (sqlHint !== null) {
     return sqlHint
+  }
+  const contractHint = contractHintText(id, level)
+  if (contractHint !== null) {
+    return contractHint
   }
   return requireHint(id, level)
 }

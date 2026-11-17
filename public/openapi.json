@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "QA Practice Lab — Meridian Outfitters Practice API",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`) or, for the `mpl_customer` surface, `Authorization: Bearer <token>` minted by `POST /api/v1/auth/token` (SHA-256-hashed at rest, 15-900 s clamped TTL, one-time display). When a Bearer header is presented it wins over the cookie; roles always come from the stored customer row. An expired Bearer token answers 401 `token_expired`; other Bearer failures answer 401 `unauthorized`.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min), practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day) and SQL evaluation (`rate_limited`, 30/min); `POST /api/v1/sql/evaluate` accepts up to 1 MB of JSON.\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.",
     "contact": {
       "name": "QA Practice Lab",
@@ -50,6 +50,10 @@
     {
       "name": "practice",
       "description": "Practice-session engine, bug-hunt attempts, structured bug reports, hints, gated reveals and learner progress."
+    },
+    {
+      "name": "contract",
+      "description": "Contract validation, compatibility comparison and consumer verification"
     }
   ],
   "paths": {
@@ -1907,8 +1911,8 @@
         "tags": [
           "practice"
         ],
-        "summary": "Start (or resume) a SQL exercise attempt",
-        "description": "Idempotently opens the caller's live in-progress attempt for a registered SQL exercise — mirroring hunt-start idempotency. If the browser has no live practice session, a clean guest one is minted first (same semantics as a hunt start). Returns the same attempt row on re-entry; never creates a second live attempt. Unknown ids answer 404 `exercise_not_found`. Attempts on SQL exercises reuse the same attempt bookkeeping as hunts; no client may tune anything about an attempt.",
+        "summary": "Start a practice exercise attempt",
+        "description": "Idempotently opens the caller's live in-progress attempt for a registered SQL exercise — mirroring hunt-start idempotency. If the browser has no live practice session, a clean guest one is minted first (same semantics as a hunt start). Returns the same attempt row on re-entry; never creates a second live attempt. Unknown ids answer 404 `exercise_not_found`. Attempts on SQL exercises reuse the same attempt bookkeeping as hunts; no client may tune anything about an attempt. Contract exercises (`contract-*`) start through the same path with identical semantics: a clean guest session is minted when the browser has none, and the attempt is created idempotently.",
         "parameters": [
           {
             "name": "exerciseId",
@@ -2149,6 +2153,322 @@
           },
           "429": {
             "$ref": "#/components/responses/MutateRateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/contract/validate": {
+      "post": {
+        "operationId": "validateContractPayload",
+        "tags": [
+          "contract"
+        ],
+        "summary": "Validate a JSON payload against a contract fixture",
+        "description": "Validates a learner payload against the named fixture operation schema (JSON Schema 2020-12 subset: required, type, format, enum, const, numeric/length/array constraints, additionalProperties, local $ref with ≤ 32 hops). Every failing assertion is returned with a JSON Pointer path, the keyword, expected/actual renderings and a specific learner-safe message. The payload is never stored or logged. Per-IP scoped budget: 30/min (`rate_limited`) plus the shared mutation backstop; payload ≤ 24 KB, depth ≤ 32, ≤ 5,000 nodes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "fixtureId",
+                  "payload"
+                ],
+                "properties": {
+                  "fixtureId": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "operationId": {
+                    "type": "string",
+                    "maxLength": 96,
+                    "description": "Named operation schema inside the fixture (defaults to the fixture’s first operation)."
+                  },
+                  "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The assertion list — empty when the payload satisfies the contract.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractAssertionListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed JSON, payload over budget, or schema out of subset. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown fixture id or operation id (indistinguishable). Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contract/compare": {
+      "post": {
+        "operationId": "compareContractSchemas",
+        "tags": [
+          "contract"
+        ],
+        "summary": "Diff two contract versions and classify every change",
+        "description": "Diffs a base fixture against a candidate (named fixture pair, or a learner-pasted inline candidate schema) and returns a verdict — breaking > review > compatible — with per-finding rule ids (R1–R21), JSON Pointer paths, change descriptions and consumer/provider impact notes. Locus is declared by the caller (request|response); enum widening is always review; annotation-only deltas produce no findings. Deterministic ordering. Inline candidates ≤ 24 KB, depth ≤ 16, ≤ 2,000 nodes, local $ref only. Per-IP scoped budget: 30/min.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "baseFixtureId",
+                  "locus"
+                ],
+                "properties": {
+                  "baseFixtureId": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "locus": {
+                    "type": "string",
+                    "enum": [
+                      "request",
+                      "response"
+                    ]
+                  },
+                  "candidateFixtureId": {
+                    "type": "string",
+                    "maxLength": 96,
+                    "description": "Named fixture to diff against (mutually exclusive with candidateSchema)."
+                  },
+                  "candidateSchema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Learner-pasted candidate document (mutually exclusive with candidateFixtureId)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verdict and deterministic findings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Out-of-subset schema, over-budget candidate, neither or both of candidateFixtureId/candidateSchema. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown base fixture or candidate fixture id. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contract/verify-consumer": {
+      "post": {
+        "operationId": "verifyConsumerContract",
+        "tags": [
+          "contract"
+        ],
+        "summary": "Verify a consumer expectation against a provider fixture",
+        "description": "Checks a learner-authored consumer expectation (a JSON Schema 2020-12) against the canned provider fixture for the named id — `provider-product-v1`, `provider-product-v2-compatible`, `provider-product-v2-drift` (an explicit drill), or `provider-product-v2-latest` (the latest provider fixture). Returns assertion-level diagnostics only — never the provider payload itself. The expectation is scored server-side for the guided exercise; this endpoint is the workspace verification path. Per-IP scoped budget: 30/min; expectation ≤ 24 KB, depth ≤ 16, ≤ 2,000 nodes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expectation",
+                  "providerFixtureId"
+                ],
+                "properties": {
+                  "expectation": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "providerFixtureId": {
+                    "type": "string",
+                    "enum": [
+                      "provider-product-v1",
+                      "provider-product-v2-compatible",
+                      "provider-product-v2-drift",
+                      "provider-product-v2-latest"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "valid/statusOk plus the assertion list (empty when the expectation holds).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerVerificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Out-of-subset schema, expectation over budget, or an unknown providerFixtureId. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contract/evaluate": {
+      "post": {
+        "operationId": "evaluateContractAnswer",
+        "tags": [
+          "contract"
+        ],
+        "summary": "Score a contract exercise answer deterministically",
+        "description": "Scores one practice-exercise answer against the exercise’s compiled server-side rubric (validate, compare/classify, consumer or structured). Pass ≥ 70; the submitted answer is data, never code. A pass stamps the caller’s attempt `submitted` with the running-max score in the same all-or-nothing write path; a fail leaves the attempt `in_progress`. Nothing the client sends can raise a score. Per-IP scoped budget: 30/min (`rate_limited`); body ≤ 32 KB.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractEvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The deterministic verdict: pass/fail, score 0-100, per-check rubric results and the attempt lifecycle status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractEvaluateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed answer for the exercise kind, or out-of-subset schema. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exercise id. Error code: `exercise_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -4390,6 +4710,292 @@
           "deltaSql"
         ],
         "additionalProperties": false
+      },
+      "ContractAssertion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "keyword",
+          "expected",
+          "actual",
+          "message"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "JSON Pointer into the payload (`/` for the root)."
+          },
+          "keyword": {
+            "type": "string",
+            "description": "The JSON Schema keyword that failed."
+          },
+          "expected": {
+            "type": "string",
+            "description": "Short expected rendering."
+          },
+          "actual": {
+            "type": "string",
+            "description": "Short actual rendering of the offending value."
+          },
+          "message": {
+            "type": "string",
+            "description": "Specific, learner-safe failure message."
+          }
+        }
+      },
+      "ContractEvaluateCheck": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "passed",
+          "message",
+          "points"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Check identifier (e.g. selections, payload, C1…C7)."
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Points awarded for this check."
+          }
+        }
+      },
+      "ContractAssertionListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fixtureId",
+          "operationId",
+          "locus",
+          "valid",
+          "assertions"
+        ],
+        "properties": {
+          "fixtureId": {
+            "type": "string",
+            "description": "The fixture the payload was validated against."
+          },
+          "operationId": {
+            "type": "string",
+            "description": "The named operation schema inside the fixture."
+          },
+          "locus": {
+            "type": "string",
+            "enum": [
+              "request",
+              "response",
+              "both"
+            ]
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractAssertion"
+            }
+          }
+        }
+      },
+      "ComparisonFinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule",
+          "path",
+          "locus",
+          "classification",
+          "change",
+          "consumerImpact",
+          "providerImpact"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string",
+            "description": "Compatibility rule id (R1–R21)."
+          },
+          "path": {
+            "type": "string",
+            "description": "JSON Pointer of the schema location."
+          },
+          "locus": {
+            "type": "string",
+            "enum": [
+              "request",
+              "response"
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "breaking",
+              "review",
+              "compatible"
+            ]
+          },
+          "change": {
+            "type": "string",
+            "description": "One-line change description."
+          },
+          "consumerImpact": {
+            "type": "string"
+          },
+          "providerImpact": {
+            "type": "string"
+          }
+        }
+      },
+      "ComparisonResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "baseFixtureId",
+          "locus",
+          "verdict",
+          "findings"
+        ],
+        "properties": {
+          "baseFixtureId": {
+            "type": "string"
+          },
+          "candidateFixtureId": {
+            "type": "string",
+            "description": "Present only when a named fixture pair was compared."
+          },
+          "locus": {
+            "type": "string",
+            "enum": [
+              "request",
+              "response"
+            ]
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "breaking",
+              "review",
+              "compatible"
+            ],
+            "description": "breaking > review > compatible precedence."
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComparisonFinding"
+            }
+          }
+        }
+      },
+      "ConsumerVerificationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "valid",
+          "statusOk",
+          "assertions"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "statusOk": {
+            "type": "boolean"
+          },
+          "assertions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractAssertion"
+            }
+          },
+          "mismatchSummary": {
+            "type": "string",
+            "description": "First failing assertion rendered as one sentence (absent on success)."
+          }
+        }
+      },
+      "ContractEvaluateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "exerciseId",
+          "answer"
+        ],
+        "properties": {
+          "exerciseId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "answer": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Discriminated by `kind`: validate | compare | consumer | structured.",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "validate",
+                  "compare",
+                  "consumer",
+                  "structured"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "ContractEvaluateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "passed",
+          "score",
+          "checks",
+          "feedback",
+          "attemptStatus"
+        ],
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContractEvaluateCheck"
+            }
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "attemptStatus": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "revealed",
+              "none"
+            ]
+          }
+        }
       }
     }
   }

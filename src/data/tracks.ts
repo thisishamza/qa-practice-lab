@@ -151,24 +151,24 @@ export const learningTracks: LearningTrack[] = [
     shortName: 'Contract',
     tagline: 'Catch integration breakage before deployment.',
     description:
-      'Test the promises between Aster Market services and their consumers. Exercises cover consumer-driven contracts, provider verification, and spotting breaking changes that still pass happy-path tests.',
+      'Test the promises between services and their consumers. Exercises cover consumer-driven contracts, provider verification, and spotting breaking changes that still pass happy-path tests.',
     difficulty: 'advanced',
     icon: 'contract',
     categoryIds: ['integration', 'automation'],
     objectives: [
       'Express a consumer expectation as a minimal, verifiable contract.',
       'Verify a provider against contracts without full end-to-end setup.',
-      'Classify changes as additive, breaking, or ambiguous.',
+      'Classify changes as additive, breaking, or review-required using a rule table.',
       'Decide when a contract test is better than an integration test.',
     ],
-    plannedExerciseCount: 5,
+    plannedExerciseCount: 24,
     gettingStarted: {
       summary:
-        'Begin with the catalogue-search consumer. It has a compact payload and a clear set of consumers.',
+        'Begin with a live contract test, then graduate to the compatibility review and the consumer drift drill.',
       steps: [
-        'List the response fields the consumer actually relies on.',
-        'Write a contract containing only those fields and their types.',
-        'Verify the provider and then rename one field to observe the failure.',
+        'Capture the live /api/v1/products response and validate it in /contract/validate.',
+        'Diff Meridian Ledger v1 against v2 in /contract/compare and classify every finding.',
+        'Write the minimal consumer expectation for getProduct in /contract/consumer — then break it on purpose.',
       ],
       guideId: 'guide-contract-testing-basics',
     },

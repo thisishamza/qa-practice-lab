@@ -146,7 +146,13 @@ describe('scenarios', () => {
   })
 
   it('keeps unwired scenarios non-runnable (ready clean exercises excepted)', () => {
-    const runnableClean = new Set(['api-catalog-pagination', 'auth-session-expiry', 'db-order-consistency'])
+    const runnableClean = new Set([
+      'api-catalog-pagination',
+      'auth-session-expiry',
+      'db-order-consistency',
+      'contract-catalog-consumer',
+      'contract-breaking-change',
+    ])
     for (const scenario of scenarios) {
       if (!scenario.huntId && !runnableClean.has(scenario.id)) {
         expect(scenario.runnable).toBe(false)

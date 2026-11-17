@@ -102,13 +102,26 @@ deployed to production (2026-11-17, migration `0012`, `schema_version` 12); see
 [docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and release record and
 [docs/phase-6-database-testing-plan.md](docs/phase-6-database-testing-plan.md) for the plan.
 
-Phase 7 (Contract Testing Lab) is **planned, not implemented** (2026-11-17). The
-implementation-ready plan is
-[docs/phase-7-contract-testing-plan.md](docs/phase-7-contract-testing-plan.md): one `P7`
-implementation milestone, 24 exercises, seven contract bug hunts, four new endpoints
-(→ 42 operations, OpenAPI `info.version` 1.2.0), zero new D1 tables. No Phase 7 code,
-dependency, migration, route or test exists yet; implementation begins only on explicit
-maintainer instruction.
+Phase 7 (Contract Testing Lab) is **implemented and verified on the feature
+branch `feat/phase-7-contract-testing-lab` (2026-11-17) — NOT merged, NOT
+deployed.** It adds the **Contract Testing** track at `/contract`: a
+validate workspace (assertion-level diagnostics against six synthetic
+contracts, including the live platform contract), a compatibility review
+workspace (breaking / backward-compatible / review-required verdicts with
+R1–R21 rule ids, request/response locus semantics and consumer/provider
+impact notes), a consumer-driven verification workspace (minimal
+expectations, C1–C7 rubric, the provider-drift drill), a **24-exercise**
+catalogue (8/9/7), **seven contract bug hunts** (`hunt-contract-001…007`,
+six live-API defects + one server-only fixture-drift consumer hunt) wired
+into the same hunt engine, and OpenAPI **1.2.0 / 42 operations**. Learner
+input is data-only — nothing is compiled or executed; evaluation is
+deterministic and server-side. See
+[docs/phase-7-contract-testing-plan.md](docs/phase-7-contract-testing-plan.md) for the approved plan,
+[docs/phase-7-exit-audit.md](docs/phase-7-exit-audit.md) for the criterion-by-criterion verification, and
+[docs/bug-hunt-catalogue.md](docs/bug-hunt-catalogue.md) §Contract for the internal expected/actual notes.
+**Production remains the Phase 6 release (`schema_version` 12); the Phase 7
+release is a separate, explicitly approved step
+(pre-migration export → `0013` → deploy → acceptance).**
 
 ## What you can do now
 
@@ -124,6 +137,14 @@ maintainer instruction.
 | `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
 | `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the ten registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
 | `/about` | What works today, what comes next, honest guest/signed-in progress durability, the published report-evaluation rubric (weights, verdict bands, discovery vs report quality) at `/about#evaluation`, synthetic-environment limits |
+| `/database` | Isolated SQL lab on a synthetic commerce snapshot: playground, schema explorer, 36 checked exercises, 8 database bug hunts, progress rings |
+| `/database/playground` | Free-form SQL practice with a hard 3 s budget and automatic reseed — your SQL never leaves the browser worker |
+| `/database/exercises/:exerciseId` | Guided SQL exercise with hint ladder, gated reveal and server-side result-set evaluation |
+| `/contract` | Contract Testing lab: validate payloads, diff contract versions, verify consumer expectations — 24 exercises, 7 contract bug hunts |
+| `/contract/validate` | Paste a payload; get the assertion list (path, keyword, expected, actual) against a fixture or the live contract |
+| `/contract/compare` | Diff two contract versions; classify every change with R1–R21 and both perspectives; copyable Markdown report |
+| `/contract/consumer` | Write a minimal consumer expectation, verify the provider fixture, and watch it fail the drift |
+| `/contract/exercises/:exerciseId` | Guided contract exercise with hint ladder, gated reveal and deterministic server-side scoring |
 | `/api-reference` | The machine-checkable description of every `/api/v1` route: methods, paths, parameters, request/response bodies, error envelopes and codes, rate-limit notes, and the documented bearer/cookie security schemes. Download `openapi.json` from the page; every operation deep-links into the API Lab |
 | `/api-lab` | Same-origin-only in-browser API console (method, path, query, headers, body) with status, timing, headers and byte-capped inert-text body; copy-as-curl; component-state-only history (cleared on refresh); deep-linkable from the reference and wired scenario pages; includes a signed-in-only **practice API token helper** |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
@@ -295,8 +316,12 @@ src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
+src/shared/contractTypes.ts Shared assertion/finding/diff types (browser + server)
+src/shared/contractValidation.ts Shared validation wrapper — budgets, local-$ref resolution, assertion mapping
+src/shared/contractDiff.ts R1–R21 compatibility engine (pure, deterministic)
+src/shared/contracts/      Meridian Ledger fixtures (client-safe; drift is server-only)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0012; production D1 is on 0001..0012)
+db/migrations/             D1 SQL migrations (0001..0013; local dev applies 0001..0013, production D1 is on 0001..0012 until a Phase 7 release is approved)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date

@@ -191,6 +191,98 @@ export const DEFECTS: readonly DefectDefinition[] = [
     ],
     fix: "Bind the caller’s customer_id and require 'reference = ? AND customer_id = ?' before reading the order.",
   },
+  {
+    id: 'CONTRACT-001',
+    title: 'Product detail omits the required stockStatus property',
+    affectedSurface: 'GET /api/v1/products/:slug (response body)',
+    expected:
+      'The product response always satisfies the documented Product contract — every required property present, including stockStatus.',
+    actual:
+      'In this hunt session the serialized product detail omits stockStatus entirely. Consumers reading the required field get undefined; strict validators fail the payload.',
+    repro: [
+      'In a bug-hunt session, open any product page.',
+      'Capture GET /api/v1/products/<slug>.',
+      'Validate the capture against the documented Product schema — the required assertion at /stockStatus fires.',
+      'Reset to clean mode and repeat — the clean response validates.',
+    ],
+    fix: "Build the product response with stockStatus present (clean mode serializes it unchanged).",
+  },
+  {
+    id: 'CONTRACT-002',
+    title: 'Product priceCents serialized as a string',
+    affectedSurface: 'GET /api/v1/products and GET /api/v1/products/:slug (priceCents)',
+    expected:
+      'priceCents is an integer number of cents on the wire, exactly as the Product contract declares.',
+    actual:
+      'In this hunt session priceCents is serialized as a JSON string ("2400"). JS-tolerant consumers keep rendering; the type contract does not.',
+    repro: [
+      'In a bug-hunt session, capture GET /api/v1/products.',
+      'Validate the capture — the type assertion at /priceCents fires (expected integer, actual string).',
+      'Reset to clean mode and repeat — the clean response validates.',
+    ],
+    fix: "Serialize priceCents as a JSON integer (clean mode binds row.price_cents unchanged).",
+  },
+  {
+    id: 'CONTRACT-003',
+    title: 'Stock status emitted outside the documented enum',
+    affectedSurface: 'GET /api/v1/products and GET /api/v1/products/:slug (stockStatus)',
+    expected:
+      'stockStatus is one of in_stock | low_stock | out_of_stock, exactly as the StockStatus enum documents.',
+    actual:
+      'In this hunt session stockStatus is emitted UPPERCASE (IN_STOCK / LOW_STOCK / OUT_OF_STOCK) — outside the documented enum vocabulary.',
+    repro: [
+      'In a bug-hunt session, capture GET /api/v1/products.',
+      'Validate the capture — the enum assertion at /stockStatus fires.',
+      'Reset to clean mode and repeat — the clean response validates.',
+    ],
+    fix: "Emit stockStatus exactly as the documented enum spells it (clean mode is unchanged).",
+  },
+  {
+    id: 'CONTRACT-004',
+    title: 'Cancel answers 204 instead of the documented 200',
+    affectedSurface: 'POST /api/v1/orders/:reference/cancel (status line and body)',
+    expected:
+      'A successful cancel answers HTTP 200 with the OrderDetail JSON body, exactly as the contract documents.',
+    actual:
+      'In this hunt session a successful cancel answers HTTP 204 No Content with an empty body — HTTP-legal, contract-breaking. Clients awaiting the OrderDetail get nothing.',
+    repro: [
+      'In a bug-hunt session, place an order and cancel it.',
+      'Note the status line (204) and the empty body.',
+      'Read the documented cancel contract — 200 + OrderDetail.',
+      'Reset to clean mode and cancel again — clean mode answers 200 with the OrderDetail.',
+    ],
+    fix: "Answer 200 with the OrderDetail on success (clean mode is unchanged).",
+  },
+  {
+    id: 'CONTRACT-005',
+    title: 'Products gain an undocumented supplierCostCents field',
+    affectedSurface: 'GET /api/v1/products (list items)',
+    expected:
+      'The product payload contains exactly the documented properties — closed-schema consumers (additionalProperties: false) validate clean.',
+    actual:
+      'In this hunt session each product item carries an extra supplierCostCents property the document never declares. Strict closed-schema consumers reject the entire payload; tolerant consumers pass silently.',
+    repro: [
+      'In a bug-hunt session, capture GET /api/v1/products.',
+      'Validate with a closed-schema consumer pin — additionalProperties: false fires on supplierCostCents.',
+      'Reset to clean mode and repeat — the clean response validates.',
+    ],
+    fix: "Drop the undocumented property (clean mode serializes only documented fields).",
+  },
+  {
+    id: 'CONTRACT-006',
+    title: 'Order createdAt emitted as epoch-seconds integer',
+    affectedSurface: 'GET /api/v1/orders and GET /api/v1/orders/:reference (createdAt)',
+    expected:
+      'createdAt is an ISO-8601 date-time string, exactly as the contract declares (format: date-time).',
+    actual:
+      'In this hunt session createdAt is emitted as an epoch-seconds integer (e.g. 1763308800). The value passes type readers if untyped; the format contract does not.',
+    repro: [
+      'In a bug-hunt session, capture GET /api/v1/orders.',
+      'Validate the capture — the format assertion at /createdAt fires (expected date-time, actual integer).',
+      'Reset to clean mode and repeat — the clean response validates.',
+    ],
+    fix: "Emit createdAt as the stored ISO-8601 string (clean mode is unchanged).",
+  },
 ]
 
 export function findDefect(id: string): DefectDefinition | null {

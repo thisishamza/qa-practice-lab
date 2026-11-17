@@ -103,12 +103,18 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
   const huntScenarioIds = new Map(data.hunts.map((hunt) => [hunt.huntId, hunt.scenarioId]))
   // Database Testing groups the SQL exercises and SQL hunts beneath the hunt list.
   const isDatabaseTarget = (id: string) => id.startsWith('sql-') || id.startsWith('hunt-db-')
-  const huntEntries = data.hunts.filter((entry) => !isDatabaseTarget(entry.huntId))
+  const isContractTarget = (id: string) => id.startsWith('contract-') || id.startsWith('hunt-contract-')
+  const huntEntries = data.hunts.filter((entry) => !isDatabaseTarget(entry.huntId) && !isContractTarget(entry.huntId))
   const databaseEntries = data.hunts.filter((entry) => isDatabaseTarget(entry.huntId))
+  const contractEntries = data.hunts.filter((entry) => isContractTarget(entry.huntId))
   const databaseHref = (entry: { huntId: string }): string =>
     entry.huntId.startsWith('hunt-db-')
       ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
       : `/database/exercises/${entry.huntId}`
+  const contractHref = (entry: { huntId: string }): string =>
+    entry.huntId.startsWith('hunt-contract-')
+      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
+      : `/contract/exercises/${entry.huntId}`
 
   return (
     <div className="stack">
@@ -292,6 +298,64 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
                 className="progress-exercise-go"
                 to={databaseHref(hunt)}
                 aria-label={`Open ${hunt.title}`}
+              >
+                <Icon name="chevron-right" size={16} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="content-section" aria-labelledby="contract-title">
+        <SectionHeader
+          id="contract-title"
+          title="Contract Testing"
+          description="Your state on the contract exercises and contract bug hunts — validate, diff and consumer-verify in the contract lab."
+        />
+        <ul className="progress-exercise-list">
+          {contractEntries.map((entry) => (
+            <li key={entry.huntId} className="progress-exercise">
+              <div className="progress-exercise-body">
+                <Link className="progress-exercise-title" to={contractHref(entry)}>
+                  {entry.title}
+                </Link>
+                <span className="progress-exercise-meta">
+                  {attemptCountLabel(entry.attempts)} ·{' '}
+                  {entry.lastSubmittedAt
+                    ? `last submitted ${formatProgressDate(entry.lastSubmittedAt)}`
+                    : 'not submitted yet'}
+                </span>
+              </div>
+              <div className="progress-exercise-flags">
+                {entry.discovered ? (
+                  <Tag tone="ready" icon="check">
+                    Discovered
+                  </Tag>
+                ) : (
+                  <Tag tone="neutral">Not discovered</Tag>
+                )}
+                <AttemptStatusChip status={entry.status} bestQualityScore={entry.bestScore} />
+                <span className="progress-exercise-stat">
+                  {entry.bestScore !== null ? (
+                    <>
+                      <span aria-hidden="true">Best {entry.bestScore}</span>
+                      <span className="sr-only">Best score {entry.bestScore} out of 100</span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden="true">Best —</span>
+                      <span className="sr-only">No score yet</span>
+                    </>
+                  )}
+                </span>
+                <span className="progress-exercise-stat">
+                  {entry.hintsUsed === 1 ? '1 hint' : `${entry.hintsUsed} hints`}
+                </span>
+              </div>
+              <Link
+                className="progress-exercise-go"
+                to={contractHref(entry)}
+                aria-label={`Open ${entry.title}`}
               >
                 <Icon name="chevron-right" size={16} />
               </Link>

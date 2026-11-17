@@ -104,6 +104,44 @@ function toProduct(row: ProductRow): Product {
   }
 }
 
+/**
+ * BUG-HUNT DEFECTS CONTRACT-001/002/003/005 (hunts hunt-contract-001/002/003/005):
+ * in a bug-hunt session carrying the matching defect, the named product
+ * response builder is corrupted at serialization time — read-time only,
+ * nothing is persisted, and clean mode serializes byte-identically.
+ * Exactly one isDefectActive branch per defect id lives here; the loci
+ * gates below keep each defect on its documented surface:
+ *   CONTRACT-001 (detail only) — stockStatus omitted
+ *   CONTRACT-002 (list + detail) — priceCents serialized as a string
+ *   CONTRACT-003 (list only) — stockStatus UPPERCASE casing drift
+ *   CONTRACT-005 (list only) — undocumented supplierCostCents added
+ */
+async function toProductResponse(
+  c: Parameters<typeof isDefectActive>[0],
+  row: ProductRow,
+  locus: 'list' | 'detail',
+): Promise<Record<string, unknown>> {
+  const product: Record<string, unknown> = { ...toProduct(row) }
+  if (await isDefectActive(c, 'CONTRACT-002')) {
+    product.priceCents = String(row.price_cents)
+  }
+  if (locus === 'list' && (await isDefectActive(c, 'CONTRACT-003'))) {
+    product.stockStatus =
+      row.stock_status === 'out_of_stock'
+        ? 'OUT_OF_STOCK'
+        : row.stock_status === 'low_stock'
+          ? 'LOW_STOCK'
+          : 'IN_STOCK'
+  }
+  if (locus === 'list' && (await isDefectActive(c, 'CONTRACT-005'))) {
+    product.supplierCostCents = Math.round(row.price_cents * 0.6)
+  }
+  if (locus === 'detail' && (await isDefectActive(c, 'CONTRACT-001'))) {
+    delete product.stockStatus
+  }
+  return product
+}
+
 function toCategory(row: CategoryRow): CategorySummary {
   return {
     id: row.id,
@@ -168,7 +206,7 @@ catalogueRoutes.get('/products', async (c) => {
     .all<ProductRow>()
 
   const body: ProductListResponse = {
-    data: rows.results.map(toProduct),
+    data: await Promise.all(rows.results.map((row) => toProductResponse(c, row, 'list'))) as unknown as ProductListResponse['data'],
     page,
     perPage,
     total,
@@ -194,7 +232,7 @@ catalogueRoutes.get('/products/:slug', async (c) => {
     return c.json({ error: 'not_found', message: 'Product not found' }, 404)
   }
 
-  return c.json(toProduct(row))
+  return c.json(await toProductResponse(c, row, 'detail'))
 })
 
 catalogueRoutes.get('/categories', async (c) => {

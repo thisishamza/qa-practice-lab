@@ -1319,3 +1319,115 @@ changes, no bindings, no secrets, no cron.
   config, routes, or Cloudflare changes; no push/merge/deploy; no Phase 8 work; the
   `README.md` is untouched (its Phase 6 paragraph is current; Phase 7 gets its paragraph
   at implementation exit, per the Phase 6 pattern).
+
+---
+
+## 19. Implementation decisions & deviations (as built, 2026-11-17)
+
+> Appended by the implementing session. The plan above remains the approved
+> design; everything here records where the build landed, what drifted, and
+> why. Nothing in this section silently rewrites §1–§18.
+
+**Delivered:** the complete P7 milestone — shared validation boundary
+(`src/shared/contractValidation.ts`), compatibility engine (`contractDiff.ts`,
+R1–R21, verdict precedence, byte-deterministic findings), consumer rubric
+(`consumerRubric.ts`, C1–C7), seven hunts (`kind: 'contract'`), 24 exercises
+(8/9/7), four endpoints (`validate | compare | verify-consumer | evaluate`),
+OpenAPI 1.2.0 / 42 operations / zero new error codes, one nav entry after
+Database, `/progress` Contract Testing section, five lazy routes, migration
+`0013` (zero DDL, **local D1 only**; production stays at `schema_version` 12),
+and `docs/phase-7-exit-audit.md` with the criterion-by-criterion verdicts.
+
+**D-P7-1 — Consumer rubric gates (C3/C5) cannot reject the canonical wrong
+answers within the plan's 10/25/15/20/10/10/10 weighting.** The full clone
+(requires every provider field) scores 85 under the plan's C3=15/−5-per-extra
+rule — the plan's own exit criteria 14 ("score < 70") is unreachable. The
+build keeps every point value exactly as specified and adds two explicit
+gates, only for the two failure modes the exercise exists to teach:
+(1) full-pin detection (required ⊇ all 9 platform `Product` fields) ⇒ score
+capped at 60 and C3 marked failed — "rejected by C3"; (2) `additionalProperties:
+false` ⇒ score capped at 65 and C5 marked failed — "rejected by C5". All
+other answers score exactly as the plan specifies. Criteria 13/14/15 pass.
+
+**D-P7-2 — The exercise-start semantic is exercise-generic.** §5.1 allows
+exactly four new endpoints, so no `POST /api/v1/contract/exercises/.../start`
+route exists. The existing `POST /api/v1/sql/exercises/{exerciseId}/start`
+now idempotently starts contract exercises too (same handler, same semantics:
+mints a clean guest session when the browser has none, idempotent attempt
+creation, 404 otherwise). No new operation was added — the OpenAPI document
+describes both dialects on that one path (`info.version` still 1.2.0, 42
+operations). Contract exercise ids satisfy the same id pattern
+(`^[a-z0-9][a-z0-9-]{2,63}$`, ≤ 64 chars; the longest shipped id is 32).
+
+**D-P7-3 — compare-family results keyed by stable finding ids.** Exercises
+grade classifications keyed by per-exercise finding ids (`finding-memo`,
+`finding-type`, …) rather than by (rule, path) tuples — the client-safe
+checklist carries those ids, the server holds the expected map.
+`contract-int-compare-enum-01` and `contract-adv-breaking-req-01` carry a
+second sub-check (impact-reason selection, 30 points) matching the plan's
+"with correct consumer-impact reason selected" wording; the rest are
+100-point classification drills. `contract-int-compare-additive-01`
+(classifications, no choices) uses the 70/30 correctness/completeness split
+as specified; exercises with choices grade classifications at 70 / choices at
+30.
+
+**D-P7-4 — `validate` answer union widened per §7.3.** §4.7 specifies
+`{ kind: 'validate', payload }`; §7.3 mixes "select which assertion fires"
+with "fix the payload". The shipped union is `{ kind: 'validate',
+selections?: string[], payload?: unknown }` — each compiled rubric declares
+the graded sides. Two-stage exercises (`contract-bgn-types-01`,
+`contract-int-nested-01`) grade selections 40 / payload 60; single-sided
+exercises grade selections 100. Both §7.3 evaluation descriptions are
+satisfied with no unreachable branch.
+
+**D-P7-5 — hunt-contract-007 alias assertion targeting.** Criterion 21 says
+the assertion list names `$.categoryName` required-missing. The drift payload
+does rename `categoryName → category` (and re-cases `stockStatus`), so an
+expectation pinning `categoryName` fails with exactly that assertion (asserted
+in `tests/server/contract.test.ts`). The §4.5.1 worked example (critical five
+only) fails on the `stockStatus` enum instead — both are the correct designed
+evidence for their respective expectations; the hunt teaches "attitude toward
+any failing assertion", not a single string.
+
+**D-P7-6 — Order of findings for ref-inlined schemas.** The §4.4 parallel
+walk visits `$ref`-inlined subschemas once per use site. Identical (rule,
+change, classification) findings from those sites are collapsed (shortest
+path wins) — the learner sees each distinct change once, not once per
+reference. Verdicts and classifications are unchanged; ordering remains
+deterministic (classification rank → path → rule).
+
+**D-P7-7 — `R3` request-side, and two R5/R4 corner readings.** The rule table
+is response-scoped for R3; request-side property removal (with any candidate
+shape) is reported as **review** ("strict clients sending it will fail")
+rather than breaking or silent — conservative and honest. R5 in the built
+engine fires only when a response contract relaxes `additionalProperties:
+false → true` (wire-open); additive properties with an open base schema are
+R4-compatible (criterion 7 passes: memo ⇒ compatible, enum widening ⇒
+review). x-contract-meta (`statuses`, `mediaType`) is a documented mini-contract
+annotation consumed by R16–R18; it is stripped from JSON Schema semantics and
+never appears in fixtures.
+
+**D-P7-8 — Index chunk is NOT byte-identical to `main`.** `eeded31`'s index
+chunk was 397.20 kB (gzip 122.66 kB); the built index is ~417.8 kB (gzip
+127.75 kB, +5.09 KB). The delta is the mandatory wiring content (tracks,
+scenarios, curriculum entries for the seven hunts) — no new eager dependency,
+and `@cfworker/json-schema` is confirmed absent from the eager chunk. Contract
+lazy chunks total ≈ 38.7 KB gzip against the ≤ 60 KB budget. Criterion 29's
+byte-identity expectation is unmet by necessity (the wiring had to ship
+somewhere); the deviation is recorded here rather than hidden.
+
+**D-P7-9 — `0013` exists (zero DDL) and is local-only.** It exists because the
+repository ships one additive migration per phase (0011, 0012 precedent) and
+`/api/health` observability benefits from the marker; without it, health would
+keep reporting 12 while Phase 7 code is deployed. It contains exactly one
+`UPDATE app_meta …` statement; **production remains `schema_version` 12**;
+`0013` is applied to the local D1 only; the Phase 5/6 pre-migration-export
+protocol applies inside any separately approved Phase 7 release. Migration
+fresh/upgrade tests (`migration-0013.test.ts`) pass, including a through-12
+upgrade with planted rows.
+
+**D-P7-10 — Out-of-contract work not touched:** push/PR/merge/deploy, remote
+migrations, Phase 8, SQL playground, Phase 5 API surfaces (only the exercise-start
+semantics widened per D-P7-2), and the backup branch. The Phase 7 plan and
+technical decisions were not rewritten; deviations are recorded, not applied
+silently.

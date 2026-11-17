@@ -78,6 +78,10 @@ const EXPECTED_ROUTES: ReadonlyArray<readonly [string, string]> = [
   ['post', '/api/v1/sql/exercises/{exerciseId}/start'],
   ['post', '/api/v1/sql/evaluate'],
   ['get', '/api/v1/sql/hunts/{huntId}/seed'],
+  ['post', '/api/v1/contract/validate'],
+  ['post', '/api/v1/contract/compare'],
+  ['post', '/api/v1/contract/verify-consumer'],
+  ['post', '/api/v1/contract/evaluate'],
 ]
 
 const HTTP_METHODS = new Set(['get', 'post', 'patch', 'put', 'delete'])
@@ -122,7 +126,7 @@ describe('openapi.json — document shape', () => {
     expect(spec.servers).toEqual([{ url: '/', description: expect.any(String) }])
     const tags = spec.tags.map((tag) => tag.name).sort()
     expect(tags).toEqual(
-      ['account', 'admin', 'auth', 'cart', 'catalogue', 'checkout', 'orders', 'practice'].sort(),
+      ['account', 'admin', 'auth', 'cart', 'catalogue', 'checkout', 'contract', 'orders', 'practice'].sort(),
     )
   })
 
@@ -133,7 +137,7 @@ describe('openapi.json — document shape', () => {
 })
 
 describe('openapi.json — route coverage', () => {
-  it('documents exactly the curated set of 38 operations', () => {
+  it('documents exactly the curated set of 42 operations', () => {
     const documented: string[] = []
     for (const [path, item] of Object.entries(spec.paths)) {
       for (const method of Object.keys(item)) {
@@ -143,7 +147,7 @@ describe('openapi.json — route coverage', () => {
       }
     }
     expect(documented.sort()).toEqual(EXPECTED_ROUTES.map(([m, p]) => `${m} ${p}`).sort())
-    expect(documented).toHaveLength(38)
+    expect(documented).toHaveLength(42)
   })
 
   it('every documented operation is registered in the server source', () => {
@@ -214,6 +218,23 @@ describe('openapi.json — operation hygiene', () => {
         ).toBe(true)
       }
     }
+  })
+})
+
+describe('openapi.json — contract engine compatibility', () => {
+  it('every component schema compiles as a valid 2020-12 schema under the wrapper', async () => {
+    const { compileSchema } = await import('../../src/shared/contractValidation')
+    const failures: string[] = []
+    for (const name of Object.keys(spec.components.schemas)) {
+      try {
+        // Component-local $refs resolve against the document — the same
+        // pattern the validate workspace uses for named operations.
+        compileSchema({ ...spec, $ref: `#/components/schemas/${name}` }, { internalDocument: true })
+      } catch (error) {
+        failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+    expect(failures).toEqual([])
   })
 })
 

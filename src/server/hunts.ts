@@ -28,9 +28,12 @@ export interface HuntDefinition {
    * defects; consumes the per-IP daily hunt-start cap. 'sql' = database bug
    * hunt; the defect lives in a server-side data delta applied to the
    * learner's browser sandbox (see sqlSeedDelta.ts); it never consumes the
-   * daily cap and can never activate a UI defect.
+   * daily cap and can never activate a UI defect. 'contract' = contract bug
+   * hunt; the defect is a server-controlled response-builder branch (live
+   * API) or a server-only fixture delta (consumer/provider); it never
+   * consumes the daily cap and can never activate a UI or SQL defect.
    */
-  kind?: 'ui' | 'sql'
+  kind?: 'ui' | 'sql' | 'contract'
 }
 
 export const HUNTS: readonly HuntDefinition[] = [
@@ -189,6 +192,75 @@ export const HUNTS: readonly HuntDefinition[] = [
     scenarioId: 'db-vanished-customer',
     defectIds: [],
     kind: 'sql',
+  },
+  // Phase 7 — contract bug hunts (kind: 'contract'). Consistent with
+  // kind: 'sql': they do NOT consume the per-IP daily hunt-start cap.
+  // The six live-API defects branch on isDefectActive at the product/
+  // order response builders; hunt-contract-007's drift is a server-only
+  // compiled delta resolved by the verify-consumer endpoint, so its
+  // defectIds stays empty and isDefectActive() is always false for it.
+  {
+    id: 'hunt-contract-001',
+    title: 'The field that went missing',
+    summary:
+      'One documented field is absent from the product response. Find the assertion that fires and report it.',
+    scenarioId: 'contract-hunt-missing-stock-status',
+    defectIds: ['CONTRACT-001'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-002',
+    title: 'The money that became text',
+    summary:
+      'A price renders fine but adds wrong. Find the serialization that broke the contract and report it.',
+    scenarioId: 'contract-hunt-string-price-cents',
+    defectIds: ['CONTRACT-002'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-003',
+    title: 'The value outside the vocabulary',
+    summary:
+      'The stock status says something the contract never promised. Find the casing drift and report it.',
+    scenarioId: 'contract-hunt-enum-casing',
+    defectIds: ['CONTRACT-003'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-004',
+    title: 'The success that said nothing',
+    summary:
+      'Cancelling an order succeeded — differently. Find the contract break on the status line and report it.',
+    scenarioId: 'contract-hunt-204-cancel',
+    defectIds: ['CONTRACT-004'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-005',
+    title: 'The field that was never asked for',
+    summary:
+      'Strict readers are refusing the catalogue response. Find the undocumented addition breaking them and report it.',
+    scenarioId: 'contract-hunt-undocumented-property',
+    defectIds: ['CONTRACT-005'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-006',
+    title: 'The timestamp that stopped being one',
+    summary:
+      'The orders feed carries a time the validator refuses. Find the format drift and report it.',
+    scenarioId: 'contract-hunt-epoch-created-at',
+    defectIds: ['CONTRACT-006'],
+    kind: 'contract',
+  },
+  {
+    id: 'hunt-contract-007',
+    title: 'The provider that moved',
+    summary:
+      'The consumer verification snapped red against v2. Triage what moved — consumer or provider — and report it.',
+    scenarioId: 'contract-hunt-consumer-drift',
+    defectIds: [],
+    kind: 'contract',
   },
 ]
 

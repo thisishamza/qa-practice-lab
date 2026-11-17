@@ -163,12 +163,12 @@ describe('isApiTokenFormat', () => {
 })
 
 describe('migration 0011 (api_tokens)', () => {
-  it('applies cleanly on a fresh database (schema_version 12)', () => {
+  it('applies cleanly on a fresh database (schema_version 13)', () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('12')
+    expect(row.value).toBe('13')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'api_tokens'")
@@ -199,7 +199,7 @@ describe('migration 0011 (api_tokens)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('12')
+    expect(after.value).toBe('13')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'api_tokens'")

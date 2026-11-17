@@ -89,15 +89,21 @@ export function HuntLaunchPanel({ scenario }: { scenario: Scenario }) {
             <span className="hunt-launch-hunt-summary">{huntState.hunt.summary}</span>
           </p>
           <p className="panel-note">
-            Start it to put this browser session into bug-hunt mode against the practice shop.
-            Defects are deterministic, scoped to your session, and disappear when you reset —
-            your cart, orders and sign-in are kept either way.
+            {scenario.huntId?.startsWith('hunt-contract-')
+              ? 'Start it to put this browser session into bug-hunt mode against the practice API. The provider is intentionally deviating — nothing to fix, something to find.'
+              : 'Start it to put this browser session into bug-hunt mode against the practice shop. Defects are deterministic, scoped to your session, and disappear when you reset — your cart, orders and sign-in are kept either way.'}
           </p>
           <div className="button-row">
             {activeThisHunt && scenario.huntId?.startsWith('hunt-db-') ? (
               <Link className="button button-secondary" to="/database/playground">
                 <Icon name="database" size={16} />
                 Investigate in the SQL playground
+              </Link>
+            ) : null}
+            {activeThisHunt && scenario.huntId?.startsWith('hunt-contract-') ? (
+              <Link className="button button-secondary" to="/contract">
+                <Icon name="contract" size={16} />
+                Open the contract workspaces
               </Link>
             ) : null}
             {activeThisHunt ? (

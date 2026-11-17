@@ -7,12 +7,12 @@ import {
 } from '../helpers/fake-d1'
 
 describe('migration 0012 (sql_lab_schema)', () => {
-  it('applies on a fresh database and reports schema_version 12', () => {
+  it('applies on a fresh database and reports schema_version 13', () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('12')
+    expect(row.value).toBe('13')
     // The attempts/report control-plane tables still exist, untouched.
     const tables = migrated.sqlite
       .prepare(
@@ -41,7 +41,7 @@ describe('migration 0012 (sql_lab_schema)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('12')
+    expect(after.value).toBe('13')
 
     const customer = migrated.sqlite
       .prepare('SELECT email, role FROM customers WHERE id = 4242')
