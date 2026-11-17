@@ -10,6 +10,14 @@
 // else BACKWARD-COMPATIBLE. Findings are stable-sorted by (classification
 // rank, path, rule) so output is byte-deterministic.
 //
+// Unsupported constructs are never silent: one-sided `type` declarations,
+// `anyOf`/`oneOf`/`allOf`, and boolean `items` emit a deterministic `review`
+// finding (human review required) instead of being skipped — a comparison
+// can no longer claim BACKWARD-COMPATIBLE merely because a construct the
+// engine does not understand changed or disappeared. Semantic comparison of
+// composite schemas is NOT implemented; byte-equal documents produce no
+// findings.
+//
 // Direction semantics (the locus is declared on the comparison):
 //   request  — the producer side of the contract (clients speaking to us)
 //   response — the consumer side of the contract (us speaking to clients)
@@ -47,6 +55,9 @@ const ANNOTATION_KEYS = new Set([
   'writeOnly',
   '$comment',
   'format-annotation',
+  // Annotations emitted by the wrapper's $ref dereferencer — not JSON
+  // Schema keywords, never findings.
+  'x-ref-source',
 ])
 
 const CONSTRAINT_KEYS = [
@@ -61,6 +72,8 @@ const CONSTRAINT_KEYS = [
   'minProperties',
   'maxProperties',
 ] as const
+
+const COMPOSITE_KEYS = ['anyOf', 'oneOf', 'allOf'] as const
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -104,9 +117,20 @@ function typeChangeKind(base: unknown, candidate: unknown): 'narrowed' | 'widene
   return 'incompatible'
 }
 
+interface Origin {
+  /** The `$ref` pointer / expansion chain identifying the owning definition. */
+  chain: string
+  /** The absolute pointer of the node carrying the marker. */
+  basePath: string
+}
+
 interface WalkContext {
   locus: ContractLocus
   findings: CompatibilityFinding[]
+  /** One parallel entry per finding — the $ref origin (null for roots/R20). */
+  origins: Array<{ origin: Origin | null; path: string }>
+  /** The origin of the subtree currently being walked (set/restored per node). */
+  currentOrigin: Origin | null
 }
 
 function impact(rule: string, locus: ContractLocus): { consumerImpact: string; providerImpact: string } {
@@ -222,6 +246,20 @@ function impact(rule: string, locus: ContractLocus): { consumerImpact: string; p
   }
 }
 
+/** The `$ref` origin marker carried by a definition node or expansion root. */
+function markerOf(base: unknown, candidate: unknown): string | null {
+  const fromBase =
+    isPlainObject(base) && typeof base['x-ref-source'] === 'string'
+      ? (base['x-ref-source'] as string)
+      : null
+  if (fromBase) {
+    return fromBase
+  }
+  return isPlainObject(candidate) && typeof candidate['x-ref-source'] === 'string'
+    ? (candidate['x-ref-source'] as string)
+    : null
+}
+
 function classify(ctx: WalkContext, rule: string, path: string, change: string): CompatibilityFinding {
   const { consumerImpact, providerImpact } = impact(rule, ctx.locus)
   const classification = classificationFor(rule)
@@ -235,6 +273,7 @@ function classify(ctx: WalkContext, rule: string, path: string, change: string):
     providerImpact,
   }
   ctx.findings.push(finding)
+  ctx.origins.push({ origin: ctx.currentOrigin, path })
   return finding
 }
 
@@ -273,11 +312,75 @@ function classificationFor(rule: string): RuleClassification {
 
 const ENUM_WIDENED = 'review' as const
 
+/**
+ * Deterministic serialization for composite comparison. Object keys are
+ * sorted; array members are sorted too — union order in
+ * anyOf/oneOf/allOf carries no semantics, so composites compare as
+ * multisets. (stableJson is used only for composite schemas; the
+ * order-sensitive keywords `required` and `enum` are compared elsewhere.)
+ */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).sort().join(',')}]`
+  }
+  if (isPlainObject(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'undefined'
+}
+
+/**
+ * Composite schemas (anyOf/oneOf/allOf) carry semantics the engine does not
+ * compare. Any addition, removal or content change is a deterministic
+ * `review` finding — never silent, never auto-classified. Byte-equal (key-
+ * order-insensitive) composites produce no findings.
+ */
+function walkCompositeSchemas(
+  base: Record<string, unknown>,
+  candidate: Record<string, unknown>,
+  path: string,
+  ctx: WalkContext,
+): void {
+  for (const key of COMPOSITE_KEYS) {
+    const before = base[key]
+    const after = candidate[key]
+    if (before === undefined && after === undefined) {
+      continue
+    }
+    const beforeIsArray = Array.isArray(before)
+    const afterIsArray = Array.isArray(after)
+    if (beforeIsArray && afterIsArray) {
+      if (stableJson(before) !== stableJson(after)) {
+        classify(
+          ctx,
+          'R19',
+          joinPointer(path, key),
+          `${key} changed — composite schemas are not compared semantically; human review required`,
+        )
+      }
+      continue
+    }
+    classify(
+      ctx,
+      'R19',
+      joinPointer(path, key),
+      `${key} ${beforeIsArray ? 'removed' : 'added'} — composite schemas are not compared semantically; human review required`,
+    )
+  }
+}
+
 /** Walk two schema nodes in parallel. `path` is the JSON Pointer of the current node. */
-function walk(base: unknown, candidate: unknown, path: string, ctx: WalkContext): void {
+function walk(base: unknown, candidate: unknown, path: string, ctx: WalkContext, origin: Origin | null = null): void {
   if (!isPlainObject(base) || !isPlainObject(candidate)) {
     return
   }
+  const marker = markerOf(base, candidate)
+  const nextOrigin: Origin | null = marker ? { chain: marker, basePath: path } : origin
+  const previousOrigin = ctx.currentOrigin
+  ctx.currentOrigin = nextOrigin
 
   // x-contract-meta: mini-contract annotations for status/media-type diffs.
   // Structural-only; stripped from JSON Schema semantics (annotation).
@@ -321,11 +424,25 @@ function walk(base: unknown, candidate: unknown, path: string, ctx: WalkContext)
   } else if (typeChange === 'widened') {
     classify(ctx, 'R7', joinPointer(path, 'type'), `type widened ${json(base.type)} → ${json(candidate.type)}`)
   } else if (typeChange === 'incompatible') {
-    // string → enum narrowing is the flagged incompatibility the table calls out.
-    if (base.type === 'string' && (candidate.enum !== undefined || candidate.type === 'enum')) {
-      classify(ctx, 'R6', joinPointer(path, 'type'), `type narrowed ${json(base.type)} → enum`)
-    } else if (isPlainObject(base) && typeof base.type === 'string' && typeof candidate.type === 'string') {
-      classify(ctx, 'R6', joinPointer(path, 'type'), `type changed ${json(base.type)} → ${json(candidate.type)}`)
+    if (base.type !== undefined && candidate.type !== undefined) {
+      // string → enum narrowing is the flagged incompatibility the table calls out.
+      if (base.type === 'string' && candidate.enum !== undefined) {
+        classify(ctx, 'R6', joinPointer(path, 'type'), `type narrowed ${json(base.type)} → enum`)
+      } else {
+        classify(ctx, 'R6', joinPointer(path, 'type'), `type changed ${json(base.type)} → ${json(candidate.type)}`)
+      }
+    } else {
+      // One-sided `type` declaration — the engine cannot prove either a
+      // widening or a narrowing, so the change is never reported as
+      // silently compatible. Human review required.
+      classify(
+        ctx,
+        'R19',
+        joinPointer(path, 'type'),
+        base.type === undefined
+          ? `type declaration added (${json(candidate.type)}) — semantic comparison not implemented for this direction; human review required`
+          : `type declaration removed (was ${json(base.type)}) — human review required`,
+      )
     }
   }
 
@@ -453,39 +570,58 @@ function walk(base: unknown, candidate: unknown, path: string, ctx: WalkContext)
       continue
     }
     if (before !== undefined && after !== undefined) {
-      walk(before, after, joinPointer(joinPointer(path, 'properties'), name), ctx)
+      walk(before, after, joinPointer(joinPointer(path, 'properties'), name), ctx, nextOrigin)
     }
   }
 
+  // ---- composite schemas (anyOf/oneOf/allOf) — never silently compatible ----
+  walkCompositeSchemas(base, candidate, path, ctx)
+
   // ---- items recursion --------------------------------------------------------
+  if (typeof base.items === 'boolean' || typeof candidate.items === 'boolean') {
+    if (typeof base.items === 'boolean' && typeof candidate.items === 'boolean') {
+      if (base.items !== candidate.items) {
+        classify(ctx, 'R19', joinPointer(path, 'items'), `items changed ${String(base.items)} → ${String(candidate.items)} — human review required`)
+      }
+    } else {
+      classify(
+        ctx,
+        'R19',
+        joinPointer(path, 'items'),
+        `items changed between boolean and schema (${json(base.items)} → ${json(candidate.items)}) — human review required`,
+      )
+    }
+  }
   if (isPlainObject(base.items) && isPlainObject(candidate.items)) {
-    walk(base.items, candidate.items, joinPointer(path, 'items'), ctx)
+    walk(base.items, candidate.items, joinPointer(path, 'items'), ctx, nextOrigin)
   }
 
   // ---- items arrays / tuples --------------------------------------------------
   if (Array.isArray(base.items) && Array.isArray(candidate.items)) {
     const length = Math.max(base.items.length, candidate.items.length)
     for (let index = 0; index < length; index += 1) {
-      walk(base.items[index], candidate.items[index], `${joinPointer(path, 'items')}/${index}`, ctx)
+      walk(base.items[index], candidate.items[index], `${joinPointer(path, 'items')}/${index}`, ctx, nextOrigin)
     }
   }
 
   // ---- nested boolean additionalProperties-as-schema ---------------------------
   if (isPlainObject(base.additionalProperties) && isPlainObject(candidate.additionalProperties)) {
-    walk(base.additionalProperties, candidate.additionalProperties, joinPointer(path, 'additionalProperties'), ctx)
+    walk(base.additionalProperties, candidate.additionalProperties, joinPointer(path, 'additionalProperties'), ctx, nextOrigin)
   }
 
   // ---- generic recursion for other composite keywords -------------------------
   for (const key of keySet) {
-    if (['required', 'type', 'const', 'enum', 'pattern', 'format', 'properties', 'items', 'additionalProperties', 'x-contract-meta'].includes(key)) {
+    if (['required', 'type', 'const', 'enum', 'pattern', 'format', 'properties', 'items', 'additionalProperties', 'x-contract-meta', 'x-ref-source', 'anyOf', 'oneOf', 'allOf'].includes(key)) {
       continue
     }
     const before = base[key]
     const after = candidate[key]
     if (isPlainObject(before) && isPlainObject(after)) {
-      walk(before, after, joinPointer(path, key), ctx)
+      walk(before, after, joinPointer(path, key), ctx, nextOrigin)
     }
   }
+
+  ctx.currentOrigin = previousOrigin
 }
 
 /** x-contract-meta: mini-contract status/media-type annotations (R16–R18). */
@@ -537,28 +673,38 @@ export function diffContracts(
 ): ContractDiffResult {
   // Detect `$ref` retargets BEFORE normalization (it erases refs).
   const refFindings: CompatibilityFinding[] = []
-  const ctxRef: WalkContext = { locus: options.locus, findings: refFindings }
+  const ctxRef: WalkContext = { locus: options.locus, findings: refFindings, origins: [], currentOrigin: null }
   walkRefTargets(base, candidate, '/', ctxRef)
 
   const normalizedBase = normalizeSchema(base)
   const normalizedCandidate = normalizeSchema(candidate)
 
-  const ctx: WalkContext = { locus: options.locus, findings: [] }
+  const ctx: WalkContext = { locus: options.locus, findings: [], origins: [], currentOrigin: null }
   walk(normalizedBase, normalizedCandidate, '/', ctx)
   ctx.findings.push(...refFindings)
+  ctx.origins.push(...ctxRef.origins)
 
-  // `$ref` inlining duplicates each subschema under every use site —
-  // collapse identical (rule, change, classification) triples, keeping the
-  // shortest (least nested) path. Output stays byte-deterministic.
-  const bySignature = new Map<string, CompatibilityFinding>()
-  for (const finding of ctx.findings) {
-    const signature = `${finding.rule}|${finding.change}|${finding.classification}`
+  // Collapse genuinely-duplicated findings — the same change emitted by the
+  // same $ref definition inlined at multiple use sites (definition body and
+  // each expansion site). Proven duplicates only: the signature carries the
+  // ref origin chain plus the path suffix relative to the carrying node, so
+  // identical changes at *independent* locations (no shared origin) can never
+  // merge, and identical nested changes at distinct locations never merge.
+  // Output stays byte-deterministic.
+  const bySignature = new Map<string, { finding: CompatibilityFinding; order: number }>()
+  for (let index = 0; index < ctx.findings.length; index += 1) {
+    const finding = ctx.findings[index]
+    const originEntry = ctx.origins[index]
+    const signature =
+      originEntry?.origin != null
+        ? `${finding.rule}|${finding.change}|${finding.classification}|${originEntry.origin.chain}|${finding.path.slice(originEntry.origin.basePath.length)}`
+        : `${finding.rule}|${finding.change}|${finding.classification}|${finding.path}`
     const existing = bySignature.get(signature)
-    if (!existing || finding.path.length < existing.path.length) {
-      bySignature.set(signature, finding)
+    if (!existing || finding.path.length < existing.finding.path.length) {
+      bySignature.set(signature, { finding, order: index })
     }
   }
-  const findings = [...bySignature.values()]
+  const findings = [...bySignature.values()].map((entry) => entry.finding)
   findings.sort((a, b) => {
     const rank = CLASSIFICATION_RANK[a.classification] - CLASSIFICATION_RANK[b.classification]
     if (rank !== 0) return rank

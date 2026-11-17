@@ -351,3 +351,198 @@ describe('ledger fixture pairs produce the curated sets', () => {
     expect(diff(base, candidate, 'request').verdict).toBe('compatible')
   })
 })
+
+describe('Finding 4 — independent findings at distinct paths are preserved', () => {
+  it('two sibling properties with identical breaking changes produce two findings', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' } } })
+    const candidate = schema({ type: 'object', properties: { a: { type: 'integer' }, b: { type: 'integer' } } })
+    const result = diff(base, candidate, 'response')
+    const paths = result.findings.map((finding) => finding.path)
+    expect(paths).toContain('/properties/a/type')
+    expect(paths).toContain('/properties/b/type')
+    expect(result.findings.filter((f) => f.rule === 'R6')).toHaveLength(2)
+    expect(result.verdict).toBe('breaking')
+  })
+
+  it('two nested objects with identical constraint relaxations produce two findings', () => {
+    const base = schema({
+      type: 'object',
+      properties: {
+        x: { type: 'object', properties: { n: { type: 'integer', minimum: 1 } } },
+        y: { type: 'object', properties: { n: { type: 'integer', minimum: 1 } } },
+      },
+    })
+    const candidate = schema({
+      type: 'object',
+      properties: {
+        x: { type: 'object', properties: { n: { type: 'integer', minimum: 0 } } },
+        y: { type: 'object', properties: { n: { type: 'integer', minimum: 0 } } },
+      },
+    })
+    const result = diff(base, candidate, 'response')
+    const r13 = result.findings.filter((finding) => finding.rule === 'R13')
+    expect(r13.map((finding) => finding.path).sort()).toEqual([
+      '/properties/x/properties/n/minimum',
+      '/properties/y/properties/n/minimum',
+    ])
+    expect(result.verdict).toBe('breaking')
+  })
+
+  it('a shared $ref used at two locations collapses to one finding with ref-origin proof', () => {
+    // Both use sites inline the same definition and produce the identical
+    // underlying change — the engine must report it once (definition and
+    // expansion sites of one definition are one change), not twice.
+    const base = {
+      type: 'object',
+      properties: {
+        left: { $ref: '#/definitions/shared' },
+        right: { $ref: '#/definitions/shared' },
+      },
+      definitions: {
+        shared: { type: 'object', properties: { p: { type: 'string', minimum: 1 } } },
+      },
+    }
+    const candidate = {
+      type: 'object',
+      properties: {
+        left: { $ref: '#/definitions/shared' },
+        right: { $ref: '#/definitions/shared' },
+      },
+      definitions: {
+        shared: { type: 'object', properties: { p: { type: 'string', minimum: 0 } } },
+      },
+    }
+    const result = diff(base, candidate, 'response')
+    const r13 = result.findings.filter((finding) => finding.rule === 'R13')
+    expect(r13).toHaveLength(1)
+    expect(r13[0].path).toMatch(/^\/properties\/(left|right)\/properties\/p\/minimum$|^\/definitions\/shared\/properties\/p\/minimum$/)
+  })
+
+  it('two independent $refs with similar but distinct findings are both reported', () => {
+    const base = {
+      type: 'object',
+      properties: {
+        alpha: { $ref: '#/definitions/alpha' },
+        beta: { $ref: '#/definitions/beta' },
+      },
+      definitions: {
+        alpha: { type: 'object', properties: { n: { type: 'integer', minimum: 1 } } },
+        beta: { type: 'object', properties: { m: { type: 'integer', minimum: 5 } } },
+      },
+    }
+    const candidate = {
+      type: 'object',
+      properties: {
+        alpha: { $ref: '#/definitions/alpha' },
+        beta: { $ref: '#/definitions/beta' },
+      },
+      definitions: {
+        alpha: { type: 'object', properties: { n: { type: 'integer', minimum: 0 } } },
+        beta: { type: 'object', properties: { m: { type: 'integer', minimum: 3 } } },
+      },
+    }
+    const result = diff(base, candidate, 'response')
+    const paths = result.findings.map((finding) => finding.path)
+    expect(paths).toContain('/properties/alpha/properties/n/minimum')
+    expect(paths).toContain('/properties/beta/properties/m/minimum')
+  })
+
+  it('the curated ledger fixture outputs are unchanged', () => {
+    const breaking = diff(LEDGER_V1_SCHEMA, LEDGER_V2_BREAKING_SCHEMA, 'response')
+    expect(breaking.findings.map((finding) => finding.rule)).toEqual(
+      expect.arrayContaining(['R13', 'R6', 'R3', 'R8']),
+    )
+    expect(breaking.findings.filter((finding) => finding.rule === 'R6')).toHaveLength(1)
+    const additive = diff(LEDGER_V1_SCHEMA, LEDGER_V2_COMPATIBLE_SCHEMA, 'response')
+    expect(additive.findings.map((finding) => finding.rule).sort()).toEqual(['R4', 'R9'])
+  })
+})
+
+describe('Finding 5 — unsupported constructs never certify compatibility silently', () => {
+  it('a removed type declaration (response) emits review, not compatible', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'string' } } })
+    const candidate = schema({ type: 'object', properties: { a: {} } })
+    const result = diff(base, candidate, 'response')
+    expect(result.verdict).toBe('review')
+    const finding = result.findings.find((f) => f.path === '/properties/a/type')
+    expect(finding?.rule).toBe('R19')
+    expect(finding?.classification).toBe('review')
+  })
+
+  it('a removed type declaration (request) emits review, not compatible', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'string' } } })
+    const candidate = schema({ type: 'object', properties: { a: {} } })
+    const result = diff(base, candidate, 'request')
+    expect(result.verdict).toBe('review')
+    expect(result.findings.some((f) => f.rule === 'R19')).toBe(true)
+  })
+
+  it('an added type declaration emits review, not compatible', () => {
+    const base = schema({ type: 'object', properties: { a: {} } })
+    const candidate = schema({ type: 'object', properties: { a: { type: 'string' } } })
+    const result = diff(base, candidate, 'response')
+    expect(result.verdict).toBe('review')
+    expect(result.findings.some((f) => f.rule === 'R19' && f.path === '/properties/a/type')).toBe(true)
+  })
+
+  it('both-declared incomparable types stay R6 breaking', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'object' } } })
+    const candidate = schema({ type: 'object', properties: { a: { type: 'string' } } })
+    const result = diff(base, candidate, 'response')
+    expect(result.verdict).toBe('breaking')
+    expect(result.findings.some((f) => f.rule === 'R6')).toBe(true)
+  })
+
+  it('anyOf added emits review, never a silent compatible verdict', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'string' } } })
+    const candidate = schema({ type: 'object', anyOf: [{ type: 'string' }, { type: 'null' }], properties: { a: { type: 'string' } } })
+    const result = diff(base, candidate, 'response')
+    expect(result.verdict).toBe('review')
+    expect(result.findings.some((f) => f.rule === 'R19' && f.path === '/anyOf')).toBe(true)
+  })
+
+  it('anyOf removed emits review', () => {
+    const base = schema({ type: 'object', anyOf: [{ type: 'string' }] })
+    const candidate = schema({ type: 'object' })
+    expect(diff(base, candidate, 'response').verdict).toBe('review')
+  })
+
+  it('anyOf content changed but equal in stable form is not a finding; different content is review', () => {
+    const one = schema({ type: 'object', anyOf: [{ type: 'string' }, { type: 'null' }] })
+    const sameShuffled = schema({ type: 'object', anyOf: [{ type: 'null' }, { type: 'string' }] })
+    expect(diff(one, sameShuffled, 'response').findings.some((f) => f.rule === 'R19')).toBe(false)
+    const changed = schema({ type: 'object', anyOf: [{ type: 'integer' }, { type: 'null' }] })
+    const r = diff(one, changed, 'response')
+    expect(r.verdict).toBe('review')
+  })
+
+  it('oneOf and allOf changes emit review, never silent compatible', () => {
+    const baseOne = schema({ oneOf: [{ type: 'string' }] })
+    const candidateOne = schema({ oneOf: [{ const: 'x' }] })
+    expect(diff(baseOne, candidateOne, 'response').verdict).toBe('review')
+    const addedAll = schema({ allOf: [{ type: 'object' }] })
+    const baseAll = schema({})
+    expect(diff(baseAll, addedAll, 'response').verdict).toBe('review')
+    const removedAll = schema({})
+    expect(diff(addedAll, removedAll, 'response').verdict).toBe('review')
+  })
+
+  it('boolean items toggles are review, never silent', () => {
+    const baseFalse = schema({ type: 'array', items: false })
+    const candidateTrue = schema({ type: 'array', items: true })
+    expect(diff(baseFalse, candidateTrue, 'response').verdict).toBe('review')
+    const baseSchema = schema({ type: 'array', items: { type: 'string' } })
+    expect(diff(baseSchema, baseFalse, 'response').verdict).toBe('review')
+    expect(diff(baseFalse, baseSchema, 'response').verdict).toBe('review')
+  })
+
+  it('supported comparisons remain fully accurate (no false review noise)', () => {
+    const base = schema({ type: 'object', properties: { a: { type: 'integer' } } })
+    const additive = schema({ type: 'object', properties: { a: { type: 'integer' }, b: { type: 'string' } } })
+    expect(diff(base, additive, 'response').verdict).toBe('compatible')
+    const allAdditiveRequired = schema({ type: 'object', required: ['a'], properties: { a: { type: 'integer' } } })
+    const same = diff(allAdditiveRequired, allAdditiveRequired, 'response')
+    expect(same.findings).toHaveLength(0)
+    expect(same.verdict).toBe('compatible')
+  })
+})

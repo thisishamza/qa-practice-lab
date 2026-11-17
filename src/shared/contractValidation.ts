@@ -64,7 +64,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-const UNSUPPORTED_SCHEMA_KEYS = ['unevaluatedProperties', 'unevaluatedItems'] as const
+const UNSUPPORTED_SCHEMA_KEYS = ['unevaluatedProperties', 'unevaluatedItems', 'x-ref-source'] as const
 
 interface SchemaWalkState {
   nodes: number
@@ -101,6 +101,15 @@ function preflightSchema(node: unknown, depth: number, state: SchemaWalkState, l
       throw new ContractValidationError(
         'unsupported_schema',
         `\`${key}\` is not supported by this validator subset. Remove it from the schema.`,
+      )
+    }
+    // `__proto__` as an own key would invoke the prototype setter when the
+    // dereferenced document is assembled. Reject it outright — never
+    // silently drop it or re-parent an object.
+    if (key === '__proto__') {
+      throw new ContractValidationError(
+        'unsupported_schema',
+        '`__proto__` is not allowed as a key in this validator subset — rename the property.',
       )
     }
   }
@@ -175,11 +184,28 @@ function resolvePointer(doc: Record<string, unknown>, ref: string): unknown {
     .map((segment) => unescapePointerSegment(segment))
   let current: unknown = doc
   for (const segment of segments) {
-    if (!isPlainObject(current) && !Array.isArray(current)) {
+    if (Array.isArray(current)) {
+      // JSON Pointer indices into arrays — own indices only.
+      if (!/^(0|[1-9]\d*)$/.test(segment)) {
+        throw new ContractValidationError('invalid_schema', `Unresolvable local \`$ref\`: ${ref}`)
+      }
+      const index = Number(segment)
+      if (index >= current.length) {
+        throw new ContractValidationError('invalid_schema', `Unresolvable local \`$ref\`: ${ref}`)
+      }
+      current = current[index]
+      continue
+    }
+    if (!isPlainObject(current)) {
+      throw new ContractValidationError('invalid_schema', `Unresolvable local \`$ref\`: ${ref}`)
+    }
+    // Own enumerable properties only — never inherited members such as
+    // `constructor`/`prototype`/`__proto__`, and never function objects.
+    if (!Object.prototype.hasOwnProperty.call(current, segment)) {
       throw new ContractValidationError('invalid_schema', `Unresolvable local \`$ref\`: ${ref}`)
     }
     current = (current as Record<string, unknown>)[segment]
-    if (current === undefined) {
+    if (typeof current === 'function') {
       throw new ContractValidationError('invalid_schema', `Unresolvable local \`$ref\`: ${ref}`)
     }
   }
@@ -187,9 +213,50 @@ function resolvePointer(doc: Record<string, unknown>, ref: string): unknown {
 }
 
 /**
+ * Collect the pointer each $ref TARGET is reachable by. Target identity
+ * (object identity, not the pointer value) is what lets normalization tag
+ * the definition node with the same `x-ref-source` annotation that its
+ * expansion sites receive — proving findings from one definition are one
+ * underlying change. Nothing outside this function is tagged.
+ */
+function collectRefTargets(root: Record<string, unknown>): Map<object, string> {
+  const targets = new Map<object, string>()
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item)
+      return
+    }
+    if (!isPlainObject(node)) {
+      return
+    }
+    const ref = node.$ref
+    if (typeof ref === 'string' && (ref === '#' || ref.startsWith('#/'))) {
+      try {
+        const target = resolvePointer(root, ref)
+        if (target !== null && typeof target === 'object' && !targets.has(target)) {
+          targets.set(target, ref)
+        }
+      } catch {
+        // Unresolvable targets are reported when dereferencing actually runs.
+      }
+    }
+    for (const value of Object.values(node)) {
+      if (value !== node) {
+        visit(value)
+      }
+    }
+  }
+  visit(root)
+  return targets
+}
+
+/**
  * Preflight + dereference. Returns a schema with no local `$ref` pointers,
  * safe to hand to the library compiler. Hops are capped per resolution
  * chain and the dereferenced node budget is re-checked before return.
+ * $ref target definitions and expansion roots carry an `x-ref-source`
+ * annotation (ignored by validators) so callers can recognize shared
+ * definition bodies.
  */
 export function normalizeSchema(
   schema: unknown,
@@ -203,6 +270,7 @@ export function normalizeSchema(
     : { nodes: CONTRACT_MAX_SCHEMA_NODES, depth: CONTRACT_MAX_SCHEMA_DEPTH }
   preflightSchema(schema, 0, { nodes: 0 }, limits)
   const root = schema
+  const refTargets = collectRefTargets(root)
 
   const deref = (node: unknown, chain: readonly string[], budget: SchemaWalkState): unknown => {
     budget.nodes += 1
@@ -233,11 +301,23 @@ export function normalizeSchema(
         )
       }
       const target = resolvePointer(root, ref)
-      return deref(target, [...chain, ref], budget)
+      const expanded = deref(target, [...chain, ref], budget)
+      // Tag the expansion root with its ref origin chain (an annotation —
+      // unknown keywords are ignored by validators). The compatibility
+      // engine uses it to prove that findings from the same definition
+      // inlined at multiple use sites are one underlying change.
+      if (isPlainObject(expanded) || Array.isArray(expanded)) {
+        return { ...expanded, 'x-ref-source': [...chain, ref].join('>') }
+      }
+      return expanded
     }
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(node)) {
       out[key] = deref(value, chain, budget)
+    }
+    const targetPointer = refTargets.get(node)
+    if (targetPointer !== undefined) {
+      out['x-ref-source'] = targetPointer
     }
     return out
   }
@@ -477,10 +557,12 @@ function toAssertion(
  * Validate a payload against a schema. Returns the assertion list — all
  * assertions, never short-circuited (teaching surface), deterministically
  * ordered by (path, keyword, message). Throws ContractValidationError for
- * over-budget input.
+ * over-budget input. `options` (`internalDocument`) exists only for
+ * first-party documents that exceed the learner budgets by volume (the
+ * served platform contract); learner input never passes it.
  */
-export function validatePayload(schema: unknown, payload: unknown): ContractAssertion[] {
-  const compiled = compileSchema(schema)
+export function validatePayload(schema: unknown, payload: unknown, options: ContractCompileOptions = {}): ContractAssertion[] {
+  const compiled = compileSchema(schema, options)
   assertPayloadBudget(payload)
   const outcome = compiled.validate(payload)
   if (outcome.valid) {
@@ -512,7 +594,8 @@ export function validatePayload(schema: unknown, payload: unknown): ContractAsse
 export function validatePayloadDetailed(
   schema: unknown,
   payload: unknown,
+  options: ContractCompileOptions = {},
 ): { valid: boolean; assertions: ContractAssertion[] } {
-  const assertions = validatePayload(schema, payload)
+  const assertions = validatePayload(schema, payload, options)
   return { valid: assertions.length === 0, assertions }
 }

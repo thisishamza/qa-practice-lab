@@ -1129,7 +1129,7 @@ completion if credits run short — never silently incomplete.
 |---|---|---|
 | 1 | `@cfworker/json-schema` error-object shape drift across minors (API surface `validate`/`Validator`) | Wrapper module is the only import site; pin `^4.1.6`; upgrade only with the full §12.1.1 matrix green |
 | 2 | Learner pastes a pathological schema (deep `$ref` chain, huge enum) — CPU exhaustion | Node/depth/hop budgets pre-flight; interpreter aborts deterministically; scoped 30/min cap; 400 with specific reason (`complexity_limit` — rides `invalid_request`, no new code) |
-| 3 | Catastrophic-backtracking `pattern` regex in a learner candidate schema | `pattern` length ≤ 256; honest documentation note in the workspace ("prefer anchored, possessive-style patterns"); no possessive support needed at our sizes; milestone adds one ReDoS-shaped fixture to the timeout tests to keep the budget honest |
+| 3 | Catastrophic-backtracking `pattern` regex in a learner candidate schema | `pattern` length ≤ 256 caps pattern **size only** — it does not bound regex execution cost, and JavaScript `RegExp` has no possessive quantifiers; a short nested-quantifier pattern (e.g. `(a+)+$`) can still backtrack catastrophically. Enforcement is: the Pages Functions CPU-time limit (server plane) and tab freeze risk (browser plane), nothing more. The aspirational "possessive-style patterns" note and the planned ReDoS-shaped timeout fixture (§14 row 3 as originally written) were never delivered — recorded as §20/Limitation 1; a learner-facing warning now exists in `/contract/validate` |
 | 4 | Browser and server validators diverge (different dialect handling) | Single shared wrapper (`src/shared/contractValidation.ts`) imported by both planes — one code path, one matrix; SSR tests exercise the server path with the same payloads as browser unit tests |
 | 5 | Drift between `/openapi.json` and the *server* surfaces unexposed (the validate workspace shows the doc, not the implementation) | Accepted and documented: the served contract is under a both-directions coverage test today; Phase 7 does not add runtime conformance sampling (would require live traffic capture — out of scope) |
 | 6 | Learner confuses "contract validates" with "API works" — validation checks shape, not semantics | Every workspace carries the Phase 4-style explainer strip ("Valid ≠ correct — this checks structure only"); guides reinforce; exercise debriefs repeat it |
@@ -1431,3 +1431,122 @@ migrations, Phase 8, SQL playground, Phase 5 API surfaces (only the exercise-sta
 semantics widened per D-P7-2), and the backup branch. The Phase 7 plan and
 technical decisions were not rewritten; deviations are recorded, not applied
 silently.
+
+---
+
+## 20. Independent-review corrections (2026-11-17, correction session)
+
+> Appended by the correction session. The six findings from the independent
+> review (2026-11-17, reported on the Phase 7 implementation) were implemented
+> on `feat/phase-7-contract-testing-lab`; no other scope was added and no
+> release action was taken. The review is not a committed artifact — it was
+> supplied by the maintainer in the working context.
+
+**F-C1 (HIGH) — `exampleEvidence` leaked the graded answers.** Nineteen of the
+24 exercise briefs shipped prose that named the expected selection ids,
+verdict sequences and rule ids **before submission** (the SQL-lab discipline
+— "counts/columns, never values" — was violated, and the leak lint did not
+check the field). Correction: all 24 `exampleEvidence` strings rewritten to
+shape-level guidance (counts, keyword families, structure). New regression
+tests in `tests/lib/contract-leak.test.ts` derive answer tokens dynamically
+from the server rubrics (selection ids, finding ids, choice keys) and assert
+no client-shipped evidence contains any of them; Verdict-sequence detection
+(≥ 2 findings, in expected order) and a rule-id token scan (`R1`–`R21`) are
+included. Memo: prose-level answer hints are enforced by review discipline
+and the lint catches exact tokens/sequences — the lint is not a complete
+semantic proof against paraphrase.
+
+**F-C2 (HIGH) — C6 was not load-bearing in the consumer rubric.** The
+reproduced expectation (critical-five pinned as `type: string` everywhere)
+scored 82 and passed while rejecting the provider's v1 payload. Correction:
+if C6 fails, the score is capped at 65 (gate added in `finalizeGates`);
+plan C1–C7 point arithmetic is unchanged. The reference expectation still
+scores 100; legitimate equivalents (const/enum variants, wider `number`
+type, reordered `required`) still pass; the false-negative expectation now
+fails the exercise (asserted).
+
+**F-C3 (MEDIUM) — 8-of-9 near-clones passed the minimalism exercise.** The
+D-P7-1 full-pin gate fired only at exactly 9/9. Correction: any
+non-critical required field now caps the score at 65 (`nonMinimal` gate);
+the full nine-field pin keeps its stronger wording (cap 60). Critical-five
+and extras as *optional* properties (never `required`) are untouched;
+per-extra and each-individual-extra regression tests added, plus the
+legitimate equivalents above.
+
+**F-C4 (MEDIUM) — duplicate collapse hid independent findings.** The
+`$ref`-inlining dedup signature (`rule|change|classification`) dropped
+independent findings at distinct paths with identical change text
+(reproduced: two sibling `string→integer` changes reported as one).
+Correction: ref-origin tracking through `normalizeSchema` — definition
+nodes and expansion roots carry an `x-ref-source` annotation (a JSON Schema
+annotation, ignored by validators; `x-ref-source` itself is rejected as a
+learner-supplied key). Findings are collapsed only when the ref origin
+chain and the path suffix relative to the carrying node match — identical
+independent siblings and nested changes are all reported (regression tests);
+genuine definition-inline duplicates still collapse (fixture outputs
+byte-identical to the review record: breaking R13/R6/R3/R8 + R19 + R2;
+compatible R4 + R9; required R1).
+
+**F-C5 (MEDIUM) — unsupported constructs could certify false-compatible.**
+One-sided `type` declarations, `anyOf`/`oneOf`/`allOf` and boolean `items`
+were silently skipped. Correction: all three emit a deterministic `review`
+finding ("human review required", JSON Pointer included); byte-equal
+composites (key-order- and member-order-insensitive) emit nothing — no
+false-safe verdict; `type` present-on-one-side only emits review; both-sides
+disjoint kinds remain R6. Request and response loci keep their R-rule
+semantics. **Composite schemas are still not semantically compared** — the
+findings say so explicitly; nothing is claimed beyond what is implemented.
+
+**F-C6 (LOW) — `__proto__` / inherited members in schema normalization.**
+Own `__proto__` keys silently vanished (prototype setter), and `$ref` could
+resolve onto inherited members and function objects (`#/constructor` compiled
+an inert, vacuous branch). Correction: `__proto__` keys are rejected at
+preflight (`unsupported_schema`); `x-ref-source` is reserved likewise;
+`$ref` traversal resolves own properties only, arrays accept only own
+indices, function targets are refused — deterministic `invalid_schema`
+errors, never a silently permissive schema. Own `constructor`/`prototype`
+property names work (regression tests).
+
+**F-C7 (recorded, not "fixed") — ReDoS remains a documented residual risk.**
+The 256-character `pattern` cap caps size only. JavaScript `RegExp` has no
+possessive/atomic quantifiers, and JS engines cannot bound backtracking.
+Server plane: the Pages Functions CPU limit terminates pathological cases;
+browser plane: the tab can freeze. No regex blacklist was added and none
+would be honest — nested-quantifier detection is not reliably decidable
+cheaply. A learner-facing warning now appears in `/contract/validate`
+(patterns must be non-nested); the planned ReDoS-shaped fixture was never
+implemented and is recorded as such.
+
+**F-C8 (NEW — found during corrections, fixed) — the live-platform-contract
+validate path was dead.** `/contract/validate`'s "Live platform contract"
+source passed the fetched 135 KB `/openapi.json` (~3,452 nodes) through the
+default 2,000-node learner budget, so it always threw `complexity_limit`.
+Correction: `validatePayload` accepts the documented `internalDocument`
+compile options, used only for the same-origin first-party document in the
+validate workspace (learner input never passes it); live validation now
+works end to end (regression test: the live document validates a Product
+payload and rejects a broken one under `internalDocument`). Recorded here
+because it is outside F-C1..F-C6 — accepted as an in-session defect fix,
+not a scope expansion.
+
+**Criterion 28/29/31 re-verified during this session:** 28 — browser probe
+not re-run for the contract pages generally, but the hunt-contract-002
+end-to-end flow (criterion 31) was probe-verified locally in an isolated
+local environment: start → string-price defect → bug report filed →
+deterministic evaluation rendered (78/100, per-check panel) → reveal
+unlocked post-submit → reset restores clean mode → zero console errors;
+pre-submit reveal remains locked with the solution content absent.
+29 — unchanged: production still `schema_version` 12, migration 0013
+local-only; index chunk ~417.8 kB (gzip ~127.7 KB, +~5 KB gzip — the wiring
+deviation from D-P7-8 stands and is NOT waived); contract chunks remain
+lazy-loaded; no eager dependency on the validator (0 matches in the eager
+chunk). 31 — **browser bug-report probe now PASSES for hunt-contract-002**;
+server-side coverage remains unchanged.
+
+**Reverification (correction session):** `npm run check` green — lint ✓,
+typecheck ×3 ✓, **1417/1417 tests across 70 files** (+66 vs the review
+baseline). `npm run build` clean. dist leak scan clean (zero `CONTRACT-xxx`).
+OpenAPI still **1.2.0 / 42 operations / 27 error codes**. No migration
+added, no D1 table, no binding, no dependency. All 24 reference answers and
+24 plausible-wrong answers re-verified through the real evaluators inside
+`npm run check`.

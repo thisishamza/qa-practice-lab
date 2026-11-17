@@ -5,6 +5,9 @@
 // the parity gate for both planes.
 
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import {
   assertPayloadBudget,
   compileSchema,
@@ -12,6 +15,7 @@ import {
   validatePayload,
   validatePayloadDetailed,
   ContractValidationError,
+  CONTRACT_MAX_SCHEMA_NODES,
 } from '../../src/shared/contractValidation'
 
 const SCHEMA_2020 = { $schema: 'https://json-schema.org/draft/2020-12/schema' } as const
@@ -200,5 +204,160 @@ describe('normalized schema determinism', () => {
     const b = validatePayloadDetailed(schema({ required: ['x'] }), {})
     expect(b.valid).toBe(false)
     expect(b.assertions).toEqual(a)
+  })
+})
+
+describe('Finding 6 — prototype keys and inherited members fail safely', () => {
+  it('a properties.__proto__ key is rejected at preflight with a deterministic error', () => {
+    // JSON.parse keeps own __proto__ keys — simulate exactly that path.
+    const malicious = JSON.parse('{"type":"object","properties":{"__proto__":{"type":"string"},"a":{"type":"string"}}}')
+    expect(() => compileSchema(malicious)).toThrow(ContractValidationError)
+    expect(() => compileSchema(malicious)).toThrowError(/__proto__/)
+  })
+
+  it('nested __proto__ keys anywhere in the schema are rejected', () => {
+    const nested = JSON.parse('{"type":"object","properties":{"a":{"type":"object","properties":{"__proto__":{"const":1}}}}}')
+    expect(() => compileSchema(nested)).toThrow(ContractValidationError)
+  })
+
+  it('supplied x-ref-source markers cannot be injected by learner schemas', () => {
+    const forged = JSON.parse('{"type":"object","x-ref-source":"#/definitions/forged"}')
+    expect(() => compileSchema(forged)).toThrow(ContractValidationError)
+  })
+
+  it('$ref to #/constructor is rejected, not resolved to an inherited member', () => {
+    expect(() => compileSchema({ properties: { a: { $ref: '#/constructor' } } })).toThrow(ContractValidationError)
+  })
+
+  it('$ref to #/__proto__ is rejected', () => {
+    expect(() => compileSchema({ properties: { a: { $ref: '#/__proto__' } } })).toThrow(ContractValidationError)
+  })
+
+  it('$ref to #/__proto__/constructor is rejected', () => {
+    expect(() => compileSchema({ properties: { a: { $ref: '#/__proto__/constructor' } } })).toThrow(ContractValidationError)
+  })
+
+  it('$ref to #/prototype is rejected', () => {
+    expect(() => compileSchema({ properties: { a: { $ref: '#/prototype' } } })).toThrow(ContractValidationError)
+  })
+
+  it('array indices in refs resolve to own indices only', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        items: { type: 'array', items: [{ type: 'string' }, { type: 'integer' }] },
+        x: { $ref: '#/properties/items/items/1' },
+      },
+    }
+    expect(() => compileSchema(schema)).not.toThrow()
+    expect(() =>
+      compileSchema({ ...schema, properties: { ...schema.properties, x: { $ref: '#/properties/items/items/length' } } }),
+    ).toThrow(ContractValidationError)
+    expect(() =>
+      compileSchema({ ...schema, properties: { ...schema.properties, x: { $ref: '#/properties/items/items/-1' } } }),
+    ).toThrow(ContractValidationError)
+  })
+
+  it('an own property legitimately named "constructor" works end to end', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        constructor: { type: 'string' },
+      },
+      required: ['constructor'],
+    }
+    const compiled = compileSchema(schema)
+    expect(compiled.validate({ constructor: 'x' }).valid).toBe(true)
+    expect(compiled.validate({}).valid).toBe(false)
+    // And a $ref to that own property resolves.
+    const named = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        constructor: { type: 'string', minLength: 2 },
+        refTarget: { $ref: '#/properties/constructor' },
+      },
+    }
+    expect(() => compileSchema(named)).not.toThrow()
+  })
+
+  it('an own property legitimately named "prototype" works end to end', () => {
+    const schema = { type: 'object', properties: { prototype: { type: 'integer' } } }
+    expect(compileSchema(schema).validate({ prototype: 1 }).valid).toBe(true)
+  })
+
+  it('the normalized document carries no function values after dereferencing', () => {
+    const compiled = compileSchema({ properties: { a: { $ref: '#/definitions/shared' } }, definitions: { shared: { type: 'object', properties: { ok: { const: 'yes' } } } } })
+    const walk = (node: unknown): void => {
+      expect(typeof node).not.toBe('function')
+      if (Array.isArray(node)) {
+        node.forEach(walk)
+      } else if (node && typeof node === 'object') {
+        Object.values(node).forEach(walk)
+      }
+    }
+    walk(compiled.normalized)
+  })
+})
+
+describe('Finding 8 — the served first-party contract validates end to end', () => {
+  const openapiPath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public', 'openapi.json')
+  const doc = JSON.parse(readFileSync(openapiPath, 'utf8')) as Record<string, unknown>
+
+  it('the live document exceeds the learner budget (why internalDocument exists)', () => {
+    const count = (node: unknown): number => {
+      let c = 1
+      if (Array.isArray(node)) {
+        for (const item of node) c += count(item)
+      } else if (node && typeof node === 'object') {
+        for (const value of Object.values(node)) c += count(value)
+      }
+      return c
+    }
+    expect(count(doc)).toBeGreaterThan(CONTRACT_MAX_SCHEMA_NODES)
+  })
+
+  it('rejects the live document under default learner budgets with complexity_limit', () => {
+    expect(() =>
+      compileSchema({ ...doc, $ref: '#/components/schemas/Product' }),
+    ).toThrow(ContractValidationError)
+    expect(() =>
+      compileSchema({ ...doc, $ref: '#/components/schemas/Product' }),
+    ).toThrow(/complexity_limit|budget/i)
+  })
+
+  it('validates a live Product payload against the live document with internalDocument', () => {
+    const payload = {
+      id: 1,
+      slug: 'ridgeline-2-person-tent',
+      name: 'Ridgeline 2-Person Tent',
+      description: 'A three-season dome tent with a vestibule and a full-coverage rainfly.',
+      categorySlug: 'camping',
+      categoryName: 'Camping',
+      priceCents: 34900,
+      currency: 'USD',
+      stockStatus: 'in_stock',
+    }
+    const compiled = compileSchema({ ...doc, $ref: '#/components/schemas/Product' }, { internalDocument: true })
+    const result = compiled.validate(payload)
+    expect(result.valid).toBe(true)
+    const broken = { ...payload, priceCents: 'not-a-number' as unknown as number }
+    expect(compiled.validate(broken).valid).toBe(false)
+  })
+
+  it('validatePayload accepts options and passes them through', () => {
+    const payload = {
+      id: 1,
+      slug: 'ridgeline-2-person-tent',
+      name: 'Ridgeline 2-Person Tent',
+      description: 'desc',
+      categorySlug: 'camping',
+      categoryName: 'Camping',
+      priceCents: 34900,
+      currency: 'USD',
+      stockStatus: 'in_stock',
+    }
+    expect(() => validatePayload({ ...doc, $ref: '#/components/schemas/Product' }, payload)).toThrow(ContractValidationError)
+    expect(validatePayload({ ...doc, $ref: '#/components/schemas/Product' }, payload, { internalDocument: true })).toEqual([])
   })
 })

@@ -280,7 +280,10 @@ export function ContractValidatePage() {
     }
     setParseError(null)
     try {
-      setAssertions(validatePayload(schema, payload))
+      // The live document is first-party (our own /openapi.json, ~3.5K
+      // nodes — over the learner budget), so it uses the documented
+      // internalDocument budget. Learner-pasted schemas never do.
+      setAssertions(validatePayload(schema, payload, isLive ? { internalDocument: true } : {}))
     } catch (error) {
       if (error instanceof ContractValidationError) {
         setParseError(error.message)
@@ -311,6 +314,13 @@ export function ContractValidatePage() {
         not certify the data means the right thing. Semantics are your job; shape is the
         contract&apos;s.
       </Callout>
+
+      <p className="panel-note">
+        <strong>Patterns:</strong> the 256-character limit caps pattern <em>size</em>, not regex
+        <em> cost</em> — a short nested-quantifier pattern can still backtrack catastrophically.
+        Prefer anchored, non-nested patterns. On the server, the platform&apos;s CPU limit
+        terminates pathological cases.
+      </p>
 
       <div className="contract-workspace">
         <section className="workspace-panel" aria-labelledby="validate-input-title">

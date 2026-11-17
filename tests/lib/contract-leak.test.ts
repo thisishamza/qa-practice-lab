@@ -11,6 +11,8 @@ import { dirname, join, relative } from 'node:path'
 import { DEFECTS } from '../../src/server/defects'
 import { CONTRACT_REVEALS } from '../../src/server/contractReveals'
 import { CONTRACT_HINTS } from '../../src/server/contractHints'
+import { CONTRACT_SERVER_EXERCISES } from '../../src/server/contractExercises'
+import { CONTRACT_EXERCISES } from '../../src/data/contractExercises'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -80,6 +82,79 @@ describe('reveal solutions and hint text stay out of client-shipped sources', ()
       }
     }
   })
+})
+
+// Answer tokens derived from the server-only rubrics — never hardcoded
+// literals. Anything an exercise grades against must not appear in its
+// client-shipped exampleEvidence, or the brief hands the answer over.
+const RULE_ID = /\bR(?:[1-9]|1[0-9]|2[01])\b/
+
+function expectedAnswerTokens(exerciseId: string): string[] {
+  const server = CONTRACT_SERVER_EXERCISES.find((exercise) => exercise.id === exerciseId)
+  if (!server) {
+    return []
+  }
+  const tokens: string[] = []
+  const evaluation = server.evaluation
+  if (evaluation.family === 'selections') {
+    tokens.push(...evaluation.expected)
+  } else if (evaluation.family === 'validate') {
+    tokens.push(...evaluation.expectedSelections)
+  } else if (evaluation.family === 'compare') {
+    tokens.push(...Object.keys(evaluation.expectedClassifications))
+    if (evaluation.expectedChoices) {
+      tokens.push(...Object.keys(evaluation.expectedChoices))
+    }
+  }
+  return tokens
+}
+
+function expectedVerdictSequences(exerciseId: string): string[] {
+  const server = CONTRACT_SERVER_EXERCISES.find((exercise) => exercise.id === exerciseId)
+  if (!server || server.evaluation.family !== 'compare') {
+    return []
+  }
+  const values = Object.values(server.evaluation.expectedClassifications)
+  if (values.length < 2) {
+    return []
+  }
+  return [values.join(', ').toLowerCase()]
+}
+
+describe('exampleEvidence never discloses the graded answer', () => {
+  it('the server registry resolves all 24 exercises and derives tokens for every graded family', () => {
+    expect(CONTRACT_EXERCISES).toHaveLength(24)
+    for (const exercise of CONTRACT_EXERCISES) {
+      const server = CONTRACT_SERVER_EXERCISES.find((candidate) => candidate.id === exercise.id)
+      expect(server, exercise.id).not.toBeUndefined()
+      if (server && server.evaluation.family !== 'consumer') {
+        expect(expectedAnswerTokens(exercise.id).length, exercise.id).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it.each(CONTRACT_EXERCISES.map((exercise) => [exercise.id, exercise] as const))(
+    '%s exampleEvidence contains no expected selection/finding ids, verdict sequences or rule ids',
+    (_id, exercise) => {
+      const evidence = exercise.exampleEvidence.toLowerCase()
+      for (const token of expectedAnswerTokens(exercise.id)) {
+        expect(
+          evidence.includes(token.toLowerCase()),
+          `${exercise.id} exampleEvidence contains answer token "${token}"`,
+        ).toBe(false)
+      }
+      for (const sequence of expectedVerdictSequences(exercise.id)) {
+        expect(
+          evidence.includes(sequence),
+          `${exercise.id} exampleEvidence contains the verdict sequence "${sequence}"`,
+        ).toBe(false)
+      }
+      expect(
+        RULE_ID.test(exercise.exampleEvidence),
+        `${exercise.id} exampleEvidence cites a rule id`,
+      ).toBe(false)
+    },
+  )
 })
 
 describe('client code never imports server-only contract modules', () => {

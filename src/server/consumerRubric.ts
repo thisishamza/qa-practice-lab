@@ -280,15 +280,20 @@ export function scoreConsumerExpectation(expectation: unknown): ConsumerRubricRe
 }
 
 /**
- * Gate logic (deviation D-P7-1, recorded in the Phase 7 exit audit): the
- * plan's C3=15/C5=10 weights alone cannot sink the two canonical wrong
- * answers below the 70 pass line, so two explicit gates cap the score.
- * All point values stay exactly as the plan specifies them; the caps fire
- * only for the two failure modes the exercise exists to teach:
- *   1. Full pin — requires EVERY provider field (9 of 9): the contract is
- *      the whole API, not the consumer's slice → cap at 60 (rejected by C3).
- *   2. Closed contract — `additionalProperties: false`: providers cannot
- *      add fields freely → cap at 65 (rejected by C5).
+ * Gate logic (deviation D-P7-1, recorded in the Phase 7 exit audit; extended
+ * per the independent review findings 2–3, recorded in §20 of the plan):
+ * the plan's C3=15/C5=10 weights alone cannot sink the canonical wrong
+ * answers below the 70 pass line, so three explicit pass-line caps apply.
+ * Point arithmetic stays exactly as the plan specifies; the caps only close
+ * the gates the weights cannot:
+ *   1. Any non-critical required field (minimalism) → cap 65; the full
+ *      nine-field pin keeps its stronger all-9 wording (C3 zeroed, cap 60).
+ *   2. Closed contract — `additionalProperties: false` → C5 failed, cap 65.
+ *   3. C6 failure — the expectation rejects the provider v1 canned payload,
+ *      so it is not a working contract for today's provider → cap 65.
+ * Legitimate equivalent representations of the critical-five contract (extra
+ * optional properties, const/enum variants, type refinements, key order)
+ * set none of these gates.
  */
 function finalizeGates(
   checks: ConsumerRubricCheck[],
@@ -301,6 +306,7 @@ function finalizeGates(
 ): ConsumerRubricResult {
   const fullPin = pinsFullDomain(context.required)
   const closed = context.additional === false
+  const nonMinimal = context.extras.length > 0
 
   if (fullPin) {
     const c3 = checks.find((check) => check.id === 'C3')
@@ -317,10 +323,19 @@ function finalizeGates(
       c5.points = 0
     }
   }
+  const c6 = checks.find((check) => check.id === 'C6')
+  const c6Failed = c6 ? !c6.passed : false
+  if (c6Failed && c6) {
+    c6.message = `${c6.message} An expectation that rejects today's provider cannot pass this exercise.`
+  }
 
+  // Pass-line caps (plan weights unchanged; the caps only close the gates
+  // the weights alone cannot close):
   let raw = checks.reduce((sum, check) => sum + check.points, 0)
   if (fullPin) raw = Math.min(raw, 60)
+  else if (nonMinimal) raw = Math.min(raw, 65) // any non-critical required field
   if (closed) raw = Math.min(raw, 65)
+  if (c6Failed) raw = Math.min(raw, 65)
   return finalize(checks, raw)
 }
 

@@ -381,3 +381,68 @@ pushed, merged or deployed; `main` untouched; backup branch intact.
 - **Phase 7 implementation is NOT a release.** Merge / push / deploy require separate explicit
   maintainer approval (migration `0013` after a pre-migration export → deploy → acceptance
   with skipped-check disclosure, per the Phase 5/6 protocol).
+
+---
+
+## §21 — Independent review corrections & re-verification (2026-11-17, correction session)
+
+> Appended by the correction session after the independent review (2026-11-17).
+> The original criterion-by-criterion verdicts above remain unaltered; this
+> section records the correction and re-verification journey. Full detail in
+> `docs/phase-7-contract-testing-plan.md` §20. Findings and gates reclassified
+> below; nothing is claimed beyond what is evidenced.
+
+**Reverification commands (all run, 2026-11-17):**
+
+- `npm run check` → **lint ✓ · typecheck ×3 ✓ · tests 1417/1417 (70 files)** (+66 vs the review baseline).
+- `npm run build` → clean; contract chunks remain lazy-loaded; eager chunk still 0 references to `@cfworker/json-schema` (verified by grep).
+- `grep -rE "CONTRACT-00[1-7]" dist/` → **zero hits**; validator absent from eager chunk (0 matches).
+- OpenAPI still **`info.version` 1.2.0, 42 operations, 27 `ErrorCode` entries, four `/contract/*` paths** (verified by direct count).
+- Hunt-contract-002 browser probe (local, isolated): **13/13 checks PASS** — scenario page → hunt start (defect active: string `priceCents` in list) → bug report submitted → deterministic evaluation rendered (Score: 78 out of 100; "9 of 10 checks passed") → reveal unlocked post-submit → reset restores clean mode (numeric prices) → zero console errors and zero page exceptions. Pre-submit reveal probe (separate throwaway Chrome profile): **stays locked, solution content absent**.
+- Benchmark test re-run: green (test asserts p95 ≤ 5 ms).
+
+**Finding reclassification (review → correction):**
+
+| # | Finding | Severity (review) | Correction | Status |
+|---|---|---|---|---|
+| F-C1 | `exampleEvidence` ships graded answers (19/24) | HIGH | Rewritten to shape-level guidance; leak-lint now derives answer tokens dynamically from server rubrics (selection ids, finding ids, choice keys, verdict sequences, rule ids) — see `tests/lib/contract-leak.test.ts` | **Fixed and verified** (lint green; 24 reference answers re-verified 100/100 via suite) |
+| F-C2 | C6 not load-bearing (false-negative expectation scored 82, passed) | HIGH | C6 failure caps the consumer score at 65; plan weights unchanged; reference = 100; legitimate equivalents pass | **Fixed and verified** (reproduction test red→green) |
+| F-C3 | 8-of-9 near-clone passes minimalism (85) | MEDIUM | Any non-critical `required` field caps at 65; per-field regression tests; critical-five = 100; optional extras unaffected | **Fixed and verified** |
+| F-C4 | Duplicate collapse hides independent findings at distinct paths | MEDIUM | `$ref`-origin tracking (`x-ref-source` annotation on definition nodes + expansion roots); collapse only on matching origin chain + path suffix; sibling/nested identical changes reported; curated fixture sets byte-identical | **Fixed and verified** |
+| F-C5 | Unsupported constructs certify false-compatible | MEDIUM | One-sided `type`, `anyOf`/`oneOf`/`allOf`, boolean `items` ⇒ deterministic `review` findings (JSON Pointer paths); no silent compatible | **Fixed and verified** |
+| F-C6 | `__proto__`/inherited members in normalization | LOW | `__proto__` rejected at preflight; `x-ref-source` reserved; `$ref` own-property/own-array-index resolution; function targets refused; own `constructor`/`prototype` property names remain valid (tests) | **Fixed and verified** |
+| F-C7 | ReDoS residual risk | LOW/Informational | **Not fixable honestly** (JS RegExp cannot bound backtracking; 256-char cap ≠ cost bound). Documented in plan §14 row 3 and a learner-facing line in `/contract/validate`; implementation of a blacklist rejected as dishonest | **Recorded — accepted as residual risk** |
+| F-C8 | (NEW) live `/openapi.json` validate path dead (3,452 nodes > 2,000 learner budget) | HIGH (new) | `validatePayload` accepts `internalDocument`; page passes it for the same-origin first-party doc only; live validation works end to end (regression tests) | **Fixed and verified** |
+| F-C9 | (NEW) index-bundle byte-identity deviation persists | Deviation | Unchanged; D-P7-8 stands; ~417.8 KB raw / ~127.7 KB gzip (+~5 KB vs `eeded31`) — wiring only; validator confirmed absent from eager chunk | **Needs maintainer acceptance** |
+
+**Unsupported-construct behavior (explicit):** semantic comparison of
+`anyOf`/`oneOf`/`allOf` is **not implemented** — any addition/removal/change
+emits `review` ("human review required"); byte-equal composites (key- and
+member-order-insensitive) emit nothing; one-sided `type` emits review; both-
+sides declared-but-disjoint types remain R6; everything else keeps the R1–R21
+semantics unchanged. **Nothing is certified compatible because something was
+skipped.**
+
+**Dependencies/state after correction session:** no new dependency, no
+migration, no D1 table, no binding, no Cloudflare operation, no push/PR/merge/
+deploy. Working tree contains exactly the nine reviewed source/test files.
+`dist/` is gitignored and rebuilt locally for verification (not committed).
+
+**Criterion re-verdicts (changes only):**
+
+- **Criterion 28 — PARTIAL → PASS (local isolated probe).** Contract pages not re-probed wholesale; the hunt-contract-002 end-to-end flow is probe-verified (13/13) on the production build; browser matrix (themes × 4 widths) remains the implementation team's verified evidence.
+- **Criterion 29 — PARTIAL, limitation unchanged.** Zero DDL, zero new tables, `0013` local-only; contract chunks ≤ 60 KB gzip; validator p95 test green; index +~5 KB gzip deviation stands (needs maintainer acceptance — see F-C9).
+- **Criterion 31 — PASS.** The disclosed hunt-contract-002 browser bug-report flow is now probe-verified end-to-end (report → deterministic 78/100 → reveal gate transition → reset → clean restore).
+- **Criterion 23 — PASS (re-verified).** dist leak scan clean post-correction.
+- **Criterion 26 — PASS (re-verified).** 1.2.0 / 42 ops / 27 codes / no new codes.
+- **Criterion 2/3 — PASS (re-verified).** All 24 reference answers and 24 plausible-wrong answers run inside `npm run check` against the corrected rubrics.
+
+**Release remains NOT authorized** and production remains the Phase 6 release
+(`schema_version` 12). Release actions require separate explicit maintainer
+approval (pre-migration export → `0013` apply → deploy → production
+acceptance per the Phase 5/6 protocol).
+
+**Open items for the maintainer:**
+1. Accept D-P7-8 / F-C9 (index-chunk non-identity) in writing or require a split of the scenario wiring into a lazy chunk.
+2. Accept F-C7 (ReDoS residual risk) explicitly — no practical fix exists on the JS engine.
+3. Optional: request a full browser re-probe of all five contract routes × both themes × 4 widths after this correction (recommendation: yes, cheap).

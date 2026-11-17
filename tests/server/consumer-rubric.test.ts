@@ -150,3 +150,125 @@ describe('the 70-point pass gate', () => {
     expect(scoreConsumerExpectation(expectation).passed).toBe(false)
   })
 })
+
+describe('Finding 2 — a false-negative expectation cannot pass (C6 is load-bearing)', () => {
+  // The independent review reproduced this shape scoring 82 and passing:
+  // the contract pins the critical five as strings/anything and therefore
+  // rejects today's provider payload — the opposite of a working contract.
+  const falseNegative = {
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    type: 'object',
+    required: [...CRITICAL_FIVE],
+    properties: {
+      slug: { type: 'string' },
+      name: { type: 'string' },
+      priceCents: { type: 'string' },
+      currency: { type: 'string' },
+      stockStatus: { type: 'string' },
+    },
+  }
+
+  it('rejects the false-negative expectation (score < 70)', () => {
+    const result = scoreConsumerExpectation(falseNegative)
+    expect(result.checks.find((c) => c.id === 'C6')?.passed).toBe(false)
+    expect(result.score).toBeLessThan(CONSUMER_RUBRIC_PASS_SCORE)
+    expect(result.passed).toBe(false)
+  })
+
+  it('the reference expectation still passes at 100 (C6 held)', () => {
+    const result = scoreConsumerExpectation(WORKED_EXAMPLE)
+    expect(result.score).toBe(100)
+    expect(result.passed).toBe(true)
+  })
+
+  it('legitimate equivalent representations still pass', () => {
+    const enumCurrency = {
+      ...structuredClone(WORKED_EXAMPLE),
+      properties: {
+        ...structuredClone(WORKED_EXAMPLE).properties,
+        currency: { enum: ['USD'] }, // enum instead of const — same contract
+      },
+    }
+    expect(scoreConsumerExpectation(enumCurrency).passed).toBe(true)
+
+    const numberPrice = {
+      ...structuredClone(WORKED_EXAMPLE),
+      properties: {
+        ...structuredClone(WORKED_EXAMPLE).properties,
+        priceCents: { type: 'number' }, // wider type that admits every integer
+      },
+    }
+    expect(scoreConsumerExpectation(numberPrice).passed).toBe(true)
+
+    const reordered = {
+      ...structuredClone(WORKED_EXAMPLE),
+      required: [...structuredClone(WORKED_EXAMPLE).required].reverse(),
+    }
+    expect(scoreConsumerExpectation(reordered).passed).toBe(true)
+  })
+})
+
+describe('Finding 3 — non-critical required fields cap below the pass line', () => {
+  const withExtra = (extra: string) => ({
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    type: 'object',
+    required: [...CRITICAL_FIVE, extra],
+    properties: {
+      slug: { type: 'string' },
+      name: { type: 'string' },
+      priceCents: { type: 'integer', minimum: 0 },
+      currency: { const: 'USD' },
+      stockStatus: { enum: ['in_stock', 'low_stock', 'out_of_stock'] },
+      [extra]: { type: 'string' },
+    },
+  })
+
+  it('the nine-field full clone is rejected', () => {
+    expect(fullCloneScore).toBeLessThan(CONSUMER_RUBRIC_PASS_SCORE)
+  })
+
+  it('the eight-field near-clone (missing only description) is rejected', () => {
+    const nearClone = {
+      type: 'object',
+      required: ['id', 'slug', 'name', 'categorySlug', 'categoryName', 'priceCents', 'currency', 'stockStatus'],
+      properties: {
+        id: { type: 'integer' },
+        slug: { type: 'string' },
+        name: { type: 'string' },
+        categorySlug: { type: 'string' },
+        categoryName: { type: 'string' },
+        priceCents: { type: 'integer', minimum: 0 },
+        currency: { const: 'USD' },
+        stockStatus: { enum: ['in_stock', 'low_stock', 'out_of_stock'] },
+      },
+    }
+    const result = scoreConsumerExpectation(nearClone)
+    expect(result.passed).toBe(false)
+    expect(result.score).toBeLessThan(CONSUMER_RUBRIC_PASS_SCORE)
+  })
+
+  for (const extra of ['id', 'description', 'categorySlug', 'categoryName']) {
+    it(`each individual unnecessary required field (${extra}) blocks a pass`, () => {
+      const result = scoreConsumerExpectation(withExtra(extra))
+      expect(result.passed).toBe(false)
+      expect(result.score).toBeLessThan(CONSUMER_RUBRIC_PASS_SCORE)
+    })
+  }
+
+  it('an extra OPTIONAL property (not required) does not block a pass', () => {
+    const optional = {
+      ...structuredClone(WORKED_EXAMPLE),
+      properties: {
+        ...structuredClone(WORKED_EXAMPLE).properties,
+        warehouseRank: { type: 'integer' },
+      },
+    }
+    expect(scoreConsumerExpectation(optional).passed).toBe(true)
+  })
+
+  it('the critical-five minimal contract passes at 100', () => {
+    const result = scoreConsumerExpectation(WORKED_EXAMPLE)
+    expect(result.score).toBe(100)
+    expect(result.passed).toBe(true)
+  })
+})
