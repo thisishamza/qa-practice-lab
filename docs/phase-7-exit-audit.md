@@ -484,3 +484,327 @@ acceptance per the Phase 5/6 protocol).
 **Acceptance matrix status after this review (changes only):** 1–3 PASS; 4–27 PASS; **28 → PASS (local isolated probe, this session)**; **29 → PARTIAL (waived only by D-P7-8 acceptance — open)**; 30–32 PASS. No criterion regressed. **31 → PASS** (per §21 and this session's check-work/hint evidence).
 
 **Release remains NOT approved.** Before any release: maintainer sign-off on (1)–(3); explicit approval for the release sequence (verified pre-migration export → `0013` on production → `npm run check && npm run build && npx wrangler pages deploy dist` → production acceptance, incl. hunt-002 browser flow in production and the §10 acceptance list). Production stays the Phase 6 release until then; migration 0013 remains local-only.
+
+---
+
+## §23 — Release execution & production acceptance (2026-11-17, release session)
+
+> Appended by the release session AFTER §22. The maintainer confirmed the
+> three deviation decisions in writing ahead of the release: **D-P7-8 ACCEPT**
+> (index-chunk wiring-only growth, validator remains lazy), **F-C7 ACCEPT WITH
+> DISCLOSURE** (regex execution cost is an explicitly documented residual
+> risk; the 256-character cap limits pattern size, not execution cost), and
+> **D-P7-1 ACCEPT** (consumer rubric full-pin/closed-contract caps of
+> 60/65). This section is the release record; §21/§22 are unchanged.
+>
+> **Outcome: RELEASED.** Phase 7 is live in production; production D1 is on
+> `schema_version` 13; git `main` remains at `eeded31` (Phase 7 deployed from
+> the reviewed source per the maintainer-approved sequence; merge/PR was NOT
+> authorized and was NOT performed).
+
+### Source and git preflight (2026-11-17)
+
+- Working tree clean; branch `feat/phase-7-contract-testing-lab`; HEAD
+  `8000b77` (documentation-only final review record) containing `43a7d3e`
+  (the reviewed application commit) — both verified ancestors.
+- `git diff 43a7d3e..8000b77` → documentation only (`PROJECT_STATE.md`,
+  `docs/phase-7-contract-testing-plan.md`, `docs/phase-7-exit-audit.md`);
+  zero application-code changes.
+- `main == origin/main == eeded31`; `backup/unpublished-phase6-7-docs @
+  a6c5c2a` untouched (not deleted, not pushed, not merged).
+- Release built in a detached worktree at `/tmp/opencode/release-phase-7`
+  pinned to `8000b77` (`git worktree add --detach … 8000b77`), dependencies
+  installed with `npm ci` from the lockfile (244 packages).
+
+### Production D1 preflight and backup
+
+- Account context unambiguous (single OAuth account, APAC region).
+- Target database verified by exact name **and** UUID:
+  `qa-practice-lab-db` / `928b4ed6-6284-46a2-b374-f1c569c1affe`.
+- Pre-migration health: `schemaVersion "12"`, database `ok`. Migration
+  history exactly `0001..0012`; `app_meta.schema_version = 12`; tables 22 /
+  indexes 34 / triggers 0 / views 0; recorded row counts (products 42,
+  categories 8, customers 5, orders 2, order_items 2, inventory 42, carts
+  26, cart_items 0, customer_sessions 1, hunt_attempts 24, bug_reports 1,
+  api_tokens 0, practice_sessions 26, rate_limit_buckets 34,
+  hunt_start_caps 1).
+- Migration `0013_contract_lab_schema.sql` inspected before apply: exactly
+  the reviewed zero-DDL marker update (`schema_version 12 → 13` via
+  `UPDATE app_meta`), no DDL of any kind. Only 0013 pending.
+- **Verified pre-migration export**:
+  `/tmp/opencode/backups/qa-practice-lab-db-pre-0013-2026-11-17T08-13-49Z.sql`
+  — **57,655 bytes**, SHA-256
+  `225c744464fb3426e291c35cb189a46c582e1ff6b2406c7ef24680b32c780730`.
+  Structurally verified by loading the export into a scratch SQLite database:
+  12 migrations (0001→0012), `schema_version` 12, 21 load-created tables, all
+  row counts identical to the live database, `PRAGMA integrity_check` →
+  `ok`. The previous Phase 6 backup was not touched. The backup is not in
+  the repository.
+
+### Migration 0013
+
+- Applied via `wrangler d1 migrations apply qa-practice-lab-db --remote`
+  (the only pending migration; not via `execute --file`, so `d1_migrations`
+  records it). Wrangler reported `0013_contract_lab_schema.sql` ✅,
+  2 commands in 0.24 ms.
+- Post-migration verification:
+  `d1_migrations` now contains `0013_contract_lab_schema.sql`;
+  `app_meta.schema_version = '13'`;
+  `wrangler d1 migrations list --remote` → **No migrations to apply**;
+  tables 22 / indexes 34 / triggers 0 / views 0 (unchanged); all row
+  counts byte-identical to pre-migration; table definitions compared
+  against the backup: **19 definitions byte-identical**, `d1_migrations`
+  differs only by the export's `IF NOT EXISTS` header. No new table, index,
+  column, trigger or other DDL introduced. Zero DDL held.
+- Health endpoint immediately reported `schemaVersion: "13"`,
+  `database: "ok"` (runtime read of `app_meta`), before redeploy.
+
+### Build and deployment
+
+- `npm run check` in the release worktree → lint ✓, typecheck ×3 ✓,
+  **1417/1417 tests (70 files)** — the expected suite count, no change.
+- `npm run build` → clean (`tsc` + `vite build`).
+- Client budget audit of the built artifact:
+  - five contract routes are `import("./Contract…Page-…")` dynamic imports
+    in the eager entry (`index-KeIJVV6-.js`, **raw 417,794 B / gzip
+    127.74 kB**; D-P7-8 accepted);
+  - `@cfworker/json-schema` — **0 matches** in the eager chunk;
+  - SQL WASM asset shipped (`dist/assets/sql-wasm-CXIAVl5-.wasm`,
+    688,197 B served, HTTP 200); seed dataset shipped
+    (`dist/datasets/meridian-outfitters.sql`, 122,966 B served, HTTP 200);
+  - Phase 3–6 chunks all present (shop/cart/checkout, database, api-reference,
+    api-lab, progress, practice).
+- Dist leak scan: **zero** `CONTRACT-00[1-7]`;
+  **zero** `CONTRACT_DRIFT_PAYLOAD` / `selectProviderFixture` /
+  `contractDeltas` references;
+  **zero** composition literals (`categoryName`→`category` + `IN_STOCK`
+  adjacency); `IN_STOCK` appears only inside the intentional client-safe
+  exercise brief; `provider-product-v2-drift` appears only in the public
+  `openapi.json` documentation (the explicitly documented drill);
+  `exampleEvidence` strings are the shape-level rewrites enforced by the
+  in-suite leak lint (1417 green); no SQL server-execution route exists in
+  OpenAPI (`/api/v1/sql/*`: evaluate, exercises/start, hunts/seed only).
+- OpenAPI invariants on the **served** document: `openapi` 3.1.0,
+  `info.version` 1.2.0, 38 paths, exactly **42 operations**, exactly
+  **27 `ErrorCode`** entries, exactly **four** `/api/v1/contract/*` paths.
+  No new error codes.
+- No deployment hook applies migrations (Pages direct upload; no
+  workflows; `migrations_dir` is only read by the `wrangler d1
+  migrations` command). Migration 0013 was applied manually and only once.
+- Deployment 1 (from the detached worktree): `npx wrangler pages deploy
+  dist` → succeeded but, being built from a detached HEAD, landed as
+  **Preview** branch `HEAD` (`2b6b09b5-3b96-4844-a681-1c5132754fdf`, source
+  `8000b77`) — the production alias did NOT move. Root cause understood
+  before any retry (branch inference), no settings were changed.
+- Deployment 2 (same verified `dist/`, same project): `npx wrangler pages
+  deploy dist --branch=main` → **Production** deployment
+  **`47680bf9-7290-4c8a-a5c9-25490dff7fc4`**, branch `main`, source
+  `8000b77`, URL `https://47680bf9.qa-practice-lab.pages.dev`. Production
+  alias `https://qa-practice-lab.pages.dev` now serves
+  `assets/index-KeIJVV6-.js` (verified) and `/api/health` reports
+  `schemaVersion: "13"`, `database: "ok"`.
+- The Phase 6 rollback reference remains `2c32a721-8374-46af-8a20-e560839f88b1` (kept in
+  deployment history; nothing overwritten).
+
+### Production HTTP and API acceptance (all against the production alias)
+
+- Core routes, all HTTP **200**: `/`, `/shop`, `/database`,
+  `/database/playground`, `/practice`, `/tracks`, `/progress`,
+  `/openapi.json`, `/api-reference`, `/api-lab`, `/contract`,
+  `/contract/validate`, `/contract/compare`, `/contract/consumer`,
+  `/contract/exercises/contract-bgn-enum-01`.
+- `/api/health` → `schemaVersion: "13"`, `database: "ok"` (repeatedly).
+- OpenAPI served document → 3.1.0 / 1.2.0 / 42 operations / 27 ErrorCodes /
+  four contract paths (re-verified from the network, not just the build).
+- `POST /api/v1/contract/validate`:
+  valid payload → `valid:true`, `assertions:[]`; invalid payload (missing
+  `amountCents`) → `valid:false` with the structured `/amountCents`
+  `required` assertion; missing `fixtureId` → 400; unknown fixture → 404.
+  >24 KB payload → 400 (`larger than the 24 KB limit`).
+  30/min scoped budget observed: 30-second burst → the 31st request
+  answers `429 rate_limited` with the documented message (bucket is
+  per hashed IP; self-healing).
+- `POST /api/v1/contract/compare`:
+  named `ledger-v2-compatible` (response locus) → **review** (R9 enum
+  widening flagged, R4 memo compatible); named `ledger-v2-breaking` →
+  **breaking** (R13/R6/R3/R8 breaking, R19 review, R2 compatible, verdict
+  BREAKING); document-shaped inline additive candidate (optional `memo`) →
+  **compatible** (single R4 finding); both `candidateFixtureId` and
+  `candidateSchema` → 400.
+  (Probe note: an earlier bare-schema inline candidate — not the documented
+  document-shaped contract — yielded structurally valid but semantically
+  meaningless findings; the public contract requires a full candidate
+  document. Not a defect; recorded for honesty.)
+- `POST /api/v1/contract/verify-consumer`:
+  minimal open expectation (critical five: slug/name/priceCents/currency/
+  stockStatus) vs `provider-product-v1`, `provider-product-v2-compatible`,
+  `provider-product-v2-latest` (no hunt session) → **valid:true** each.
+  With `hunt-contract-007` active in a synthetic bug-hunt session, the
+  `provider-product-v2-latest` alias exposes the drift — assertion-only
+  diagnostics (`/categoryName` required missing; `/stockStatus` enum
+  `IN_STOCK`), **never the raw drift payload** (verified: no
+  `warehouseRank`, `supplierCostCents`, `categorySlug`, `category`, or id
+  material in any response). Explicit drill `provider-product-v2-drift`
+  likewise returns assertion lists only. Control path
+  (`provider-product-v2-compatible`) holds during the hunt. Unknown
+  provider fixture id → 400.
+- `POST /api/v1/contract/evaluate`:
+  unauthenticated → `401 session_required`; authenticated correct answer
+  (`contract-bgn-required-01`) → `passed:true`, score **100**, `set-match`
+  check, `attemptStatus: submitted`; incorrect answer → `passed:false`,
+  score 0; unknown exercise → 404 `exercise_not_found`; malformed answer →
+  400; malformed id shape → 404.
+
+### Contract hunts in production (synthetic, isolated sessions)
+
+**CONTRACT-002** (`hunt-contract-002`, "The money that became text"):
+started via `POST /api/v1/practice/hunts/hunt-contract-002/start` →
+list (`/api/v1/products`) and detail
+(`/api/v1/products/ridgeline-2-person-tent`) both emitted `priceCents` as a
+**string** (`"2250"`, `"18900"`…); `GET .../reveal` before any report →
+**403 `reveal_locked`**; bug report submitted (expected/actual covering
+type, surface list+detail, integer-vs-string) → deterministic evaluation
+**68/100**, verdict `needs-work` (honest: the probe report failed
+`environment-present` and `finding` — recorded as such, not dressed up);
+attempt → `submitted`; `GET .../reveal` after submission → **200** with
+the full solution; `POST .../session/reset` → clean mode; `priceCents`
+numeric again (`2250`, `1890`).
+
+**CONTRACT-007** (`hunt-contract-007`, "The provider that moved"):
+started → `provider-product-v2-latest` resolves to the drifted fixture;
+expectation pinning `categoryName` fails with assertion-only diagnostics
+(`/categoryName` required missing; `/stockStatus` `IN_STOCK` vs enum);
+drift also visible through the explicit `provider-product-v2-drift` drill;
+no raw payload at any point; control fixture
+(`provider-product-v2-compatible`) still holds during the hunt;
+`POST .../session/reset` → clean; expectation holds again
+(`valid:true`).
+
+Hunt-002 leak of production state: none — contract hunts mint no orders,
+no carts of substance, no customer rows. See cleanup below.
+
+### Browser acceptance (headless Chrome 155, raw CDP, system Chrome)
+
+- Matrix: 5 routes × 2 themes × 4 widths = **40/40 PASS** —
+  `/contract`, `/contract/validate`, `/contract/compare`,
+  `/contract/consumer`, `/contract/exercises/contract-bgn-enum-01`.
+  Zero horizontal overflow at document level at every width
+  (measured: `scrollWidth ≤ innerWidth`; widest document 366 px at
+  375 px viewport); all route markers render; themes applied
+  (`documentElement.dataset.theme` = `light|dark` per cell); **zero
+  unexpected console errors, zero page exceptions** (2–3 benign gate
+  probes per page: `/api/v1/auth/me` 401 for anonymous visitors and,
+  on exercise pages, the pre-submit `reveal` 403 — both are the app's
+  designed gate checks, allowlisted by match and counted separately).
+  40 screenshots at `/tmp/opencode/shots/` (not committed); several
+  inspected visually (hub-light-375, validate-dark-375, exercise-light-375,
+  exercise-dark-1440, compare-dark-768, consumer-light-1440): no clipped
+  controls, no unreadable content, nav/search/theme toggle usable.
+  Note: 375 px cells show intentional *inner* horizontal scroll strips
+  for wide code/pills; the document itself does not scroll horizontally.
+- Reduced motion: `prefers-reduced-motion: reduce` emulated →
+  `matchMedia(...).matches === true`, page renders, no overflow, no
+  exceptions.
+- Functional (light, 1440 px): validate default starter → **VALID**;
+  broken payload → **INVALID** (assertion list renders); live
+  `/openapi.json` source → validates → **VALID** (internal-budget path,
+  no error alert); compare default pair renders **BREAKING** with
+  rule-id findings (engine output, verdict headline, impact notes);
+  consumer guided verify → **HOLDS**; exercise
+  `contract-bgn-enum-01`: two correct options selected → Check work →
+  **Passed — 100/100 (Exact set match)**; `Unlock hint 1` present and
+  enabled post-pass; reveal locked pre-submission (403 observed on page
+  load) and unlocked after submission; Reset returns to clean mode.
+  (Probe artifact disclosed honestly: an early Check-work click issued
+  before hydration settled scored 65/100 with `assert-status-enum`
+  unselected in the payload sent; re-run with 1.5 s settle scored
+  100/100. Not a product defect; browser hydration is the timing
+  constraint.)
+- The production-browser pass supersedes and complements the local
+  isolated 40/40 + 14/14 from §22; it does not silently reuse it.
+
+### Phase 3–6 regression smoke (production, no destructive actions)
+
+- Storefront: categories list 8; products page (`perPage`) → 40 active,
+  numeric `priceCents`; product detail clean (`priceCents` int,
+  `stockStatus` lowercase); category filter `hiking` → 5 rows, all
+  `hiking`.
+- Cart: guest add (`ember-led-lantern` ×1) → line present; remove →
+  cart empty. No order placed; no checkout POST issued;
+  `GET /api/v1/checkout` quote shape correct.
+- Customer auth boundaries: anonymous `/api/v1/auth/me` → 401;
+  wrong password (demo account) → 401 `invalid_credentials`;
+  suspended demo account → 403 `account_suspended` (one attempt, the
+  documented practice case).
+- API token lifecycle (demo customer `ben.whitmore@example.net`, a public
+  training account): login → `/auth/me` 200 → `POST /api/v1/auth/token`
+  (email+password+60 s TTL) → `expiresIn: 60`, 256-bit opaque token →
+  Bearer `/auth/me` 200 → `POST /api/v1/auth/logout` → Bearer
+  `/auth/me` **401** (token revoked with sign-out). Client sessions
+  deleted server-side by logout (verified: 0 matching rows).
+- Bug-hunt catalogue: `GET /api/v1/practice/hunts` → 25 ids
+  (`hunt-contract-001…007` present).
+- Learning progress: guest `GET /api/v1/practice/progress` → 200,
+  per-hunt rows for all hunt ids.
+- SQL playground: `/database/playground` 200; WASM asset 200
+  (688,197 B); seed dataset 200 (122,966 B).
+- Rate-limit/backstop behavior spot-checked (contract-validate 31st
+  request → 429; login failure budget untouched — one wrong-password
+  attempt only).
+- `GET /api/v1/auth/me` 401 for anonymous is the routine anonymous probe
+  the SPA issues on every page; expected and unchanged.
+
+### Records created by this release probe, and cleanup
+
+Created and then **removed by exact id** (verified by re-count):
+guest practice sessions 27–40 (cascade-deleted
+`practice_sessions` → `carts` → `cart_items`, `hunt_attempts` 25–33
+(9 rows incl. the two `contract-bgn-required-*`/`contract-bgn-enum-01`
+evaluations and the two hunt attempts), `bug_reports` id 2 via cascade —
+38 rows written); 1 API token (auto-deleted by logout, verified absent);
+2 demo customer sessions (auto-deleted by logout, verified absent); 1
+cart line (added then removed via API). Post-cleanup counts are
+byte-identical to the pre-probe baseline for every table **except**
+`rate_limit_buckets` (34 → 61; shared hashed-IP windows from the burst
+and 30/min checks; no learner data; self-cleaning / swept by the staff
+maintenance sweep). `products 42, categories 8, customers 5, orders 2,
+order_items 2, inventory 42, carts 26, cart_items 0, hunt_attempts 24,
+bug_reports 1, api_tokens 0, practice_sessions 26, hunt_start_caps 1` —
+all identical pre- and post-probe. My probe left the database clean.
+
+### Documentation disposition
+
+- `PROJECT_STATE.md`, `README.md`, this audit (§23), and the stale status
+  lines in `AGENTS.md` updated in the same turn as this release.
+- Historical audit sections (§14–§22) unchanged. The Phase 6 audit and
+  backup branch untouched.
+- New commit for the documentation update; no push.
+
+### Known limitations / accepted residuals (unchanged by the release)
+
+- **F-C7 (accepted with disclosure):** JS `RegExp` has no
+  possessive quantifiers; the 256-character cap bounds pattern *size*,
+  not *execution cost*; mitigation is the Pages Functions CPU-time limit
+  (server) and tab freeze risk (browser); the ReDoS-shaped test fixture
+  planned in the plan was **never implemented** — recorded as an
+  unimplemented test, not a passing one; learner-facing warning ships in
+  `/contract/validate`. No blacklist is implemented or advised.
+- **D-P7-8 (accepted):** eager entry is not byte-identical to Phase 6
+  (+≈5 KB gzip; wiring-only; `@cfworker/json-schema` confirmed absent).
+- **D-P7-1 (accepted):** consumer rubric C3/C5 caps of 60/65.
+- Criterion 29 (exact bundle byte-identity) remains PARTIAL, waived only
+  by the D-P7-8 acceptance.
+- The Phase 7 implementation is deployed but **not merged into git
+  `main`**; merge/PR is a separate maintainer decision.
+- `/openapi.json` validation on `/contract/validate` runs in-browser
+  against the first-party document under the documented `internalDocument`
+  budget; learner-pasted content always runs under the normal budgets.
+
+### Final verdict
+
+**RELEASED** — production serves the reviewed Phase 7 source; migration
+0013 applied and verified; production acceptance passed; no production
+data was harmed; three maintainer deviation decisions are recorded as
+accepted. Git history unchanged (`main == origin/main == eeded31`; release
+source `8000b77` on `feat/phase-7-contract-testing-lab`); backup branch
+intact; documentation committed on the feature branch; no push.
