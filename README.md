@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 13). Deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, source commit `8000b77` (reviewed Phase 7 source `43a7d3e` + documentation-only `8000b77`; NOT merged into git `main`). Previously Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). Phase 7 (Contract Testing Lab) was deployed 2026-11-17 after explicit maintainer authorization: verified pre-migration export → migration `0013_contract_lab_schema.sql` (zero DDL) applied to production D1 → production acceptance (see `docs/phase-7-exit-audit.md` §23).
+> **Production:** https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 13). Deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, source commit `8000b77` (reviewed Phase 7 source `43a7d3e` + documentation-only `8000b77`; **merged into `main` via PR #11, merge commit `e21108a`, 2026-11-17**). Previously Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). Phase 7 (Contract Testing Lab) was deployed 2026-11-17 after explicit maintainer authorization: verified pre-migration export → migration `0013_contract_lab_schema.sql` (zero DDL) applied to production D1 → production acceptance (see `docs/phase-7-exit-audit.md` §23).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -102,7 +102,8 @@ deployed to production (2026-11-17, migration `0012`, `schema_version` 12); see
 [docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and release record and
 [docs/phase-6-database-testing-plan.md](docs/phase-6-database-testing-plan.md) for the plan.
 
-Phase 7 (Contract Testing Lab) is **RELEASED TO PRODUCTION (2026-11-17)** —
+Phase 7 (Contract Testing Lab) is **RELEASED TO PRODUCTION (2026-11-17)** and
+**MERGED into `main` (2026-11-17)** —
 verified pre-migration export → migration `0013` (zero DDL, `schema_version`
 12 → **13**) → Pages deploy → production acceptance, per the maintainer-approved
 release sequence. The production alias serves the reviewed source
@@ -126,9 +127,10 @@ deterministic and server-side. See
 [docs/phase-7-exit-audit.md](docs/phase-7-exit-audit.md) for the criterion-by-criterion verification, and
 [docs/bug-hunt-catalogue.md](docs/bug-hunt-catalogue.md) §Contract for the internal expected/actual notes.
 **Production is the Phase 7 release; production D1 is on `0001..0013`
-(`schema_version` 13). Phase 7 is NOT merged into git `main` — the production
-deployment was made from the reviewed source per the maintainer-approved
-release sequence; merge/PR is a separate, unapproved step.**
+(`schema_version` 13). Phase 7 is merged into git `main` (PR #11, merge commit
+`e21108a`, 2026-11-17); the production deployment remains the existing Phase 7
+deployment from source `8000b77` — no redeploy or migration was performed at
+merge time.**
 
 ## What you can do now
 
@@ -817,6 +819,10 @@ How it was set up (and how to reproduce or re-deploy):
    source `8000b77` (reviewed Phase 7 implementation `43a7d3e` plus documentation-only commit)
    on 2026-11-17 with `--branch=main`; deployment
    `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, alias https://qa-practice-lab.pages.dev.
+   Phase 7 was subsequently merged into `main` via PR #11 (merge commit
+   `e21108a`, 2026-11-17); the merged application code is byte-identical to the
+   deployed source (documentation-only delta), so no redeploy was performed and
+   this deployment remains authoritative.
 4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "13"`; the Phase 7
    production acceptance passed on 2026-11-17 (route smoke; OpenAPI 3.1.0 / 1.2.0 / 42
    operations / 27 error codes; contract API acceptance; both hunts verified with

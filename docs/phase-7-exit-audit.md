@@ -808,3 +808,22 @@ data was harmed; three maintainer deviation decisions are recorded as
 accepted. Git history unchanged (`main == origin/main == eeded31`; release
 source `8000b77` on `feat/phase-7-contract-testing-lab`); backup branch
 intact; documentation committed on the feature branch; no push.
+
+---
+
+### Post-release merge addendum (2026-11-17)
+
+*Added after the fact; the audit above is preserved verbatim.* Phase 7 was
+**merged into git `main`** on 2026-11-17 via **PR #11**
+(https://github.com/thisishamza/qa-practice-lab/pull/11, merge commit
+`e21108aab833e73f4ac21e5f9783e348f4f8b99d`; parents `eeded31` + `04a6013`).
+The merged tree is identical to the reviewed branch head `04a6013`; the
+application code (`src/`, `public/`, `db/`, `functions/`, `package.json`) is
+byte-identical to the deployed release source `8000b77` (delta
+documentation-only). Post-merge `npm run check` is green (1417/1417, 70 files)
+and `npm run build` is clean (entry `index-KeIJVV6-.js`, identical to the
+deployed entry). Production was **not** redeployed: the 2026-11-17 Phase 7
+deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4` (source `8000b77`) remains
+authoritative; read-only verification confirmed `schema_version` 13 and
+migration `0013` present. See `PROJECT_STATE.md` §11 ("Phase 7 merge
+complete"). Phase 8 has not been started.
