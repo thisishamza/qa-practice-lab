@@ -8,6 +8,7 @@
 // redeliver/retry/replay boundaries and session isolation.
 import { describe, expect, it } from 'vitest'
 import { app } from '../../src/server/app'
+import { sha256Hex } from '../../src/server/rateLimit'
 import {
   createMigratedD1,
   type MigratedD1,
@@ -170,6 +171,79 @@ describe('publish + validation', () => {
     expect(response.status).toBe(201)
     const body = (await response.json()) as { correlationId: string }
     expect(body.correlationId).toMatch(/^corr_/)
+  })
+})
+
+describe('publish rate limit (F2: budget enforced before minting)', () => {
+  function sessionCount(migrated: MigratedD1): number {
+    return (migrated.sqlite.prepare('SELECT COUNT(*) AS n FROM practice_sessions').get() as { n: number }).n
+  }
+  function currentWindowStart(): number {
+    return Math.floor(Math.floor(Date.now() / 1000) / 60)
+  }
+  async function seedEventsPublishBucket(migrated: MigratedD1, count: number): Promise<void> {
+    const ipHash = await sha256Hex(IP)
+    migrated.sqlite
+      .prepare('INSERT INTO rate_limit_buckets (key, window_start, count) VALUES (?, ?, ?)')
+      .run(`events-publish:${ipHash}`, currentWindowStart(), count)
+  }
+
+  it('a rate-limited cookie-less publish answers 429 without minting a session', async () => {
+    const migrated = createMigratedD1()
+    await seedEventsPublishBucket(migrated, 20)
+    const response = await app.request(
+      '/api/v1/microservices/publish',
+      { method: 'POST', headers: { 'content-type': 'application/json', ...ipHeaders() }, body: JSON.stringify({ type: 'order.created' }) },
+      { DB: migrated.db },
+    )
+    expect(response.status).toBe(429)
+    expect(response.headers.get('retry-after')).toBeTruthy()
+    expect(response.headers.get('set-cookie')).toBeNull()
+    const body = (await response.json()) as { error: string; message: string }
+    expect(body.error).toBe('rate_limited')
+    expect(body.message).toBe('Too many publish requests. Wait a minute and try again.')
+    expect(sessionCount(migrated)).toBe(0)
+  })
+
+  it('a rate-limited existing-session publish answers 429 in the same envelope and mints nothing', async () => {
+    const migrated = createMigratedD1()
+    const cookie = await freshGuestSession(migrated)
+    expect(sessionCount(migrated)).toBe(1)
+    await seedEventsPublishBucket(migrated, 20)
+    const response = await publish(migrated, cookie, { type: 'order.created' })
+    expect(response.status).toBe(429)
+    expect(response.headers.get('retry-after')).toBeTruthy()
+    expect(response.headers.get('set-cookie')).toBeNull()
+    const body = (await response.json()) as { error: string; message: string }
+    expect(body.error).toBe('rate_limited')
+    expect(body.message).toBe('Too many publish requests. Wait a minute and try again.')
+    expect(sessionCount(migrated)).toBe(1)
+  })
+
+  it('a valid cookie-less publish still works and mints exactly one session', async () => {
+    const migrated = createMigratedD1()
+    const response = await app.request(
+      '/api/v1/microservices/publish',
+      { method: 'POST', headers: { 'content-type': 'application/json', ...ipHeaders() }, body: JSON.stringify({ type: 'order.created' }) },
+      { DB: migrated.db },
+    )
+    expect(response.status).toBe(201)
+    expect(response.headers.get('set-cookie')).toContain('mpl_session=')
+    expect(sessionCount(migrated)).toBe(1)
+  })
+
+  it('an existing-session publish is unchanged: nothing minted and the scoped budget is consumed', async () => {
+    const migrated = createMigratedD1()
+    const cookie = await freshGuestSession(migrated)
+    const response = await publish(migrated, cookie, { type: 'order.created' })
+    expect(response.status).toBe(201)
+    expect(response.headers.get('set-cookie')).toBeNull()
+    expect(sessionCount(migrated)).toBe(1)
+    const ipHash = await sha256Hex(IP)
+    const row = migrated.sqlite
+      .prepare('SELECT count FROM rate_limit_buckets WHERE key = ? AND window_start = ?')
+      .get(`events-publish:${ipHash}`, currentWindowStart()) as { count: number }
+    expect(row.count).toBe(1)
   })
 })
 

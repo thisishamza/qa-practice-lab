@@ -2900,3 +2900,103 @@ remains authoritative until then.
   local/practice corpus and are therefore read-only targets.
 - Firefox/WebKit remain untested (Chrome over CDP only, as all prior phases).
 - Performance run history never leaves the browser; a learner who clears localStorage loses it.
+
+## 18. Final phase — PR preparation: F2 hardening and maintainer handoff (2026-11-17)
+
+**This section supersedes §17's "Exact next action" step 1 for the PR step only; everything
+else in §17 stands.**
+
+### Independent review verdict (2026-11-17)
+
+An independent fresh-context, read-only review of the branch at `03a6334` (implementation
+`36b0ad3` + documentation `03a6334`) returned **READY FOR PR AND RELEASE** — no BLOCKER,
+HIGH or MEDIUM findings; all issues LOW/INFO. Verified independently: `npm run check`
+1473/1473 (74 files), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB /
+gzip 137.54 kB), OpenAPI 1.3.0 / 53 operations with zero removed/modified Phase 3–7
+operations and 27 unchanged ErrorCodes, working tree clean, production untouched.
+Code readiness ≠ production-release authorization.
+
+### F2 hardening (implemented in the F2/handoff commit — the branch tip; see `git log -1`)
+
+Independent-review finding F2: `POST /api/v1/microservices/publish` evaluated the scoped
+`events-publish` 20/min budget AFTER `resolveOrMintSession`, so a cookie-less caller over
+the limit still minted a fresh guest practice session (row + cart) per request before
+answering 429 — unbounded synthetic session accumulation (bounded only by the 120/min
+global mutate backstop).
+
+- **Fix** (`src/server/microservices.ts`, publish handler only): the `events-publish`
+  budget check now runs BEFORE `resolveOrMintSession`. The mutate backstop was already
+  enforced by `app.ts` middleware before the route. Behavior for callers with an existing
+  live session is unchanged (same budget, same envelope, same limit value — only the
+  evaluation order moved); the 429 envelope (`error: rate_limited`,
+  `Too many publish requests…`, `Retry-After` header) is byte-identical; a rate-limited
+  caller now receives 429 with **no** `Set-Cookie` and **no** session row.
+- **Not changed**: F1 (concurrent `process` claim — left as-is deliberately), F3–F9,
+  the `process` handler's mint semantic (it has no scoped limit of its own; only the
+  pre-route mutate backstop applies, which was already correct), all limits, all
+  endpoints, all dependencies.
+- **Tests** (`tests/server/microservices.test.ts`, new describe "publish rate limit
+  (F2…)"): (a) rate-limited cookie-less publish → 429, `Retry-After`, no Set-Cookie,
+  zero `practice_sessions` rows; (b) rate-limited existing-session publish → 429 in the
+  same envelope, session count unchanged; (c) valid cookie-less publish → 201 and mints
+  exactly one session; (d) existing-session publish → 201, nothing minted, and the
+  `events-publish:<iphash>` bucket is consumed exactly once.
+
+### Verification at this handoff
+
+- Focused: `npx vitest run tests/server/microservices.test.ts` — **26/26 passed**.
+- Consolidated: `npm run check` — lint clean · typecheck ×3 clean · **1477/1477 tests,
+  74 files** (up from 1473; exactly the 4 new F2 tests).
+- Build: `npm run build` — clean; entry bundle **unchanged** (`index-CLEs4WAj.js`,
+  448.33 kB / gzip 137.54 kB — the fix is server-only).
+- Working tree after commit: clean. Branch: `feat/performance-security-distributed-testing-lab`.
+  SHAs at handoff: base `main`/`origin/main` `8258b7e` · implementation `36b0ad3` ·
+  review baseline `03a6334` · F2/handoff commit = branch tip (`git log -1`).
+  Nothing pushed, no PR opened, no merge/rebase, production untouched.
+
+### Remaining accepted findings (unchanged, accepted at review)
+
+- **F1** (LOW): overlapping `process` calls can double-handle the same due event — no
+  claim transaction; bounded, session-scoped, false `overcapture` only; UI disables the
+  button mid-run. Deferred hardening option: transactional claim for due events.
+- **F3** (LOW): failed selection evaluation returns `missing:`/`not supported:` option
+  ids to the client (inherited Phase 4/6/7 rubric pattern; session-scoped).
+- **F4** (INFO): OpenAPI documents `401` for publish/process that mint-on-first-use never
+  emits; quota-vs-rate-cap 429 distinction undocumented.
+- **F5** (INFO): no index on `webhook_deliveries.event_id` (fine at practice scale).
+- **F6** (INFO): publish 100-event quota and `seq MAX+1` read are non-transactional
+  (small bounded overshoot).
+- **F7** (INFO): runner's 150-request cap is cooperative (overshoot ≤ #VUs−1).
+- **F8** (INFO): SecurityDemosPage copy nit ("browser engine penalty").
+- **F9** (INFO): pre-existing moderate Dependabot alert on the default branch — not
+  introduced by this phase, left for the maintainer.
+
+### Production state (unchanged)
+
+Production still runs the **Phase 7** release — deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`,
+source `8000b77`, production D1 `schema_version` **13**. Migration
+`0014_final_phase_lab.sql` is applied to the **local D1 only** and has NOT been applied
+remotely. No production commands of any kind were run in this phase preparation.
+
+### Exact next action
+
+1. **Maintainer opens the PR** for `feat/performance-security-distributed-testing-lab`
+   (no gh/GitHub credentials are exercised by this session; the maintainer opens or
+   authorizes it) against `main` @ `8258b7e`. Suggested title/scope: final development
+   phase — Performance, Security & Microservices/Event-Driven Testing Lab; review record
+   is this file (§17, §18), the plan (`docs/final-phase-performance-security-distributed-testing-plan.md`)
+   and the review findings F1–F9.
+2. **Only after explicit maintainer approval**: the release sequence — verified
+   pre-migration export of production D1 (`wrangler d1 export`), apply
+   `0014_final_phase_lab.sql` (production `schema_version` 13 → **14**), deploy
+   (`npm run check && npm run build && npx wrangler pages deploy dist`), then production
+   acceptance (health `schemaVersion` 14; nine new routes 200; OpenAPI 1.3.0 / 53 ops;
+   publish → process → webhook smoke; Phase 3–7 smoke; browser matrix; cleanup of probe
+   rows) and record it in §17/§18 + the plan's exit checklist.
+
+Do NOT push, open, merge, deploy or migrate before explicit maintainer approval. Production
+release remains a separate, explicitly authorized operation.
+
+Note: `AGENTS.md` still carries pre-handoff counts (1473 tests, "NOT merged/pushed…");
+it was deliberately left untouched to keep this diff minimal — refresh it as part of the
+release documentation step, alongside `README.md` if desired.

@@ -685,12 +685,12 @@ microservicesRoutes.get('/microservices/overview', async (c) => {
 })
 
 microservicesRoutes.post('/microservices/publish', async (c) => {
-  // Mint a clean guest session on demand (hunt-start semantics) so the
-  // simulator works for a first-time browser without a sign-in step.
-  const session = await resolveOrMintSession(c)
-  if (session.newCookie) {
-    applyMintedSessionCookie(c, session.newCookie)
-  }
+  // Enforce the scoped publish budget BEFORE minting a session: a
+  // cookie-less caller over the limit must not accumulate guest sessions it
+  // can never use (independent-review finding F2). The mutate backstop in
+  // app.ts is already enforced before this route runs; this check preserves
+  // the scoped 20/min budget for callers with or without a session — only
+  // the ordering moves, the limit itself is unchanged.
   const ip = clientIp(c)
   if (ip) {
     const decision = await consumeRateLimit(c.env.DB, 'events-publish', await sha256Hex(ip), 20)
@@ -698,6 +698,12 @@ microservicesRoutes.post('/microservices/publish', async (c) => {
       c.header('Retry-After', String(decision.retryAfterSeconds))
       return c.json({ error: 'rate_limited', message: 'Too many publish requests. Wait a minute and try again.' }, 429)
     }
+  }
+  // Mint a clean guest session on demand (hunt-start semantics) so the
+  // simulator works for a first-time browser without a sign-in step.
+  const session = await resolveOrMintSession(c)
+  if (session.newCookie) {
+    applyMintedSessionCookie(c, session.newCookie)
   }
 
   const body = (await c.req.json().catch(() => null)) as PublishRequest | null
