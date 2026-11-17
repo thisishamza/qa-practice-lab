@@ -31,6 +31,33 @@ const ContractConsumerPage = lazy(() =>
 const ContractExercisePage = lazy(() =>
   import('../pages/ContractExercisePage').then((m) => ({ default: m.ContractExercisePage })),
 )
+const PerformanceHubPage = lazy(() =>
+  import('../pages/PerformanceHubPage').then((m) => ({ default: m.PerformanceHubPage })),
+)
+const PerformanceWorkspacePage = lazy(() =>
+  import('../pages/PerformanceWorkspacePage').then((m) => ({ default: m.PerformanceWorkspacePage })),
+)
+const PerformanceExercisePage = lazy(() =>
+  import('../pages/PerformanceExercisePage').then((m) => ({ default: m.PerformanceExercisePage })),
+)
+const SecurityHubPage = lazy(() =>
+  import('../pages/SecurityHubPage').then((m) => ({ default: m.SecurityHubPage })),
+)
+const SecurityDemosPage = lazy(() =>
+  import('../pages/SecurityDemosPage').then((m) => ({ default: m.SecurityDemosPage })),
+)
+const SecurityExercisePage = lazy(() =>
+  import('../pages/SecurityExercisePage').then((m) => ({ default: m.SecurityExercisePage })),
+)
+const MicroservicesHubPage = lazy(() =>
+  import('../pages/MicroservicesHubPage').then((m) => ({ default: m.MicroservicesHubPage })),
+)
+const MicroservicesSimulatorPage = lazy(() =>
+  import('../pages/MicroservicesSimulatorPage').then((m) => ({ default: m.MicroservicesSimulatorPage })),
+)
+const MicroservicesExercisePage = lazy(() =>
+  import('../pages/MicroservicesExercisePage').then((m) => ({ default: m.MicroservicesExercisePage })),
+)
 const DatabaseHubPage = lazy(() =>
   import('../pages/DatabaseHubPage').then((m) => ({ default: m.DatabaseHubPage })),
 )
@@ -103,6 +130,15 @@ export function App() {
                 <Route path="contract/compare" element={<ContractComparePage />} />
                 <Route path="contract/consumer" element={<ContractConsumerPage />} />
                 <Route path="contract/exercises/:exerciseId" element={<ContractExercisePage />} />
+                <Route path="performance" element={<PerformanceHubPage />} />
+                <Route path="performance/workspace" element={<PerformanceWorkspacePage />} />
+                <Route path="performance/exercises/:exerciseId" element={<PerformanceExercisePage />} />
+                <Route path="security" element={<SecurityHubPage />} />
+                <Route path="security/demos" element={<SecurityDemosPage />} />
+                <Route path="security/exercises/:exerciseId" element={<SecurityExercisePage />} />
+                <Route path="microservices" element={<MicroservicesHubPage />} />
+                <Route path="microservices/simulator" element={<MicroservicesSimulatorPage />} />
+                <Route path="microservices/exercises/:exerciseId" element={<MicroservicesExercisePage />} />
                 <Route path="progress" element={<ProgressPage />} />
                 <Route path="practice" element={<PracticePage />} />
                 <Route path="shop" element={<ShopPage />} />

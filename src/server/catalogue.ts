@@ -161,6 +161,18 @@ catalogueRoutes.get('/products', async (c) => {
   const sort = parseSort(c.req.query('sort'))
   const query = parseSearchQuery(c.req.query('q'))
 
+  // BUG-HUNT DEFECT PERF-001 (hunt-perf-001): in a bug-hunt session carrying
+  // this defect, every list response pays a flat artificial stall. Clean
+  // mode is unchanged.
+  if (await isDefectActive(c, 'PERF-001')) {
+    await new Promise((resolve) => setTimeout(resolve, 350))
+  }
+  // BUG-HUNT DEFECT PERF-002 (hunt-perf-002): pages beyond 3 pay an extra
+  // artificial stall (un-indexed deep OFFSET represented safely).
+  if (page > 3 && (await isDefectActive(c, 'PERF-002'))) {
+    await new Promise((resolve) => setTimeout(resolve, 600))
+  }
+
   const conditions = ['p.active = 1']
   const bindings: string[] = []
   if (category) {
@@ -192,6 +204,11 @@ catalogueRoutes.get('/products', async (c) => {
   }
   const where = conditions.join(' AND ')
 
+  // BUG-HUNT DEFECT PERF-003 (hunt-perf-003): the list assembler performs
+  // sequential per-product work instead of one pass. Clean mode assembles
+  // in a single Promise.all.
+  const perf003 = await isDefectActive(c, 'PERF-003')
+
   const countRow = await c.env.DB.prepare(
     `SELECT COUNT(*) AS total FROM products p JOIN categories c ON c.id = p.category_id WHERE ${where}`,
   )
@@ -205,8 +222,18 @@ catalogueRoutes.get('/products', async (c) => {
     .bind(...bindings, perPage, (page - 1) * perPage)
     .all<ProductRow>()
 
+  const assembled: Record<string, unknown>[] = []
+  if (perf003) {
+    for (const row of rows.results) {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+      assembled.push(await toProductResponse(c, row, 'list'))
+    }
+  } else {
+    assembled.push(...(await Promise.all(rows.results.map((row) => toProductResponse(c, row, 'list')))))
+  }
+
   const body: ProductListResponse = {
-    data: await Promise.all(rows.results.map((row) => toProductResponse(c, row, 'list'))) as unknown as ProductListResponse['data'],
+    data: assembled as unknown as ProductListResponse['data'],
     page,
     perPage,
     total,

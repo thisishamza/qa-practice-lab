@@ -132,6 +132,27 @@ deterministic and server-side. See
 deployment from source `8000b77` — no redeploy or migration was performed at
 merge time.**
 
+The **final development phase** — Performance, Security & Microservices/Event-Driven
+Testing Lab (plan:
+[docs/final-phase-performance-security-distributed-testing-plan.md](docs/final-phase-performance-security-distributed-testing-plan.md)) —
+is **implemented and verified on branch
+`feat/performance-security-distributed-testing-lab`** (NOT merged, NOT pushed,
+NOT deployed, production untouched, migration `0014` applied locally only).
+It adds the **Performance** track at `/performance` (a bounded, same-origin load
+runner — real measurements with hard caps — plus a 12-exercise catalogue and
+three seeded performance hunts), the **Security** track at `/security`
+(inert SQLi/XSS/CSRF demonstrations, a 12-exercise catalogue and three seeded
+security hunts), and the **Microservices** track at `/microservices` (a
+deterministic, session-scoped order-pipeline simulator — publish, process,
+retry/backoff, duplicate delivery, idempotency, dead letters, replay, webhooks,
+trace, consistency audit — a 12-exercise catalogue and three event hunts).
+Migration `0014_final_phase_lab.sql` adds the three simulation tables
+(`events`, `service_state`, `webhook_deliveries`) and bumps `schema_version`
+to **14** locally; the action is a separately approved release step. OpenAPI is
+**1.3.0 / 53 operations** with **zero new error codes**. The catalogue counts:
+**36 scored exercises (12/12/12) and 9 new bug hunts (`hunt-perf-*`, `hunt-sec-*`,
+`hunt-event-*`) — production remains the Phase 7 release.**
+
 ## What you can do now
 
 | Route | Purpose |

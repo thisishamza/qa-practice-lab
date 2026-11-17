@@ -464,6 +464,45 @@ request parameter.
 | contract / additive vs strict | `CONTRACT-005` |
 | contract / status semantics | `CONTRACT-004` |
 | contract / consumer drift | `hunt-contract-007` (no defect — fixture delta) |
+| performance / baseline latency | `PERF-001` |
+| performance / deep pagination | `PERF-002` |
+| performance / N+1 assembly | `PERF-003` |
+| security / data exposure | `SEC-001` |
+| security / brute-force protection | `SEC-002` |
+| security / error hygiene | `SEC-003` |
+| events / consumer idempotency | `EVT-001` |
+| events / retry policy | `EVT-002` |
+| events / message ordering | `EVT-003` |
+
+## Registered hunts (Final development phase — performance, security, microservices)
+
+Nine hunts. `hunt-perf-*` and `hunt-sec-*` register with `kind: 'ui'`
+(default) and DO consume the per-IP 20/UTC-day UI hunt-start cap — the
+defects branch at the named response builders/gates. `hunt-event-*`
+register with `kind: 'event'`; the defects branch inside the simulated
+event consumer (`src/server/microservices.ts`) and never consume the
+daily cap. One `isDefectActive('PERF-00n'|'SEC-00n'|'EVT-00n')` branch per
+defect; clean mode byte-compatible.
+
+| Hunt | Defect | Kind | Surface | Expected (clean) | Actual (bug-hunt) |
+|---|---|---|---|---|---|
+| `hunt-perf-001` | `PERF-001` | ui | `GET /api/v1/products` list path | flat ~40 ms catalogue lists | uniform ~+350 ms stall on every list call (held constant across page/filter/q) |
+| `hunt-perf-002` | `PERF-002` | ui | `GET /api/v1/products?page=` | flat latency at any depth | pages ≥ 4 pay +~600 ms (deep OFFSET represented safely) |
+| `hunt-perf-003` | `PERF-003` | ui | `GET /api/v1/products` assembly | single assembly pass (Promise.all) | sequential per-row work +~120 ms each (N+1 represented safely); latency scales linearly with perPage |
+| `hunt-sec-001` | `SEC-001` | ui | `GET /api/v1/auth/me` (+ `/api/v1/account`) | profile serialized through the allowlist only | response additionally carries `internalNotes` (synthetic riskScore, seed segment, analyst note) |
+| `hunt-sec-002` | `SEC-002` | ui | `POST /api/v1/auth/login` and `POST /api/v1/auth/token` (shared failure budget) | 6th wrong-password attempt within the minute refused with 429 `login_rate_limited` | failure-budget peek skipped; unlimited 401s, no 429 — brute force unimpeded |
+| `hunt-sec-003` | `SEC-003` | ui | `POST /api/v1/checkout` 422 `cart_unavailable` | safe error envelope only (`error`, `message`, `lines`) | envelope additionally carries `debug` (synthetic query text, SQLSTATE, connection label) |
+| `hunt-event-001` | `EVT-001` | event | simulated consumer `inventory.reserved → payment` | redelivery acknowledged, payment not re-applied (dedup marker) | dedup check skipped — redelivery double-captures; consistency audit reports overcapture |
+| `hunt-event-002` | `EVT-002` | event | simulated consumer retry scheduling | 1s/2s backoff, cap 8s | backoff collapsed to 0 ms — retries fire on the next process call (retry storm, still ≤ 3 attempts) |
+| `hunt-event-003` | `EVT-003` | event | simulated consumer ordering guard (`inventory.reserved` / `payment.processed`) | unprepared message dead-letters with `out_of_order_payment` | unprepared message applied — paid ∧ ¬reserved; consistency audit reports `payment_without_reservation` |
+
+`hunt-event-001`/`002`/`003` are exercised entirely inside the simulator
+(`/microservices/simulator`): publish with the `payment-always-fails`,
+`webhook-timeout`, `payment-transient` or bare `payment.processed` drills,
+process, redeliver, or run the consistency check. The hunt ids never leak
+into the learner surface; the defects are per-session and vanish on reset
+or when leaving the hunt.
+
 
 ## Maintenance notes
 

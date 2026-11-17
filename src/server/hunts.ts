@@ -32,8 +32,11 @@ export interface HuntDefinition {
    * hunt; the defect is a server-controlled response-builder branch (live
    * API) or a server-only fixture delta (consumer/provider); it never
    * consumes the daily cap and can never activate a UI or SQL defect.
+   * 'event' = microservices/event hunt; the defect branches inside the
+   * simulated event consumer (src/server/microservices.ts); never consumes
+   * the daily cap and can never activate a UI, SQL or contract defect.
    */
-  kind?: 'ui' | 'sql' | 'contract'
+  kind?: 'ui' | 'sql' | 'contract' | 'event'
 }
 
 export const HUNTS: readonly HuntDefinition[] = [
@@ -261,6 +264,88 @@ export const HUNTS: readonly HuntDefinition[] = [
     scenarioId: 'contract-hunt-consumer-drift',
     defectIds: [],
     kind: 'contract',
+  },
+  // Final development phase — performance hunts (kind: 'ui'). The defects
+  // branch at the catalogue list handler (isDefectActive); hunts consume
+  // the daily cap like the other live-API hunts.
+  {
+    id: 'hunt-perf-001',
+    title: 'The shop that takes its time',
+    summary:
+      'Every page of the catalogue feels sluggish — even the first. Time it, compare against a reset session, and report the pattern.',
+    scenarioId: 'perf-slow-catalogue',
+    defectIds: ['PERF-001'],
+  },
+  {
+    id: 'hunt-perf-002',
+    title: 'The pages get slower the further you go',
+    summary:
+      'Early catalogue pages are fine; deep pages crawl. Sweep the page parameter, capture the boundary, and report the shape.',
+    scenarioId: 'perf-deep-pagination',
+    defectIds: ['PERF-002'],
+  },
+  {
+    id: 'hunt-perf-003',
+    title: 'More items, much more waiting',
+    summary:
+      'Small pages load fast; a full page hangs. Vary the page size, measure the slope, and report what scales linearly.',
+    scenarioId: 'perf-n-plus-one',
+    defectIds: ['PERF-003'],
+  },
+  // Final development phase — security hunts (kind: 'ui').
+  {
+    id: 'hunt-sec-001',
+    title: 'The profile says too much',
+    summary:
+      'Your own account response carries fields you never typed in. Find them, characterise them, and report the exposure.',
+    scenarioId: 'security-overexposed-profile',
+    defectIds: ['SEC-001'],
+  },
+  {
+    id: 'hunt-sec-002',
+    title: 'The door that never locks',
+    summary:
+      'Wrong passwords should eventually hit a wall. They don’t. Probe the sign-in failure budget and report what is missing.',
+    scenarioId: 'security-brute-force',
+    defectIds: ['SEC-002'],
+  },
+  {
+    id: 'hunt-sec-003',
+    title: 'The error that tells all',
+    summary:
+      'A routine error page is leaking internals. Trigger the failure path, inspect the envelope, and report the disclosure.',
+    scenarioId: 'security-verbose-errors',
+    defectIds: ['SEC-003'],
+  },
+  // Final development phase — microservices/event hunts (kind: 'event').
+  // Defects branch inside the simulated consumer (microservices.ts); they
+  // never consume the daily cap.
+  {
+    id: 'hunt-event-001',
+    title: 'The payment that got charged twice',
+    summary:
+      'A redelivered reservation charges the card again. Reproduce it in the simulator, prove it, and report the missing guard.',
+    scenarioId: 'event-duplicate-payment',
+    defectIds: ['EVT-001'],
+    kind: 'event',
+  },
+  {
+    id: 'hunt-event-002',
+    title: 'The retry that never waits',
+    summary:
+      'Retries fire instantly against a failing dependency. Measure the retry spacing, classify the failure mode, and report it.',
+    scenarioId: 'event-retry-storm',
+    defectIds: ['EVT-002'],
+    kind: 'event',
+  },
+  {
+    id: 'hunt-event-003',
+    title: 'Paid, but nothing reserved',
+    summary:
+      'A payment landed with no reservation behind it. Reproduce the ordering violation and report which guard was skipped.',
+    scenarioId: 'event-out-of-order',
+    defectIds: ['EVT-003'],
+    kind: 'event',
   },
 ]
 

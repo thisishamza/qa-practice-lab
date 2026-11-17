@@ -141,7 +141,7 @@ describe('migration 0010 (hunt_attempts, bug_reports)', () => {
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('13')
+    expect(row.value).toBe('14')
 
     const tables = migrated.sqlite
       .prepare(
@@ -185,7 +185,7 @@ describe('migration 0010 (hunt_attempts, bug_reports)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('13')
+    expect(after.value).toBe('14')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite

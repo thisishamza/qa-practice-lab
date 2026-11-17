@@ -1,10 +1,14 @@
 // Migration 0012 — app_meta schema_version 11 -> 12, intentional no-DDL bump.
 // Fresh install and upgrade paths; pre-existing data must survive verbatim.
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   applyRemainingMigrations,
   createMigratedD1,
 } from '../helpers/fake-d1'
+
+const migrationsDir = resolve(__dirname, '../../db/migrations')
 
 describe('migration 0012 (sql_lab_schema)', () => {
   it('applies on a fresh database and reports schema_version 13', () => {
@@ -12,7 +16,7 @@ describe('migration 0012 (sql_lab_schema)', () => {
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('13')
+    expect(row.value).toBe('14')
     // The attempts/report control-plane tables still exist, untouched.
     const tables = migrated.sqlite
       .prepare(
@@ -41,7 +45,7 @@ describe('migration 0012 (sql_lab_schema)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('13')
+    expect(after.value).toBe('14')
 
     const customer = migrated.sqlite
       .prepare('SELECT email, role FROM customers WHERE id = 4242')
@@ -61,7 +65,9 @@ describe('migration 0012 (sql_lab_schema)', () => {
         .all() as Array<{ name: string }>)
         .map((t) => t.name)
     const before = tables(migrated.sqlite)
-    applyRemainingMigrations(migrated, 11)
+    // Apply ONLY 0012 — 0013/0014 add/remove nothing either, but 0014 adds
+    // the simulation tables on purpose.
+    migrated.sqlite.exec(readFileSync(join(migrationsDir, '0012_sql_lab_schema.sql'), 'utf8'))
     const after = tables(migrated.sqlite)
     expect(after).toEqual(before)
   })

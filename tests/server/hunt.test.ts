@@ -91,7 +91,7 @@ describe('hunt and defect registries (code, not data)', () => {
     const uiHunts = HUNTS.filter((hunt) => hunt.kind === undefined || hunt.kind === 'ui')
     const sqlHunts = HUNTS.filter((hunt) => hunt.kind === 'sql')
     const contractHunts = HUNTS.filter((hunt) => hunt.kind === 'contract')
-    expect(uiHunts.length).toBe(10)
+    expect(uiHunts.length).toBe(16)
     expect(contractHunts.map((hunt) => hunt.id)).toEqual([
       'hunt-contract-001',
       'hunt-contract-002',
@@ -111,7 +111,7 @@ describe('hunt and defect registries (code, not data)', () => {
       'hunt-db-007',
       'hunt-db-008',
     ])
-    expect(HUNTS.length).toBe(25)
+    expect(HUNTS.length).toBe(34)
     expect(new Set(HUNTS.map((hunt) => hunt.id)).size).toBe(HUNTS.length)
     for (const hunt of HUNTS) {
       expect(hunt.id).toMatch(/^[a-z0-9][a-z0-9-]{2,63}$/)
@@ -147,6 +147,15 @@ describe('hunt and defect registries (code, not data)', () => {
       'CONTRACT-004',
       'CONTRACT-005',
       'CONTRACT-006',
+      'PERF-001',
+      'PERF-002',
+      'PERF-003',
+      'SEC-001',
+      'SEC-002',
+      'SEC-003',
+      'EVT-001',
+      'EVT-002',
+      'EVT-003',
     ])
     expect(new Set(DEFECTS.map((defect) => defect.id)).size).toBe(DEFECTS.length)
   })

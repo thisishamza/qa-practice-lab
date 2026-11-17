@@ -59,6 +59,24 @@ export const primaryNav: NavItem[] = [
     description: 'Validate and diff API contracts',
   },
   {
+    label: 'Performance',
+    to: '/performance',
+    icon: 'performance',
+    description: 'Measured load testing, safely bounded',
+  },
+  {
+    label: 'Security',
+    to: '/security',
+    icon: 'security',
+    description: 'Synthetic security practice',
+  },
+  {
+    label: 'Microservices',
+    to: '/microservices',
+    icon: 'microservices',
+    description: 'Event-driven simulation and testing',
+  },
+  {
     label: 'Practice',
     to: '/practice',
     icon: 'practice',

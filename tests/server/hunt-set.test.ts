@@ -140,15 +140,17 @@ const EXACT_STOCK_SLUG = 'ember-led-lantern'
 const EXACT_STOCK = 4
 
 describe('registries (code, not data) — P3-M8 set', () => {
-  it('registers ten UI hunts plus eight SQL hunts plus seven contract hunts, each wired to a scenario', () => {
+  it('registers sixteen UI hunts plus eight SQL hunts plus seven contract hunts plus three event hunts, each wired to a scenario', () => {
     const uiHunts = HUNTS.filter((hunt) => hunt.kind === undefined || hunt.kind === 'ui')
     const sqlHunts = HUNTS.filter((hunt) => hunt.kind === 'sql')
     const contractHunts = HUNTS.filter((hunt) => hunt.kind === 'contract')
-    expect(uiHunts.length).toBe(10)
+    const eventHunts = HUNTS.filter((hunt) => hunt.kind === 'event')
+    expect(uiHunts.length).toBe(16)
     expect(sqlHunts.length).toBe(8)
     expect(contractHunts.length).toBe(7)
-    expect(HUNTS.length).toBe(25)
-    expect(DEFECTS.length).toBe(16)
+    expect(eventHunts.length).toBe(3)
+    expect(HUNTS.length).toBe(34)
+    expect(DEFECTS.length).toBe(25)
     const defectIds = new Set(DEFECTS.map((defect) => defect.id))
     for (const hunt of uiHunts) {
       expect(hunt.defectIds.length).toBe(1)
@@ -186,7 +188,7 @@ describe('GET /api/v1/practice/hunts', () => {
     const response = await app.request('/api/v1/practice/hunts', {}, { DB: migrated.db })
     expect(response.status).toBe(200)
     const body = (await response.json()) as { data: Array<Record<string, unknown>> }
-    expect(body.data.length).toBe(25)
+    expect(body.data.length).toBe(34)
     for (const entry of body.data) {
       expect(Object.keys(entry).sort()).toEqual(['curriculum', 'id', 'scenarioId', 'summary', 'title'])
       expect(typeof entry.scenarioId).toBe('string')
@@ -213,7 +215,7 @@ describe('GET /api/v1/practice/hunts', () => {
         }
       }>
     }
-    expect(body.data.length).toBe(25)
+    expect(body.data.length).toBe(34)
     for (const entry of body.data) {
       expect(entry.curriculum).toBeDefined()
       expect(typeof entry.curriculum.skillArea).toBe('string')

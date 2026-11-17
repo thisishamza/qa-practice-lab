@@ -14,7 +14,8 @@
 - **Phase 6 — Database & SQL Testing Lab — is MERGED TO `main` and DEPLOYED TO PRODUCTION (2026-11-17):** M1 merged via PR #9 (`94cc7fa`); M2 merged via PR #10 (`eeded31`). Production D1 migration `0012_sql_lab_schema.sql` (zero DDL) applied 2026-11-17 after a verified pre-migration export (`/tmp/opencode/qa-practice-lab-db-pre-0012.sql`); production `schema_version` **12**; Pages deployment **`2c32a721-8374-46af-8a20-e560839f88b1`** (source `eeded31`; alias `https://qa-practice-lab.pages.dev`); production acceptance passed 2026-11-17 — see §11 (2026-11-17 release entry), §15 and `docs/phase-6-exit-audit.md`. 36 exercises (12/13/11) with result-based server evaluation (`POST /api/v1/sql/evaluate`), 13 SQL-QA scenario tags, 8 database bug hunts (`hunt-db-001`…`008`), `/database/exercises/:exerciseId`, a Database Testing section on `/progress`, 1106/1106 tests.
 - **Phase 7 — Contract Testing Lab — is RELEASED TO PRODUCTION (2026-11-17) and MERGED INTO `main` (2026-11-17, PR #11):** the approved plan was implemented, corrected and maintainer-review-approved; the maintainer confirmed D-P7-8 (ACCEPT), F-C7 (ACCEPT WITH DISCLOSURE) and D-P7-1 (ACCEPT) and authorized the production release sequence. **Production D1 migration `0013` (zero DDL) applied 2026-11-17 after a verified pre-migration export** (`/tmp/opencode/backups/qa-practice-lab-db-pre-0013-2026-11-17T08-13-49Z.sql` — 57,655 B, SHA-256 `225c744464fb3426e291c35cb189a46c582e1ff6b2406c7ef24680b32c780730`; structure + all row counts verified); production `schema_version` **13**; Pages deployment **`47680bf9-7290-4c8a-a5c9-25490dff7fc4`** (project `qa-practice-lab`, production branch `main`, source commit **`8000b77`**; the production alias serves `index-KeIJVV6-.js`); production acceptance passed (health `schemaVersion` 13; all 15 core routes 200; OpenAPI 3.1.0 / 1.2.0 / exactly 42 operations / 27 ErrorCodes / four contract paths; validate/compare/verify/evaluate contract API accepted; both hunts 002/007 verified end-to-end via synthetic isolated sessions; browser matrix 40/40 across themes × 4 widths with zero overflow, zero unexpected console errors, zero exceptions; Phase 3–6 smoke passed; probe records cleaned up — see `docs/phase-7-exit-audit.md` §23). `npm run check` green on the release source (**1417/1417**, 70 files). Five routes lazy; validator absent from the eager entry (D-P7-8 accepted). Phase 8 must not be started. The `backup/unpublished-phase6-7-docs` branch must not be deleted, pushed or merged. **Merged (2026-11-17): PR #11 (https://github.com/thisishamza/qa-practice-lab/pull/11) → merge commit `e21108a` ("Merge pull request #11 from thisishamza/feat/phase-7-contract-testing-lab"), parents `eeded31` (previous `main`) and `04a6013` (reviewed head); `main == origin/main == `e21108a`; merged tree identical to `04a6013` (`git diff 04a6013..main` empty); application code (`src/`, `public/`, `db/`, `functions/`, `package.json`, `wrangler.jsonc`) unchanged from the deployed release source `8000b77` — delta documentation-only; migration `0013` remains ordered after `0012`; post-merge `npm run check` green (lint, typecheck ×3, **1417/1417** tests, 70 files) and `npm run build` clean (entry `index-KeIJVV6-.js`, 417.79 kB / gzip 127.74 kB — identical filename/size to the deployed entry). Production was NOT redeployed and NO migration was applied at merge time — the existing Phase 7 deployment remains authoritative.**
 - **Phase 6 planning (2026-11-17):** the Phase 6 — Database & SQL Testing Lab — implementation plan is `docs/phase-6-database-testing-plan.md`. **Deployed** — production `schema_version` was 12; since advanced to **13** by the 2026-11-17 Phase 7 release.
-- **Last updated:** 2026-11-17 (Phase 7 RELEASED TO PRODUCTION and MERGED into `main` via PR #11 — merge commit `e21108a`).
+- **Final development phase — Performance, Security & Microservices/Event-Driven Testing Lab — implemented and verified on branch `feat/performance-security-distributed-testing-lab` (created 2026-11-17 from `main` @ `8258b7e` after pushing the pending Phase 7 documentation commit with explicit authorization); NOT merged, pushed, PR'd, deployed or migrated in production.** Delivered: `/performance` (bounded same-origin load runner — VUs ≤ 8, duration ≤ 30 s, ramp ≤ 10 s, ≤ 150 requests/run, 5 s/request timeout, rps token-bucket guard, p50/p90/p95/p99 nearest-rank gated at n ≥ 20, Markdown report download, local-only history in localStorage; the runner cannot target any origin outside the allowlist), 12-exercise catalogue + three performance bug hunts (`hunt-perf-001..003`); `/security` (inert SQLi/XSS/CSRF/security-header demonstrations incl. a sandboxed iframe XSS render; 12-exercise catalogue + three security bug hunts `hunt-sec-001..003`); `/microservices` (deterministic D1-backed, session-scoped order-pipeline simulator — publish/process/retry with 1s→2s→4s→8s backoff/bounded attempts/duplicate delivery/idempotent consumers/dead-letter queue/replay/webhook delivery simulation/correlation ids/ordered trace/consistency audit; 12-exercise catalogue + three event bug hunts `hunt-event-001..003` gated by `isDefectActive`). Migration `0014_final_phase_lab.sql` (adds `events`, `service_state`, `webhook_deliveries` — session-scoped with `ON DELETE CASCADE`, `schema_version` 13 → **14**; applied to **local D1 only**). Learning integration reuses the Phase 4 engine unchanged (attempts, hints, reveals, reports, progress): the three labs have 36 scored exercises (12/12/12; selection rubric recall 70 / precision 30, pass ≥ 70, scored server-side via `POST /api/v1/labs/evaluate` + `src/server/labExercises.ts` answer keys + `src/server/labLearning.ts` hints/reveals), and hunt set now **34 hunts / 25 defects**. Navigation gains three entries (Performance, Security, Microservices) after Contract Testing; `/progress` gains three sections; three new guides added. OpenAPI **1.3.0 / 53 operations** (11 new operations: `labs/evaluate` + 10 microservices routes) with **zero new error codes**; `npm run check` green (**1473/1473, 74 files**), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB), browser acceptance green (Chrome over raw CDP: 40/40 render matrix across themes × 375/768/1024/1440 with zero overflow and zero console errors; simulator pipeline publish → paid → webhook delivered → consistency OK; exercise flow 100/100 through the real UI; PERF-001 hunt vs reset verified ~400 ms vs ~40 ms in-browser; reset verified; mobile nav confirmed). Migration fresh-install AND upgrade tests included (`migration-0014.test.ts`). No Phase 3–7 functionality regressed. Full as-built record in §17 and plan in `docs/final-phase-performance-security-distributed-testing-plan.md`. **Release discipline: no push/PR/merge/deploy/production migration without explicit maintainer authorization — none has been given; the Phase 7 production deployment remains authoritative.**
+- **Last updated:** 2026-11-17 (final development phase implemented and verified on `feat/performance-security-distributed-testing-lab`; git `main` == `origin/main` == `8258b7e`; production unchanged).
 
 ## 2. Product principles
 
@@ -2666,3 +2667,336 @@ production deployment is not authorized as part of Phase 7 implementation. Phase
      `AGENTS.md`, `PROJECT_STATE.md`)
 - **Phase 7 is RELEASED TO PRODUCTION (2026-11-17).** The maintainer confirmed D-P7-8 (ACCEPT), F-C7 (ACCEPT WITH DISCLOSURE) and D-P7-1 (ACCEPT) and authorized the release sequence. Migration `0013_contract_lab_schema.sql` (zero DDL) was applied to production D1 after a verified pre-migration export (`/tmp/opencode/backups/qa-practice-lab-db-pre-0013-2026-11-17T08-13-49Z.sql` — 57,655 B, SHA-256 `225c744464fb3426e291c35cb189a46c582e1ff6b2406c7ef24680b32c780730`); production `schema_version` is now **13**. Production deployment **`47680bf9-7290-4c8a-a5c9-25490dff7fc4`** (project `qa-practice-lab`, production branch `main`, source **`8000b77`**) — production alias `https://qa-practice-lab.pages.dev` serves `index-KeIJVV6-.js`. Production acceptance passed: 15/15 core routes 200; OpenAPI 3.1.0 / 1.2.0 / 42 operations / 27 ErrorCodes; contract API (validate/compare/verify-consumer/evaluate) accepted; hunt-contract-002 and hunt-contract-007 end-to-end verified in production with synthetic isolated sessions; browser matrix 40/40 (themes × 375/768/1024/1440) with zero overflow, zero unexpected console errors, zero exceptions; reduced-motion verified; Phase 3–6 smoke passed; probe records cleaned up (counts byte-identical to pre-probe baseline except shared `rate_limit_buckets` windows). Full evidence: `docs/phase-7-exit-audit.md` §23 and §11 (2026-11-17 release entry). Git `main == origin/main == eeded31` (Phase 7 NOT merged — merge/PR is a separate maintainer decision).
 - Exact next action: **Phase 8 planning** — Phase 7 was merged into `main` via PR #11 on 2026-11-17 (see §11). Do **not** start Phase 8 without explicit maintainer instruction; do not apply remote migrations beyond `0013`. (Supersedes the pre-merge "maintainer decision on merging" next step.)
+
+## 17. Final development phase — Performance, Security & Microservices/Event-Driven Testing Lab (implemented and verified on branch, NOT released)
+
+**Mission (2026-11-17):** implement the final three integrated testing capabilities in one
+session — Performance Testing, Security Testing and Microservices/Event-Driven Testing —
+and stop at the release boundary. Plan: `docs/final-phase-performance-security-distributed-testing-plan.md`.
+Branch: **`feat/performance-security-distributed-testing-lab`**, created from `main` @ `8258b7e`
+(pushed to `origin/main` first under the mission's explicit authorization — see "Part A" below).
+Implementation commit: **`36b0ad3`** ("feat: add final phase performance, security and event
+labs"; 69 files; base `main` @ `8258b7e`). Documentation of the release boundary stays in
+this file; nothing beyond `36b0ad3` exists on the branch.
+
+### Part A — Git synchronization & the pending documentation push (COMPLETE)
+
+- Verified `8258b7e` ("docs: record phase 7 PR #11 merge and post-merge verification"):
+  documentation-only (`AGENTS.md`, `PROJECT_STATE.md`, `README.md`,
+  `docs/phase-7-exit-audit.md`, +53/−16), parent is exactly the PR #11 merge commit
+  `e21108a`, based on the actual merge (`git diff` empty vs reviewed head `04a6013`),
+  no application code, no secrets/credentials/local artifacts, no unrelated changes.
+- `origin/main` was still `e21108a` — fast-forward push performed:
+  `e21108a..8258b7e main -> main`. Local `main == origin/main == 8258b7e`; working tree
+  clean; `feat/phase-7-contract-testing-lab` @ `04a6013` and
+  `backup/unpublished-phase6-7-docs` @ `a6c5c2a` both intact; Phase 7 production source
+  and deployment unchanged (no redeploy, no migration). Nothing else was pushed.
+- GitHub reported 1 moderate Dependabot vulnerability on the default branch
+  (https://github.com/thisishamza/qa-practice-lab/security/dependabot/1) — recorded,
+  not introduced by this phase, left for the maintainer.
+
+### Part B — Plan (COMPLETE)
+
+`docs/final-phase-performance-security-distributed-testing-plan.md` — architecture and
+data flow, user journeys, exercise catalogue with difficulty matrix, API endpoints and
+schemas, hunt design, hint/reveal/scoring behaviour, security boundaries, migration
+requirements, rate limits and resource budgets, test strategy, the acceptance checklist
+(§6, reproduced verbatim below) and known limitations (§7). The plan and the
+implementation belong to ONE milestone; they landed together. Implementation diverged in
+the following ways (as-built addenda are documented in the plan's sibling entries here):
+
+1. **Eleven** new operations shipped instead of nine — `POST /api/v1/microservices/events/{id}/redeliver`
+   was added during acceptance so learners can force at-least-once duplicate delivery of
+   processed events (the duplicate-delivery drill); `retry` stays failed/dead-only (409 otherwise).
+   OpenAPI is therefore **1.3.0 / 53 operations** (was 1.2.0 / 42); **zero new error codes**
+   (`exercise_not_found` already existed); tags gain `labs` and `microservices`.
+2. **Publish and process mint a clean guest session on demand** (hunt-start semantics) —
+   found during browser acceptance: the console previously 401'd for first-time browsers.
+   The `/sql/exercises/:id/start` path already mints; the simulator now matches it.
+   Reads never mint; retry/redeliver/replay/reset require an existing session.
+3. **Progress sections** for the three labs are implemented as a shared
+   `LabProgressSection` component (Database/Contract sections unchanged).
+4. Performance run history is stored in `localStorage` only (labelled "this browser only");
+   no server persistence — metrics are computed from measured samples, never fabricated;
+   p90/p95/p99 render as `n/a` when n < 20.
+5. The event broker is a **D1-backed deterministic simulation** — no network I/O exists
+   anywhere; webhook "delivery" is a scripted outcome to `hooks.meridian-practice.test`.
+   Not a production broker; labelled as such in UI, docs and plan.
+
+### Part C — Performance Testing (COMPLETE, pending release)
+
+- `/performance` hub (terminology: baseline/load/stress/spike/soak, percentiles, error budget,
+  saturation knee; metrics explainer; 3 seeded hunts; 12 exercises with difficulty bands and
+  progress rings fed by the real server-side attempt record).
+- `/performance/workspace` — bounded same-origin runner: allowlist of 5 first-party GET
+  endpoints (`/api/health`, `/api/v1/products`, `/api/v1/products?perPage=4`,
+  `/api/v1/categories`, `/api/v1/cart`); VUs ≤ 8; duration 5–30 s; ramp ≤ 10 s;
+  ≤ 150 requests/run; 5 s per-request timeout (AbortController); 1–100 req/s token-bucket
+  guard; stop-at-cap control; live progress; report shows measured values only
+  (nearest-rank percentiles with the n ≥ 20 gate); Markdown report download; status-class
+  distribution; local-only history (last 5 runs, clearable). No external URLs are reachable.
+- 12 exercises (4 beginner / 4 intermediate / 4 advanced), scored server-side by the shared
+  selection rubric (recall 70 / precision 30, pass ≥ 70): `perf-bgn-baseline-01`,
+  `perf-bgn-metric-02`, `perf-bgn-workload-03`, `perf-bgn-result-04`, `perf-int-bottleneck-05`,
+  `perf-int-pagination-06`, `perf-int-cache-07`, `perf-int-error-08`, `perf-adv-nplus-09`,
+  `perf-adv-capacity-10`, `perf-adv-spike-11`, `perf-adv-soak-12`.
+- 3 hunts, `kind: 'ui'` (consume the daily cap like the live-API hunts):
+  `hunt-perf-001` (`PERF-001`, flat +350 ms on `GET /api/v1/products`),
+  `hunt-perf-002` (`PERF-002`, +600 ms when page > 3 — deep offset represented safely),
+  `hunt-perf-003` (`PERF-003`, sequential per-row assembly +120 ms — N+1 represented safely).
+  In-browser containment verified: clean ~40 ms → hunt ~400 ms → reset ~40 ms (Chrome over CDP).
+
+### Part D — Security Testing (COMPLETE, pending release)
+
+- `/security` hub (synthetic-environment explanation, Critical–Low severity model matching
+  the report flow, 12 exercises, 3 hunts).
+- `/security/demos` — four inert demonstrations: (A) SQL string-build vs parameterization
+  (string preview, never executed); (B) XSS payload rendered inside `<iframe sandbox="">`
+  in both encoded and raw-HTML modes — scripts cannot execute; (C) narrated CSRF walkthrough
+  (no requests are ever sent); (D) security-header → risk mapping. Nothing on the page
+  performs a network call or executes input.
+- 12 exercises (4/4/4): `sec-bgn-authn-01`, `sec-bgn-input-02`, `sec-bgn-headers-03`,
+  `sec-bgn-data-04`, `sec-int-bola-05`, `sec-int-session-06`, `sec-int-escalation-07`,
+  `sec-int-api-08`, `sec-adv-authz-09`, `sec-adv-chain-10`, `sec-adv-sql-11`, `sec-adv-xss-12`.
+- 3 hunts, `kind: 'ui'`:
+  `hunt-sec-001` (`SEC-001`, `/api/v1/auth/me` + `/api/v1/account` additionally serialize
+  `internalNotes` — synthetic riskScore/segment/analyst note),
+  `hunt-sec-002` (`SEC-002`, login/token failure-budget peek skipped — unlimited 401s, no 429),
+  `hunt-sec-003` (`SEC-003`, 422 `cart_unavailable` additionally leaks a synthetic `debug`
+  object with query text / SQLSTATE / connection label).
+  Authorization boundaries reuse the existing server-side `isDefectActive` session scoping;
+  clean mode is byte-compatible. Reports reuse the structured bug-report flow with the
+  controlled severity field — evaluation never keyword-matches.
+
+### Part E — Microservices & Event-Driven Testing (COMPLETE, pending release)
+
+- `/microservices` hub (topology, guarantees catalogue, 12 exercises, 3 hunts).
+- `/microservices/simulator` — the event console: publish synthesized events
+  (`order.created`/`inventory.reserved`/`payment.processed`/`webhook.deliver`) with drills
+  (`none`, `inventory-short`, `inventory-delay`, `payment-decline`, `payment-transient`,
+  `payment-always-fails`, `webhook-timeout`, `webhook-always-fail`, `poison`), process ≤ 10
+  due events per call with 1s→2s→4s→8s backoff (cap; `available_at` gated — process never
+  blocks), bounded 3 attempts, dead-letter queue with replay (≤ 10), retry (failed/dead),
+  redeliver (any non-pending event; preserves attempt counters), event history (50, newest
+  first), per-correlation ordered trace + webhook deliveries, service-state counters,
+  orders table, cross-service consistency audit
+  (`payment_without_reservation`, `overcapture`, `paid_without_webhook`), and a reset that
+  deletes only the caller session's rows. Payload synthesis is server-side only; no learner
+  input is executed; no network fetch exists anywhere. Quota: 100 events/session;
+  publish 20/min/IP; `labs-eval` 30/min/IP; retry/redeliver/replay/reset under the global
+  120/min mutate backstop.
+- 12 exercises (4/4/4): `evt-bgn-guarantee-01`, `evt-bgn-idempotency-02`, `evt-bgn-order-03`,
+  `evt-bgn-dlq-04`, `evt-int-retry-05`, `evt-int-duplicate-06`, `evt-int-eventual-07`,
+  `evt-int-webhook-08`, `evt-adv-outbox-09`, `evt-adv-outoforder-10`, `evt-adv-poison-11`,
+  `evt-adv-audit-12`.
+- 3 hunts, `kind: 'event'` (never consume the daily cap; defects branch inside the simulated
+  consumer): `hunt-event-001` (`EVT-001`, payment consumer skips the dedup check → redelivery
+  double-captures; audit reports `overcapture`), `hunt-event-002` (`EVT-002`, backoff collapsed
+  to 0 ms — zero-spacing retries), `hunt-event-003` (`EVT-003`, unprepared payment applied —
+  paid ∧ ¬reserved; audit reports `payment_without_reservation`). Clean mode dead-letters
+  with `out_of_order_payment`.
+- Simulation state is per `practice_sessions` row with `ON DELETE CASCADE` (migration 0014).
+
+### Part F — Shared learning integration (COMPLETE)
+
+All 36 exercises and 9 hunts reuse the Phase 4 engine verbatim: `attemptTargets` registry
+(extended), `resolveAttemptTarget`, attempts/hints (progressive, server-enforced ordering)/
+reveals (gated on submit or confirmed give-up)/bug reports/progress. New server registries:
+`src/server/labExercises.ts` (answer keys), `src/server/labLearning.ts` (hints + reveals for
+all 36 exercises and 9 hunts — LEVELS 1–3 + full reveal bodies). New shared client:
+`LabHub` (hub shell with difficulty-band progress), `LabExerciseWorkspace` (checklist +
+server evaluation + attempt chip + hints/reveals), `LabProgressSection` (progress sections).
+Mutation-isolation: `labExercises` ids validated by pattern; out-of-checklist selection ids
+answer 400; unknown exercise ids answer 404 `exercise_not_found`; pass ≥ 70 stamps the attempt
+via the same `submissionStatements` path as SQL/contract evaluation.
+
+### Part G — Architecture & free-tier constraints (HELD)
+
+One additive migration (`0014`); no new bindings; no Durable Objects/Queues/brokers;
+bounded batches (10/process call); bounded queues (100-event quota, 512 B payload CHECK,
+list caps of 20/50); hashed-IP scoped buckets; global mutate backstop; synthetic data only;
+no learner code execution; no shared-D1 learner SQL access (unchanged); runner same-origin
+allowlist only; AI is not a runtime dependency; the platform remains fully usable offline
+(local D1) and on the free Pages tier.
+
+### Part H — Implementation quality (HELD)
+
+React 19 + TS + Vite; hand-written CSS on the existing design tokens (`src/styles/labs.css`,
+reuses `contract.css`/`database.css` classes); three new lazy routes per lab area (9 routes
+total); no new dependencies; accessibility patterns preserved (aria-pressed checklist buttons,
+labels, role=status/alert, keyboard focus); both themes × 375/768/1024/1440 px verified at
+runtime with **zero horizontal overflow and zero console errors**; `prefers-reduced-motion`
+respected; no placeholder controls — every visible control performs its action.
+No Phase 3–7 surface regressed (full suite: 1417 → **1473** tests, all green).
+
+### Part I — Verification & acceptance (COMPLETE)
+
+- Focused during development: `migration-0014` (fresh + upgrade through 0013; FK cascades
+  verified), `labs.test` (auth/404/400/pass/fail/attempt stamping/reveal gating/leak boundary),
+  `microservices.test` (22 checks incl. full pipeline, transient retry with backoff gating,
+  always-fails → DLQ → replay, poison, idempotency vs double-apply, out-of-order vs applied,
+  EVT-001/002/003 hunt containment, reset, session isolation), `lab-exercises` matrix tests.
+- `npm run check` green (lint, typecheck ×3, **1473/1473 tests, 74 files**) — run twice
+  (before and after the acceptance-driven session-mint fix) — and `npm run build` clean
+  (entry `index-CLEs4WAj.js`, **448.33 kB / gzip 137.54 kB**; +30.5 kB / +9.8 kB gzip vs Phase 7).
+- Browser acceptance (Chrome over raw CDP against `wrangler pages dev dist`, fresh profile):
+  - Render matrix **40/40** (10 routes × 375/768/1024/1440): exactly one h1, zero overflow, zero console errors.
+  - Simulator end-to-end: publish → 201; reserve → capture → notification → webhook delivered;
+    consistency audit OK; trace returns the full pipeline; reset → 200 and zero rows.
+  - Runner: real bounded run against `/api/health` completed; results rendered; Markdown report
+    download button present; measured values consistent (throughput ≈ 20 req/s, capped at 150 requests).
+  - Exercise flow: click-through of `perf-bgn-baseline-01` with the four correct options → **Passed — 100/100** via server evaluation.
+  - PERF-001 hunt-vs-reset containment verified **in-browser** (~400 ms → ~40 ms).
+  - Themes: dark (`rgb(11, 18, 32)`) and light verified; mobile nav (375 px) lists Performance, Security, Microservices; security demos render inertly.
+- Firefox/WebKit remain untested (Chrome only, as all prior phases).
+
+### Part J — Release discipline (HELD)
+
+Work happens on `feat/performance-security-distributed-testing-lab` only. No push, PR, merge,
+deploy, remote migration or production data operation has been performed beyond the Part A
+documentation push. `backup/unpublished-phase6-7-docs` (tip `a6c5c2a`) and
+`feat/phase-7-contract-testing-lab` (tip `04a6013`) are untouched. The production Phase 7
+release (deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, source `8000b77`, source `schema_version` 13)
+remains authoritative. Migration 0014 is applied to the local D1 only; production D1 is unchanged (0013).
+
+### Part K — Actual counts (authoritative for release notes)
+
+- Exercises: **36** (12/12/12; 4/4/4 per lab). Bug hunts: **34** total (10 pre-existing UI + 6
+  Phase 5 UI + 8 SQL + 7 contract + 3 performance + 3 security + 3 event = **34**); **25 defects**
+  (16 existing + 9 new: `PERF-001..003`, `SEC-001..003`, `EVT-001..003`).
+- API operations: **53** (42 existing + 11 new) across 49 paths; OpenAPI `info.version` **1.3.0**;
+  **27 ErrorCodes** (unchanged vocabulary); tags `labs` and `microservices` added.
+- Migration: **0014** `db/migrations/0014_final_phase_lab.sql` (schema_version **14**).
+  Production: NOT applied. Local: applied.
+- New routes (lazy): `/performance`, `/performance/workspace`, `/performance/exercises/:exerciseId`,
+  `/security`, `/security/demos`, `/security/exercises/:exerciseId`, `/microservices`,
+  `/microservices/simulator`, `/microservices/exercises/:exerciseId` (9).
+- Navigation: 3 new sidebar entries (Performance, Security, Microservices) after Contract Testing.
+- Progress: 3 new sections (Performance Testing, Security Testing, Microservices & Events).
+- Guides: `guide-performance-testing`, `guide-security-testing`, `guide-event-driven-testing`.
+
+### Release requirements (NOT DONE — explicit maintainer approval required)
+
+1. Review the branch; open the PR (no gh credentials in this environment — maintainer to open it or authorize `gh auth login`).
+2. After approval to release: pre-migration export of production D1 (`wrangler d1 export`), verify it, then apply `0014_final_phase_lab.sql` (production `schema_version` 13 → **14**).
+3. Deploy production (`npm run check && npm run build && npx wrangler pages deploy dist`).
+4. Production acceptance: health `schemaVersion` 14; the nine new routes 200; OpenAPI 1.3.0/53 ops; publish→process→webhook pipeline smoke; phase 3–7 smoke; browser matrix; cleanup of probe rows; record in this file and the plan's exit checklist.
+
+### Exact next action
+
+Maintainer review of `feat/performance-security-distributed-testing-lab`. Do NOT merge, push,
+deploy or apply remote migrations without explicit authorization. Phase 7 production release
+remains authoritative until then.
+
+### Known limitations
+
+- The load runner measures the browser → Pages/D1 path only; it is not a load-generation
+  service; treat absolute numbers as session-local.
+- p90/p95/p99 are only computed for n ≥ 20; below that the report prints `n/a` rather than an estimate.
+- Webhook "delivery" is scripted simulation; HTTP status codes are scripted, not observed.
+- Event processing is learner-triggered (no background cron on Pages free tier); backoff is
+  observable across process calls, not wall-clock real-time at scale.
+- The simulator's stock is a synthetic constant (25/SKU); the runner's endpoints read the shared
+  local/practice corpus and are therefore read-only targets.
+- Firefox/WebKit remain untested (Chrome over CDP only, as all prior phases).
+- Performance run history never leaves the browser; a learner who clears localStorage loses it.
+
+## 18. Final phase — PR preparation: F2 hardening and maintainer handoff (2026-11-17)
+
+**This section supersedes §17's "Exact next action" step 1 for the PR step only; everything
+else in §17 stands.**
+
+### Independent review verdict (2026-11-17)
+
+An independent fresh-context, read-only review of the branch at `03a6334` (implementation
+`36b0ad3` + documentation `03a6334`) returned **READY FOR PR AND RELEASE** — no BLOCKER,
+HIGH or MEDIUM findings; all issues LOW/INFO. Verified independently: `npm run check`
+1473/1473 (74 files), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB /
+gzip 137.54 kB), OpenAPI 1.3.0 / 53 operations with zero removed/modified Phase 3–7
+operations and 27 unchanged ErrorCodes, working tree clean, production untouched.
+Code readiness ≠ production-release authorization.
+
+### F2 hardening (implemented in the F2/handoff commit — the branch tip; see `git log -1`)
+
+Independent-review finding F2: `POST /api/v1/microservices/publish` evaluated the scoped
+`events-publish` 20/min budget AFTER `resolveOrMintSession`, so a cookie-less caller over
+the limit still minted a fresh guest practice session (row + cart) per request before
+answering 429 — unbounded synthetic session accumulation (bounded only by the 120/min
+global mutate backstop).
+
+- **Fix** (`src/server/microservices.ts`, publish handler only): the `events-publish`
+  budget check now runs BEFORE `resolveOrMintSession`. The mutate backstop was already
+  enforced by `app.ts` middleware before the route. Behavior for callers with an existing
+  live session is unchanged (same budget, same envelope, same limit value — only the
+  evaluation order moved); the 429 envelope (`error: rate_limited`,
+  `Too many publish requests…`, `Retry-After` header) is byte-identical; a rate-limited
+  caller now receives 429 with **no** `Set-Cookie` and **no** session row.
+- **Not changed**: F1 (concurrent `process` claim — left as-is deliberately), F3–F9,
+  the `process` handler's mint semantic (it has no scoped limit of its own; only the
+  pre-route mutate backstop applies, which was already correct), all limits, all
+  endpoints, all dependencies.
+- **Tests** (`tests/server/microservices.test.ts`, new describe "publish rate limit
+  (F2…)"): (a) rate-limited cookie-less publish → 429, `Retry-After`, no Set-Cookie,
+  zero `practice_sessions` rows; (b) rate-limited existing-session publish → 429 in the
+  same envelope, session count unchanged; (c) valid cookie-less publish → 201 and mints
+  exactly one session; (d) existing-session publish → 201, nothing minted, and the
+  `events-publish:<iphash>` bucket is consumed exactly once.
+
+### Verification at this handoff
+
+- Focused: `npx vitest run tests/server/microservices.test.ts` — **26/26 passed**.
+- Consolidated: `npm run check` — lint clean · typecheck ×3 clean · **1477/1477 tests,
+  74 files** (up from 1473; exactly the 4 new F2 tests).
+- Build: `npm run build` — clean; entry bundle **unchanged** (`index-CLEs4WAj.js`,
+  448.33 kB / gzip 137.54 kB — the fix is server-only).
+- Working tree after commit: clean. Branch: `feat/performance-security-distributed-testing-lab`.
+  SHAs at handoff: base `main`/`origin/main` `8258b7e` · implementation `36b0ad3` ·
+  review baseline `03a6334` · F2/handoff commit = branch tip (`git log -1`).
+  Nothing pushed, no PR opened, no merge/rebase, production untouched.
+
+### Remaining accepted findings (unchanged, accepted at review)
+
+- **F1** (LOW): overlapping `process` calls can double-handle the same due event — no
+  claim transaction; bounded, session-scoped, false `overcapture` only; UI disables the
+  button mid-run. Deferred hardening option: transactional claim for due events.
+- **F3** (LOW): failed selection evaluation returns `missing:`/`not supported:` option
+  ids to the client (inherited Phase 4/6/7 rubric pattern; session-scoped).
+- **F4** (INFO): OpenAPI documents `401` for publish/process that mint-on-first-use never
+  emits; quota-vs-rate-cap 429 distinction undocumented.
+- **F5** (INFO): no index on `webhook_deliveries.event_id` (fine at practice scale).
+- **F6** (INFO): publish 100-event quota and `seq MAX+1` read are non-transactional
+  (small bounded overshoot).
+- **F7** (INFO): runner's 150-request cap is cooperative (overshoot ≤ #VUs−1).
+- **F8** (INFO): SecurityDemosPage copy nit ("browser engine penalty").
+- **F9** (INFO): pre-existing moderate Dependabot alert on the default branch — not
+  introduced by this phase, left for the maintainer.
+
+### Production state (unchanged)
+
+Production still runs the **Phase 7** release — deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`,
+source `8000b77`, production D1 `schema_version` **13**. Migration
+`0014_final_phase_lab.sql` is applied to the **local D1 only** and has NOT been applied
+remotely. No production commands of any kind were run in this phase preparation.
+
+### Exact next action
+
+1. **Maintainer opens the PR** for `feat/performance-security-distributed-testing-lab`
+   (no gh/GitHub credentials are exercised by this session; the maintainer opens or
+   authorizes it) against `main` @ `8258b7e`. Suggested title/scope: final development
+   phase — Performance, Security & Microservices/Event-Driven Testing Lab; review record
+   is this file (§17, §18), the plan (`docs/final-phase-performance-security-distributed-testing-plan.md`)
+   and the review findings F1–F9.
+2. **Only after explicit maintainer approval**: the release sequence — verified
+   pre-migration export of production D1 (`wrangler d1 export`), apply
+   `0014_final_phase_lab.sql` (production `schema_version` 13 → **14**), deploy
+   (`npm run check && npm run build && npx wrangler pages deploy dist`), then production
+   acceptance (health `schemaVersion` 14; nine new routes 200; OpenAPI 1.3.0 / 53 ops;
+   publish → process → webhook smoke; Phase 3–7 smoke; browser matrix; cleanup of probe
+   rows) and record it in §17/§18 + the plan's exit checklist.
+
+Do NOT push, open, merge, deploy or migrate before explicit maintainer approval. Production
+release remains a separate, explicitly authorized operation.
+
+Note: `AGENTS.md` still carries pre-handoff counts (1473 tests, "NOT merged/pushed…");
+it was deliberately left untouched to keep this diff minimal — refresh it as part of the
+release documentation step, alongside `README.md` if desired.

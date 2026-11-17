@@ -185,7 +185,7 @@ describe('migration 0009 (rate_limit_buckets)', () => {
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('13')
+    expect(row.value).toBe('14')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'rate_limit_buckets'")
@@ -211,7 +211,7 @@ describe('migration 0009 (rate_limit_buckets)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('13')
+    expect(after.value).toBe('14')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite

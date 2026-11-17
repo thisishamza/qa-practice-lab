@@ -709,6 +709,252 @@ export const guides: Guide[] = [
     ],
     relatedScenarioIds: ['db-order-consistency', 'db-orphaned-carts', 'db-line-totals'],
   },
+  {
+    id: 'guide-performance-testing',
+    title: 'Measure first: the performance testing ladder',
+    trackId: 'performance-testing',
+    level: 'beginner',
+    readingMinutes: 11,
+    summary:
+      'A practical ladder from baseline to stress testing, with the metrics that actually decide release readiness — and the honest limits of browser-measured runs.',
+    introduction: [
+      'Performance work starts before anyone is allowed to be excited: first you prove what normal looks like, then you change something, then you prove whether normal still holds. This guide is the ladder — baseline, load, stress, spike, soak — and the reading of the numbers at each rung.',
+      'The worked example is the Meridian Outfitters catalogue: the same endpoints you measure in /performance. The runner there is real and bounded (≤ 8 virtual users, ≤ 30 seconds, first-party allowlist) — everything in this guide is doable with it.',
+      'Two habits separate useful performance testers from loud ones. First, every number gets conditions attached (endpoint, data, environment, duration). Second, tail metrics — p95 and p99 — decide arguments, not averages.',
+    ],
+    concepts: [
+      {
+        term: 'Baseline',
+        explanation:
+          'A fixed, comparable measurement of the unchanged system: same endpoint, same data, same environment, recorded p50/p95 and error rate. Without it, every later number is vibes.',
+      },
+      {
+        term: 'Saturation knee',
+        explanation:
+          'The concurrency at which throughput stops rising while latency keeps climbing. It is the single most useful “how much can we take” signal you can draw on a graph.',
+      },
+      {
+        term: 'Tail latency',
+        explanation:
+          'p95 leaves 5% of requests above it; p99 leaves 1%. Tail values expose what averages hide — and below ~20 samples they are noise, not evidence.',
+      },
+      {
+        term: 'Error budget',
+        explanation:
+          'The tolerated share of failed requests for a change to ship. Every run in this lab reports the status-class split so the budget can be read honestly.',
+      },
+    ],
+    examples: [
+      {
+        title: 'Reading your first run',
+        description:
+          'A 2-VU run shows avg 180 ms, median 150 ms, p95 420 ms, p99 n/a (n=14), 0.4% errors. Honest read: typical experience is fine, tail risk is unknown, errors are low but must be classified by status before any ship decision.',
+        language: 'text',
+        code: 'avg 180 ms · median 150 ms · p95 420 ms · p99 n/a (n=14) · errors 0.4%',
+      },
+      {
+        title: 'The page-9 cliff',
+        description:
+          'Page 1: 80 ms. Page 9: 900 ms for the same 12 rows. Offset pagination discards 96 rows before returning; keyset pagination seeks instead. This is the defect class hunt-perf-002 reproduces.',
+        language: 'text',
+        code: 'page=1 → 80 ms · page=4 → 700 ms · page=9 → 900 ms (same 12 rows)',
+      },
+    ],
+    steps: [
+      {
+        title: 'Pin the conditions',
+        detail: 'Choose the endpoint, the dataset, the environment and the duration — write them down before you run anything.',
+      },
+      {
+        title: 'Run the ladder in order',
+        detail: 'Baseline (1 VU) → load (2–4 VUs) → stress (6–8 VUs) → spike (jump to max fast) → soak-lite (30 s window). One change at a time.',
+      },
+      {
+        title: 'Classify the failures',
+        detail: 'Split errors by status class and count timeouts separately — a fast-failing error budget is not free, and a timeout consumes resources without producing a response.',
+      },
+      {
+        title: 'Report with conditions',
+        detail: 'Quote median + p95 together, the sample size, and the exact run configuration. Download the Markdown report; attach conditions to every number.',
+      },
+    ],
+    expectedResults: [
+      'A baseline table with p50/p95 and error split for the unchanged endpoint.',
+      'A stress run showing the saturation knee and the error budget consumption at it.',
+      'A report that names its conditions, sample size and limitations.',
+    ],
+    commonMistakes: [
+      'Optimising before the baseline exists.',
+      'Quoting the average and ignoring the tail shape entirely.',
+      'Locking onto throughput while the error budget quietly burns.',
+      'Claiming capacity without naming conditions, or from a single peak run.',
+    ],
+    relatedScenarioIds: ['perf-slow-catalogue', 'perf-deep-pagination', 'perf-n-plus-one'],
+  },
+  {
+    id: 'guide-security-testing',
+    title: 'Break it safely: a field method for security testing',
+    trackId: 'security-testing',
+    level: 'beginner',
+    readingMinutes: 12,
+    summary:
+      'How to hunt the vulnerability classes that recur in real applications — authn, authz, sessions, input and exposure — using only synthetic targets, and how to write the finding so it gets fixed.',
+    introduction: [
+      'Security testing is not a bag of payloads; it is a set of claims about what the system must never allow, verified adversarially. This guide walks the classes that recur in web APIs — broken access control, weak session handling, input handling, sensitive data exposure, and missing rate limiting — all against synthetic targets.',
+      'The worked environment is the Meridian Outfitters practice shop, with its three security bug hunts: an overshared profile response, an unenforced login failure budget, and internal diagnostics leaking into error responses. Each activates only in your bug-hunt session.',
+      'Two rules are not negotiable in this lab: you test only what you were given, and you report what you can prove. A finding without reproduction steps is a rumour; evidence is the difference between a ticket and a fix.',
+    ],
+    concepts: [
+      {
+        term: 'BOLA (IDOR)',
+        explanation:
+          'Broken object-level authorization: the API checks that you are signed in but not that the object is yours. Two synthetic accounts and one guessable reference is the whole test.',
+      },
+      {
+        term: 'Excessive data exposure',
+        explanation:
+          'The response carries more than the client needs — other users’ references, internal annotations, diagnostics. The fix is allowlist serialization at the boundary, not CSS.',
+      },
+      {
+        term: 'Failure budget',
+        explanation:
+          'A hard per-IP/account cap on failed attempts (here: 5/minute). When the cap is skipped, credential stuffing replaces guessing. That is hunt-sec-002.',
+      },
+      {
+        term: 'Evidence-driven reporting',
+        explanation:
+          'Steps, observed vs expected, impact, remediation — scored on evidence quality. “It seems insecure” is not a finding; a diffed response body is.',
+      },
+    ],
+    examples: [
+      {
+        title: 'The two-account probe',
+        description:
+          'Account A creates an order. Account B requests it by reference. Correct server: non-enumerable 404 or equivalent. Hunt-session server: the order arrives. That single request pair proves BOLA or its absence.',
+        language: 'text',
+        code: 'A: POST /api/v1/checkout → ORD-DEMO-1 · B: GET /api/v1/auth/me — B: GET /api/v1/account/orders/ORD-DEMO-1 → 404 (clean) / 200 (hunt)',
+      },
+      {
+        title: 'The tenth wrong password',
+        description:
+          'Fire nine wrong passwords at the demo login. In clean mode the sixth is refused with 429. In hunt mode all ten are answered 401 — the budget is decorative, not enforced.',
+        language: 'text',
+        code: 'attempts 1–5: 401 · attempt 6 (clean): 429 login_rate_limited · (hunt): 401 … 1..10 all 401',
+      },
+    ],
+    steps: [
+      {
+        title: 'Inventory the boundary',
+        detail: 'List the routes, then mark each: authenticated? authorized for whom? what does it return?',
+      },
+      {
+        title: 'Probe with two accounts',
+        detail: 'Every object-scoped route gets called as its owner and as a stranger. Diff the two responses.',
+      },
+      {
+        title: 'Push the edges',
+        detail: 'Wrong credentials past the budget, verbose error paths, overshared profile fields — attack the shape, not the payload.',
+      },
+      {
+        title: 'Report like an engineer',
+        detail: 'Steps, observed vs expected, classification, impact, remediation — and verify the fix in clean mode.',
+      },
+    ],
+    expectedResults: [
+      'A two-account authorization matrix with pass/fail per object verb.',
+      'A captured diff of the overshared profile response.',
+      'A bug report whose evidence would convince a skeptical reviewer.',
+    ],
+    commonMistakes: [
+      'Testing only as the happy-path user.',
+      'Calling a leak “cosmetic” because the field looks harmless.',
+      'Reporting without reproduction steps and observed-vs-expected.',
+      'Forgetting to verify the fix landed in clean mode.',
+    ],
+    relatedScenarioIds: ['security-overexposed-profile', 'security-brute-force', 'security-verbose-errors'],
+  },
+  {
+    id: 'guide-event-driven-testing',
+    title: 'Testing events, not just APIs: a distributed-systems field guide',
+    trackId: 'async-testing',
+    level: 'intermediate',
+    readingMinutes: 12,
+    summary:
+      'Why request/response testing misses the failures that page you at 3 a.m. — and how to test delivery, idempotency, ordering, retries, dead letters and eventual consistency in a deterministic simulator.',
+    introduction: [
+      'Event-driven systems fail differently: messages arrive twice, arrive early, or never arrive — and the ledger silently disagrees with the warehouse. This guide covers the mechanics: at-least-once delivery, idempotent consumers, backoff-with-cap retry, poison messages, dead-letter queues, correlation ids, and eventual consistency you can audit.',
+      'The worked environment is the Meridian Outfitters order pipeline in /microservices/simulator: order.created → inventory.reserved → payment.processed → webhook delivery. It is a deterministic simulation on this site’s database — not a production broker — built exactly so every failure below is reproducible on demand.',
+      'Learn the probe moves: publish with a drill, process, redeliver, replay, audit. That is the whole craft; the rest is reading what the counters tell you.',
+    ],
+    concepts: [
+      {
+        term: 'At-least-once delivery',
+        explanation:
+          'Messages are never lost but may arrive more than once. Exactly-once is not a wire property — it is at-least-once plus idempotent consumers.',
+      },
+      {
+        term: 'Idempotent consumer',
+        explanation:
+          'Processing the same event twice must equal processing it once. The dedup marker (event id) must commit in the same transaction as the side effect.',
+      },
+      {
+        term: 'Dead-letter queue',
+        explanation:
+          'Where undeliverable messages go to be triaged: poison (never retries), transient (retries with cap, then DLQ), data (fix the data, replay). DLQ depth is an alert, not a bin.',
+      },
+      {
+        term: 'Eventual consistency',
+        explanation:
+          'Services converge after a bounded delay. The window is a design input: pending states in the UI, read-your-writes for the buyer, and a periodic consistency audit to catch drift.',
+      },
+    ],
+    examples: [
+      {
+        title: 'The double-charged payment',
+        description:
+          'Process an order to capture; press Retry on the reservation event; process again. In clean mode the dedup marker no-ops; in hunt-event-001 the marker is skipped — captured_count and cents climb twice.',
+        language: 'text',
+        code: 'process → captured 1 · retry reservation · process → captured 2 (hunt) / captured 1 (clean)',
+      },
+      {
+        title: 'The retry storm',
+        description:
+          'payment-always-fails with collapsed backoff: every process call schedules the retry immediately. Against a sick gateway, that is the difference between recovery and outage amplification.',
+        language: 'text',
+        code: 'attempt 1 fails → attempt 2 due immediately (hunt) / +1s (clean) · attempt 3 → +2s',
+      },
+    ],
+    steps: [
+      {
+        title: 'Drive the happy path',
+        detail: 'Publish order.created and process until the payment is captured and the webhook is delivered — watch the counters and the trace.',
+      },
+      {
+        title: 'Inject one failure at a time',
+        detail: 'Transient payment (2 failures then success), always-fails (DLQ after 3), webhook-timeout (2 timeouts then delivery), inventory-delay (5-second convergence window).',
+      },
+      {
+        title: 'Redeliver and replay',
+        detail: 'Force a duplicate and watch the dedup marker answer it; replay the DLQ after the dependency “recovers”.',
+      },
+      {
+        title: 'Audit the invariant',
+        detail: 'Run the consistency check: paid ∧ reserved, captured ≤ total, webhook delivered for every captured payment. Fix, re-audit, prove.',
+      },
+    ],
+    expectedResults: [
+      'A correlated trace of one full order pipeline with all four event types.',
+      'A duplicate delivery observed as a no-op (clean) and as a double-apply (hunt).',
+      'A consistency report before and after remediation.',
+    ],
+    commonMistakes: [
+      'Treating exactly-once as a broker flag to switch on.',
+      'Writing the dedup marker after the side effect instead of with it.',
+      'Replaying a DLQ blind — retry is a decision, not a button.',
+      'Declaring consistency fixed without re-running the audit.',
+    ],
+    relatedScenarioIds: ['event-duplicate-payment', 'event-retry-storm', 'event-out-of-order'],
+  },
 ]
 
 export const guidesById = new Map(guides.map((guide) => [guide.id, guide]))

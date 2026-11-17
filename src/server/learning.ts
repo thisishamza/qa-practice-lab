@@ -75,6 +75,7 @@ import { contractHintText } from './contractHints'
 import { contractRevealDefinition } from './contractReveals'
 import { findReveal } from './reveals'
 import { findSqlReveal } from './sqlReveals'
+import { labHintText, labRevealDefinition } from './labLearning'
 import {
   SESSION_COOKIE,
   findLiveSession,
@@ -102,6 +103,23 @@ function buildRevealResponse(huntId: string, title: string, row: AttemptRow): Re
       commonMisconceptions: [...contractReveal.commonMisconceptions],
       solution: contractReveal.solution,
       explanation: contractReveal.explanation,
+      attempt: attemptView(row),
+    }
+  }
+  const labReveal = labRevealDefinition(huntId)
+  if (labReveal) {
+    return {
+      huntId,
+      title,
+      expected: labReveal.expected,
+      actual: labReveal.actual,
+      rootCause: labReveal.rootCause,
+      reproduction: [...labReveal.reproduction],
+      verification: [...labReveal.verification],
+      concepts: [...labReveal.concepts],
+      commonMisconceptions: [...labReveal.commonMisconceptions],
+      solution: labReveal.solution,
+      explanation: labReveal.explanation,
       attempt: attemptView(row),
     }
   }
@@ -142,8 +160,12 @@ function buildRevealResponse(huntId: string, title: string, row: AttemptRow): Re
   }
 }
 
-/** Hint lookup unified across the Phase 3/4, Phase 6 SQL and Phase 7 contract registries. */
+/** Hint lookup unified across the Phase 3/4, Phase 6 SQL, Phase 7 contract and final-phase lab registries. */
 function requireAnyHint(id: string, level: HintLevel): string {
+  const labHint = labHintText(id, level)
+  if (labHint !== null) {
+    return labHint
+  }
   const sqlHint = sqlHintText(id, level)
   if (sqlHint !== null) {
     return sqlHint

@@ -283,6 +283,145 @@ export const DEFECTS: readonly DefectDefinition[] = [
     ],
     fix: "Emit createdAt as the stored ISO-8601 string (clean mode is unchanged).",
   },
+  {
+    id: 'PERF-001',
+    title: 'Catalogue list endpoint is uniformly slow',
+    affectedSurface: 'GET /api/v1/products (list path)',
+    expected:
+      'A bounded catalogue page responds within a normal web latency budget (well under 500 ms on this lab) regardless of filters, because the list query is a single indexed read.',
+    actual:
+      'Every call to the list endpoint pays a uniform artificial delay (~350 ms) before the query runs, so baseline response time is elevated for every learner session carrying this defect, even for cacheable pages.',
+    repro: [
+      'In a bug-hunt session, time GET /api/v1/products in the Performance workspace or the API Lab.',
+      'Compare p50 against a clean-mode session (reset and repeat).',
+      'The delay is uniform — it does not depend on page, filter or payload size.',
+      'Reset to clean mode and repeat to observe the normal latency.',
+    ],
+    fix: 'Remove the redundant pre-query stall; keep the single indexed catalogue read.',
+  },
+  {
+    id: 'PERF-002',
+    title: 'Deep pagination degrades sharply after page 3',
+    affectedSurface: 'GET /api/v1/products?page= (offset beyond page 3)',
+    expected:
+      'Response time stays roughly flat as the learner pages forward; offset pagination on an indexed, bounded list should not cliff.',
+    actual:
+      'Pages beyond 3 pay an artificial ~600 ms penalty (an un-indexed deep OFFSET scan represented safely), so page latency grows sharply with depth while pages 1–3 look healthy.',
+    repro: [
+      'In a bug-hunt session, time GET /api/v1/products?page=1, then ?page=2, ?page=3, ?page=4 and ?page=6.',
+      'Latency jumps at the page-3 boundary and stays high.',
+      'Reset to clean mode and repeat the page sweep to observe flat latency.',
+    ],
+    fix: 'Use a keyset (seek) paginator or stabilise the offset plan with an index; never prefetch unbounded pages.',
+  },
+  {
+    id: 'PERF-003',
+    title: 'List rendering performs N+1 sequential lookups',
+    affectedSurface: 'GET /api/v1/products (list assembly path)',
+    expected:
+      'Assembling a 12-item page performs a constant number of queries (one list query plus the count), not one lookup per item.',
+    actual:
+      'The list assembler performs per-product work sequentially with a ~120 ms penalty each (N+1 behaviour represented safely), so a 12-row page pays over a second instead of the flat cost of the list query.',
+    repro: [
+      'In a bug-hunt session, time GET /api/v1/products?perPage=12.',
+      'Compare perPage=1, perPage=6 and perPage=12 — latency scales linearly with page size.',
+      'Reset to clean mode and repeat the perPage sweep to observe flat assembly cost.',
+    ],
+    fix: 'Assemble list rows in one batched query (or one pass) instead of per-row lookups.',
+  },
+  {
+    id: 'SEC-001',
+    title: 'Profile response over-shares internal analyst fields',
+    affectedSurface: 'GET /api/v1/auth/me (and GET /api/v1/account)',
+    expected:
+      'The profile payload carries only the learner’s own display fields (name, email, role, status, address, memberSince). Internal analyst annotations are never serialized.',
+    actual:
+      'The response includes an internalNotes object (synthetic risk score, analyst segment note) that was never intended for the client — classic excessive data exposure.',
+    repro: [
+      'Sign in with a synthetic demo account in a bug-hunt session.',
+      'GET /api/v1/auth/me and inspect the response body.',
+      'internalNotes is present in the hunt session and absent in clean mode.',
+      'Reset to clean mode and repeat to observe the minimal profile.',
+    ],
+    fix: 'Project the response through an explicit allowlist serializer; never spread the storage row into the response.',
+  },
+  {
+    id: 'SEC-002',
+    title: 'Login failure cap is not enforced',
+    affectedSurface: 'POST /api/v1/auth/login (and POST /api/v1/auth/token — shared failure budget)',
+    expected:
+      'After 5 failed attempts per IP per minute the endpoint refuses further attempts with 429 rate_limited until the window resets; successful sign-in clears the counter.',
+    actual:
+      'The failure-budget peek is skipped, so unlimited password guesses are answered with 401 forever — brute-force protection is effectively absent.',
+    repro: [
+      'In a bug-hunt session, POST /api/v1/auth/login with a wrong password ten times rapidly.',
+      'Every attempt returns 401 invalid_credentials; no 429 ever appears.',
+      'Reset to clean mode and repeat — the 6th attempt within the minute is refused with 429.',
+    ],
+    fix: 'Enforce the shared login failure budget at the gate (peek before verify), with a sliding 60 s window keyed by hashed IP.',
+  },
+  {
+    id: 'SEC-003',
+    title: 'Error responses leak internal diagnostic detail',
+    affectedSurface: 'POST /api/v1/checkout (422 cart_unavailable response)',
+    expected:
+      'Client errors carry the safe error envelope only — error code, learner-safe message and the per-line fulfilment problems. No SQL, connection or stack detail.',
+    actual:
+      'The 422 response additionally carries a debug object with internal diagnostics (synthetic query text, connection name, SQLSTATE). Harmless-looking internal detail is real information disclosure: it accelerates attacker mapping even when synthetic.',
+    repro: [
+      'In a bug-hunt session, add items then attempt checkout with an unfulfillable line (or trigger the validation failure path).',
+      'Inspect the 422 response body — the debug member is present.',
+      'Reset to clean mode and repeat — only error, message and lines appear.',
+    ],
+    fix: 'Strip diagnostic members at the response boundary; log them server-side, never serialize them.',
+  },
+  {
+    id: 'EVT-001',
+    title: 'Payment consumer is not idempotent',
+    affectedSurface: 'Event consumer: inventory.reserved → payment (simulated service)',
+    expected:
+      'Redelivering the same inventory.reserved event is a no-op: the payment is captured at most once per event id (dedup marker recorded).',
+    actual:
+      'The dedup check is skipped, so each redelivery captures the payment again — captured totals drift above the order total and the duplicate is invisible unless reconciled.',
+    repro: [
+      'In the microservices simulator (bug-hunt session), publish an order and process until the payment is captured.',
+      'Retry/redeliver the inventory.reserved event (or use the Redeliver control) and process again.',
+      'payments captured_count and captured_cents_total increase again; the consistency check reports overcapture.',
+      'Reset the simulator (or clean mode) and repeat — redelivery is a no-op.',
+    ],
+    fix: 'Record and check dedup:<eventId> before applying any handler side effect.',
+  },
+  {
+    id: 'EVT-002',
+    title: 'Retry backoff is collapsed to zero',
+    affectedSurface: 'Event consumer: retry scheduling (all retryable handlers)',
+    expected:
+      'Retryable failures back off exponentially (1s, 2s, 4s, capped at 8s) so a struggling dependency is not hammered by immediate retries.',
+    actual:
+      'The backoff computation is collapsed to 0 ms, so every retry fires immediately on the next process call — a retry storm against an already-sick dependency (still bounded by the 3-attempt cap).',
+    repro: [
+      'In the microservices simulator (bug-hunt session), publish an order with the payment-always-fails drill.',
+      'Process once and observe the retry becomes due immediately (waiting count does not include a delay).',
+      'Reset and repeat with payment-transient in clean mode — retries wait 1s, then 2s before the 3rd attempt succeeds.',
+    ],
+    fix: 'Restore exponential backoff with a cap (2^n seconds, ≤ 8s) between attempts.',
+  },
+  {
+    id: 'EVT-003',
+    title: 'Unprepared payment message is applied',
+    affectedSurface: 'Event consumer: ordering guard (inventory.reserved / payment.processed)',
+    expected:
+      'A payment message with no matching reservation for its correlation id is rejected to the dead-letter queue with out_of_order_payment — never applied.',
+    actual:
+      'The ordering guard is skipped, so the unprepared payment is applied: orders flip to paid with no reservation behind them, and the consistency audit flags payment_without_reservation.',
+    repro: [
+      'In the microservices simulator (bug-hunt session), publish a payment.processed event directly (no order exists).',
+      'Process — the payment is applied and captured_count increases with no reservation.',
+      'Run the consistency check: payment_without_reservation is reported.',
+      'Reset and repeat in clean mode — the message dead-letters with out_of_order_payment.',
+    ],
+    fix: 'Reject messages whose preconditions are unmet with a distinguishable dead-letter reason; never apply them.',
+  },
 ]
 
 export function findDefect(id: string): DefectDefinition | null {
