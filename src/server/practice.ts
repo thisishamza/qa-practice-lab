@@ -242,12 +242,13 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
 
   // Entering a hunt (fresh session or a switch from clean/another hunt)
   // counts against the per-IP daily cap. When no IP is visible (local
-  // dev), the cap is skipped. SQL database hunts (kind: 'sql') never
-  // consume the cap — that budget is reserved for the interactive UI/API
-  // hunts (plan §9.4); abuse stays bounded by the global mutation backstop
-  // and the one-in_progress-attempt-per-target unique index.
+  // dev), the cap is skipped. SQL database hunts (kind: 'sql') and
+  // contract bug hunts (kind: 'contract') never consume the cap — that
+  // budget is reserved for the interactive UI/API hunts; abuse stays bounded
+  // by the global mutation backstop and the one-in_progress-attempt-per-target
+  // unique index.
   const ip = clientIp(c)
-  if (ip && hunt.kind !== 'sql') {
+  if (ip && hunt.kind !== 'sql' && hunt.kind !== 'contract') {
     const day = new Date().toISOString().slice(0, 10)
     const allowed = await consumeHuntStart(c.env.DB, day, await sha256Hex(ip))
     if (!allowed) {

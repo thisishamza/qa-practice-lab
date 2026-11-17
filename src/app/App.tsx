@@ -16,6 +16,21 @@ const ApiReferencePage = lazy(() =>
 const ApiLabPage = lazy(() =>
   import('../pages/ApiLabPage').then((m) => ({ default: m.ApiLabPage })),
 )
+const ContractHubPage = lazy(() =>
+  import('../pages/ContractHubPage').then((m) => ({ default: m.ContractHubPage })),
+)
+const ContractValidatePage = lazy(() =>
+  import('../pages/ContractValidatePage').then((m) => ({ default: m.ContractValidatePage })),
+)
+const ContractComparePage = lazy(() =>
+  import('../pages/ContractComparePage').then((m) => ({ default: m.ContractComparePage })),
+)
+const ContractConsumerPage = lazy(() =>
+  import('../pages/ContractConsumerPage').then((m) => ({ default: m.ContractConsumerPage })),
+)
+const ContractExercisePage = lazy(() =>
+  import('../pages/ContractExercisePage').then((m) => ({ default: m.ContractExercisePage })),
+)
 const DatabaseHubPage = lazy(() =>
   import('../pages/DatabaseHubPage').then((m) => ({ default: m.DatabaseHubPage })),
 )
@@ -83,6 +98,11 @@ export function App() {
                 <Route path="database" element={<DatabaseHubPage />} />
                 <Route path="database/playground" element={<DatabasePlaygroundPage />} />
                 <Route path="database/exercises/:exerciseId" element={<DatabaseExercisePage />} />
+                <Route path="contract" element={<ContractHubPage />} />
+                <Route path="contract/validate" element={<ContractValidatePage />} />
+                <Route path="contract/compare" element={<ContractComparePage />} />
+                <Route path="contract/consumer" element={<ContractConsumerPage />} />
+                <Route path="contract/exercises/:exerciseId" element={<ContractExercisePage />} />
                 <Route path="progress" element={<ProgressPage />} />
                 <Route path="practice" element={<PracticePage />} />
                 <Route path="shop" element={<ShopPage />} />

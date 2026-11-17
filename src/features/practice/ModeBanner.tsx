@@ -37,8 +37,10 @@ export function ModeBanner() {
       <div className="mode-banner mode-banner-hunt" role="status">
         <Icon name="bug" size={16} />
         <span className="mode-banner-text">
-          <strong>Bug-hunt mode</strong> — {hunt.title}. Something in the shop is
-          intentionally broken; the behaviour is not the spec right now.
+          <strong>Bug-hunt mode</strong> — {hunt.title}.{' '}
+          {hunt.id.startsWith('hunt-contract-')
+            ? 'The provider is intentionally deviating — the behaviour is not the spec right now.'
+            : 'Something in the shop is intentionally broken; the behaviour is not the spec right now.'}
         </span>
         <Button
           variant="ghost"

@@ -628,7 +628,7 @@ describe('GET /api/v1/practice/progress — learner-safe payload', () => {
       ].sort(),
     )
     for (const hunt of body.hunts) {
-      const isExercise = hunt.huntId.startsWith('sql-')
+      const isExercise = hunt.huntId.startsWith('sql-') || (hunt.huntId.startsWith('contract-') && !hunt.huntId.startsWith('hunt-contract-'))
       const base = [
         'attempts',
         'bestScore',

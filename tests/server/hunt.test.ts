@@ -87,10 +87,20 @@ const DESCRIPTION_ONLY_TERM = 'vestibules'
 const NAME_TERM = 'trekking'
 
 describe('hunt and defect registries (code, not data)', () => {
-  it('ships the UI hunt set plus the SQL hunt set, each correctly wired', () => {
-    const uiHunts = HUNTS.filter((hunt) => hunt.kind !== 'sql')
+  it('ships the UI hunt set plus the SQL hunt set plus the contract hunt set, each correctly wired', () => {
+    const uiHunts = HUNTS.filter((hunt) => hunt.kind === undefined || hunt.kind === 'ui')
     const sqlHunts = HUNTS.filter((hunt) => hunt.kind === 'sql')
+    const contractHunts = HUNTS.filter((hunt) => hunt.kind === 'contract')
     expect(uiHunts.length).toBe(10)
+    expect(contractHunts.map((hunt) => hunt.id)).toEqual([
+      'hunt-contract-001',
+      'hunt-contract-002',
+      'hunt-contract-003',
+      'hunt-contract-004',
+      'hunt-contract-005',
+      'hunt-contract-006',
+      'hunt-contract-007',
+    ])
     expect(sqlHunts.map((hunt) => hunt.id)).toEqual([
       'hunt-db-001',
       'hunt-db-002',
@@ -101,7 +111,7 @@ describe('hunt and defect registries (code, not data)', () => {
       'hunt-db-007',
       'hunt-db-008',
     ])
-    expect(HUNTS.length).toBe(18)
+    expect(HUNTS.length).toBe(25)
     expect(new Set(HUNTS.map((hunt) => hunt.id)).size).toBe(HUNTS.length)
     for (const hunt of HUNTS) {
       expect(hunt.id).toMatch(/^[a-z0-9][a-z0-9-]{2,63}$/)
@@ -131,6 +141,12 @@ describe('hunt and defect registries (code, not data)', () => {
       'RBAC-001',
       'MASS-001',
       'AUTHZ-001',
+      'CONTRACT-001',
+      'CONTRACT-002',
+      'CONTRACT-003',
+      'CONTRACT-004',
+      'CONTRACT-005',
+      'CONTRACT-006',
     ])
     expect(new Set(DEFECTS.map((defect) => defect.id)).size).toBe(DEFECTS.length)
   })

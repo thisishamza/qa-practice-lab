@@ -1,0 +1,490 @@
+/*
+ * Contract Testing lab (Phase 7).
+ *
+ * Structure only — the palette lives in tokens.css. Verdict banners and
+ * findings reuse workspace surfaces; the assertion list is typography-led
+ * (mono for values, regular for prose) so both themes stay ≥ 4.5:1.
+ */
+
+/* ------------------------------------------------ hub & cards */
+.contract-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+
+.contract-capability-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.contract-capability-card:hover,
+.contract-capability-card:focus-visible {
+  border-color: var(--link);
+}
+
+.contract-capability-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body-strong);
+  font-weight: var(--weight-medium);
+}
+
+.contract-capability-copy {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.contract-exercise-grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.contract-exercise-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  height: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.contract-exercise-card:hover,
+.contract-exercise-card:focus-visible {
+  border-color: var(--link);
+}
+
+.contract-exercise-card-top {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contract-exercise-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.contract-exercise-summary {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.contract-exercise-meta {
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+}
+
+/* ------------------------------------------------ assertion list */
+.assertion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.assertion-list-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.assertion-list-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.assertion-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.assertion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.assertion-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.assertion-path {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+.assertion-keyword {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+
+.assertion-item-body {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin: 0;
+}
+
+.assertion-item-body dt {
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.assertion-item-body dd {
+  margin: 0.15rem 0 0;
+}
+
+.assertion-item-body code,
+.assertion-message code {
+  overflow-wrap: anywhere;
+}
+
+.assertion-message {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.assertion-list-empty {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--run);
+}
+
+/* ------------------------------------------------ verdict banner */
+.verdict-banner {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.verdict-banner-breaking {
+  border-left-color: var(--danger);
+}
+
+.verdict-banner-review {
+  border-left-color: var(--warn);
+}
+
+.verdict-banner-compatible {
+  border-left-color: var(--run);
+}
+
+.verdict-banner-title {
+  margin: 0;
+  font-size: var(--text-body-strong);
+  font-weight: var(--weight-strong);
+  color: var(--ink);
+}
+
+.verdict-banner-copy {
+  margin: 0.1rem 0 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+/* ------------------------------------------------ findings */
+.findings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.findings-group-title {
+  margin: 0;
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.finding-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.finding-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.finding-rule {
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-strong);
+}
+
+.finding-change {
+  color: var(--ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.finding-path {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  overflow-wrap: anywhere;
+}
+
+.finding-impacts {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.finding-impact {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.finding-impact-label {
+  display: block;
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------ workspaces */
+.contract-workspace {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+@media (max-width: 1100px) {
+  .contract-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.contract-textarea {
+  min-height: 14rem;
+}
+
+.contract-inline-error {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: var(--text-small);
+}
+
+.contract-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.contract-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.contract-field-label {
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.contract-select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-small);
+}
+
+.contract-select:focus-visible {
+  border-color: var(--link);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* guided expectation editor: checkbox matrix */
+.expectation-critical {
+  display: grid;
+  gap: 0.3rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.expectation-critical label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--ink);
+  font-size: var(--text-small);
+}
+
+.expectation-critical label:hover {
+  border-color: var(--link);
+}
+
+.expectation-preview {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* ------------------------------------------------ guided exercise */
+.contract-exercise-layout {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+@media (max-width: 1100px) {
+  .contract-exercise-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklist-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  color: var(--ink);
+  text-align: left;
+}
+
+.checklist-item[aria-pressed='true'] {
+  border-color: var(--link);
+  background: var(--surface-selected);
+}
+
+.contract-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.compare-findings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compare-finding-row {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 640px) {
+  .compare-finding-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contract-capability-card,
+  .contract-exercise-card,
+  .checklist-item,
+  .finding-item {
+    transition: none;
+  }
+}

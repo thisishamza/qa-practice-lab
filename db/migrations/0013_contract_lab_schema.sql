@@ -1,0 +1,27 @@
+-- Phase 7 — Contract testing lab.
+--
+-- INTENTIONALLY NO DDL. Phase 7 introduces no tables and alters nothing:
+-- contract fixtures are compiled-in TypeScript modules (never SQL, never
+-- D1 rows), learning state reuses the Phase 4 control plane exactly as it
+-- is:
+--
+--   - hunt_attempts  — one row per (practice_session, attemptable target);
+--                      the 24 contract exercises and 7 contract hunts use
+--                      the same table as the UI and SQL hunts, with the
+--                      contract id in hunt_id (longest id is 32 chars).
+--   - bug_reports    — unchanged (contract hunts report through them).
+--   - rate_limit_buckets — the new scoped `contract-*` bucket names
+--                      coexist with existing buckets; no DDL required.
+--   - No expected assertions, delta payloads, reference answers or hint
+--     text ever reaches D1 — those are compiled Worker code.
+--
+-- This migration exists only to keep the release train's version discipline
+-- (one migration per phase, additive-only): the only change is the
+-- app_meta schema_version bump 12 -> 13 so /api/health can distinguish
+-- deploys.
+--
+-- 0013 must be applied to production only as part of a separately approved
+-- Phase 7 release, after a pre-migration export — the same protocol as
+-- Phase 6's 0012. Local development applies it via npm run db:migrate:local.
+
+UPDATE app_meta SET value = '13', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE key = 'schema_version';

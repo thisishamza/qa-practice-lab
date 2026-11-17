@@ -180,12 +180,12 @@ describe('cart item id pattern is bounded', () => {
 })
 
 describe('migration 0009 (rate_limit_buckets)', () => {
-  it('applies cleanly on a fresh database (schema_version 12, bucket usable)', async () => {
+  it('applies cleanly on a fresh database (schema_version 13, bucket usable)', async () => {
     const migrated = createMigratedD1()
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('12')
+    expect(row.value).toBe('13')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'rate_limit_buckets'")
@@ -211,7 +211,7 @@ describe('migration 0009 (rate_limit_buckets)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('12')
+    expect(after.value).toBe('13')
 
     // Pre-existing rows survived the additive migration.
     const orders = migrated.sqlite

@@ -498,6 +498,188 @@ export const HUNT_CURRICULUM: Record<string, HuntCurriculum> = {
       'Which dashboards double-count or silently drop these orders',
     ],
   },
+  'hunt-contract-001': {
+    skillArea: 'Contract testing · required-property validation',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Required-vs-optional schema semantics',
+      'JSON Pointer reading of assertion paths',
+      'Response validation against a documented schema',
+    ],
+    expectedOutcomes: [
+      'Validate a live response against the documented contract',
+      'Name the missing property and the keyword that fires',
+      'Report the assertion-level evidence, not impressions',
+    ],
+    investigationFocus: [
+      'Capture GET /api/v1/products/{slug} in this session and compare against the documented Product schema',
+      'Run each conclusion past the validator — the assertion list is the witness',
+      'Note what the UI did and did not show',
+      'Reset to clean mode and observe the clean capture validating',
+    ],
+    reportFocus: [
+      'The failing assertion (path and keyword) and what the contract requires',
+      'The captured request and response',
+      'Expected versus actual for the missing field',
+      'Who breaks downstream and how visibly',
+    ],
+  },
+  'hunt-contract-002': {
+    skillArea: 'Contract testing · type contracts on the wire',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Wire-level typing of money fields',
+      'Why JavaScript-tolerant consumers hide type drift',
+      'Type assertions in schema validation',
+    ],
+    expectedOutcomes: [
+      'Detect a numeric-on-paper field serialized as a string',
+      'Explain why a contract test catches what the UI cannot',
+      'Report the serialization boundary that broke the type',
+    ],
+    investigationFocus: [
+      'Capture GET /api/v1/products and read the priceCents values byte for byte',
+      'Validate the capture against the documented schema',
+      'Check whether arithmetic on the client would silently NaN',
+      'Reset to clean mode and observe the clean capture validating',
+    ],
+    reportFocus: [
+      'The failing assertion (path and keyword) with the actual serialization',
+      'The captured payload excerpt',
+      'Expected versus actual type',
+      'The downstream consumer class most at risk',
+    ],
+  },
+  'hunt-contract-003': {
+    skillArea: 'Contract testing · closed vocabularies and casing',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Enum semantics as exhaustive vocabulary',
+      'Case sensitivity in documented values',
+      'Enum assertions in schema validation',
+    ],
+    expectedOutcomes: [
+      'Detect values outside the documented enum set',
+      'Explain the casing rule as part of the contract',
+      'Report the exact value received versus the documented set',
+    ],
+    investigationFocus: [
+      'Capture GET /api/v1/products and enumerate the stockStatus values',
+      'Validate each capture against the documented enum',
+      'Compare byte casing with the documented members',
+      'Reset to clean mode and observe the clean capture validating',
+    ],
+    reportFocus: [
+      'The failing assertion with the actual value',
+      'The captured payload excerpt',
+      'Expected versus actual member',
+      'Why exhaustive switches elsewhere in the fleet fail silently',
+    ],
+  },
+  'hunt-contract-004': {
+    skillArea: 'Contract testing · status codes as contract terms',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Status semantics for create/mutate/read endpoints',
+      'Body promises bound to status codes',
+      'HTTP-legal but contract-breaking behaviour',
+    ],
+    expectedOutcomes: [
+      'Pin the documented success response for a mutation endpoint',
+      'Detect a status-code substitution while the HTTP semantics still hold',
+      'Report the expected versus actual status and body',
+    ],
+    investigationFocus: [
+      'Place and cancel an order in this session',
+      'Record the exact status line and body of the cancel response',
+      'Compare both against the documented cancel contract',
+      'Reset to clean mode and observe the clean cancel behaviour',
+    ],
+    reportFocus: [
+      'The status line observed versus the documented one',
+      'The body received versus the documented OrderDetail',
+      'Which clients break, and whether they notice',
+      'The exact repro steps',
+    ],
+  },
+  'hunt-contract-005': {
+    skillArea: 'Contract testing · additive changes and strict readers',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Tolerant vs closed-schema consumer behaviour',
+      'undocumented response surface',
+      'additionalProperties semantics',
+    ],
+    expectedOutcomes: [
+      'Detect an undocumented additive property',
+      'Explain why additive is not universally safe',
+      'Report the property and its effect on strict readers',
+    ],
+    investigationFocus: [
+      'Capture GET /api/v1/products and diff it against the documented Product schema',
+      'Validate against a closed-schema consumer pin',
+      'Ask who wrote the strict reader, and why',
+      'Reset to clean mode and observe the clean capture validating',
+    ],
+    reportFocus: [
+      'The undocumented property and its value',
+      'The assertion a closed-schema consumer raises',
+      'Who classifies this change as safe, and under what rule',
+      'The mitigation a tolerant consumer applies',
+    ],
+  },
+  'hunt-contract-006': {
+    skillArea: 'Contract testing · format contracts on the wire',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Format assertions in schema validation',
+      'ISO-8601 versus epoch representations',
+      'Timestamps as schema-pinned strings',
+    ],
+    expectedOutcomes: [
+      'Detect a timestamp that violates the documented format',
+      'Explain why epoch integers fail a date-time contract',
+      'Report the exact value and the assertion that fires',
+    ],
+    investigationFocus: [
+      'Capture GET /api/v1/orders in this session',
+      'Validate the capture — read every assertion on the timestamp field',
+      'Notice which other keywords also fire on the same value',
+      'Reset to clean mode and observe the clean capture validating',
+    ],
+    reportFocus: [
+      'The failing assertion(s) on the timestamp field',
+      'The captured payload excerpt',
+      'Expected versus actual representation',
+      'Which downstream consumers parse timestamps positionally',
+    ],
+  },
+  'hunt-contract-007': {
+    skillArea: 'Contract testing · consumer-driven triage',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Minimal consumer expectation writing',
+      'Provider verification against a declared contract',
+      'Consumer vs provider triage under drift',
+    ],
+    expectedOutcomes: [
+      'Diagnose a provider-side breaking change from the assertion list',
+      'Keep the consumer pin while the provider migrates',
+      'Write a one-line reviewer comment that locates the break',
+    ],
+    investigationFocus: [
+      'Open the consumer workspace in this hunt and verify your expectation against provider-product-v2-latest',
+      'Read the failing assertion list, not a single failure',
+      'Decide who moves: the consumer’s expectation or the provider’s implementation',
+      'Leaving the hunt restores the additive provider — verify again to confirm',
+    ],
+    reportFocus: [
+      'The failing assertions and what each one names',
+      'Which side of the contract moved, and the evidence',
+      'The classification of the change (rename, enum, status)',
+      'What must change before this merges',
+    ],
+  },
 }
 
 export function curriculumForHunt(huntId: string): HuntCurriculum | undefined {

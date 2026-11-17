@@ -58,6 +58,7 @@ import {
 import { findHunt, HUNT_ID_PATTERN } from './hunts'
 import { evaluateSubmission } from './sqlEvaluate'
 import { findSqlExercise } from './sqlExercises'
+import { findContractExercise } from './contractExercises'
 import { findSqlDelta } from './sqlSeedDelta'
 import { clientIp, consumeRateLimit, sha256Hex } from './rateLimit'
 
@@ -78,7 +79,11 @@ async function resolveCallerSession(c: import('hono').Context<AppEnv>) {
 // ---------------------------------------------------------------------------
 sqlRoutes.post('/sql/exercises/:exerciseId/start', async (c) => {
   const exerciseId = c.req.param('exerciseId') ?? ''
-  if (!SQL_ID_PATTERN.test(exerciseId) || !findSqlExercise(exerciseId)) {
+  // Phase 7: the start semantic is exercise-generic — a contract exercise
+  // id mints its attempt identically. No new route is introduced; the
+  // OpenAPI document describes both dialects on this path.
+  const knownExercise = findSqlExercise(exerciseId) || findContractExercise(exerciseId)
+  if (!SQL_ID_PATTERN.test(exerciseId) || !knownExercise) {
     return c.json(
       { error: 'exercise_not_found', message: 'No such practice exercise exists.' },
       404,

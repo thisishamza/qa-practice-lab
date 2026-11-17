@@ -53,6 +53,12 @@ export const primaryNav: NavItem[] = [
     description: 'SQL playground on a practice dataset',
   },
   {
+    label: 'Contract Testing',
+    to: '/contract',
+    icon: 'contract',
+    description: 'Validate and diff API contracts',
+  },
+  {
     label: 'Practice',
     to: '/practice',
     icon: 'practice',

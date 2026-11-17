@@ -404,6 +404,48 @@ always (`PRAGMA foreign_keys=ON`, the canonical snapshot, and
 `tests/server/sql-hunt.test.ts` assert the corruption never appears
 without the delta).
 
+## Registered hunts (Phase 7 — contract bug hunts)
+
+All seven register with `kind: 'contract'` in `HUNTS`, are learner-visible
+only as `id`/`title`/`summary`/`scenarioId`, and reuse the same
+attempt/report/hint/reveal/progress pipeline unchanged. Like `kind: 'sql'`,
+they never consume the per-IP 20/UTC-day UI hunt-start cap; the scoped
+`contract-*` rate buckets and the global mutation backstop bound abuse.
+The six live-API defects are **read-time corruptions at the named response
+builder only** — clean mode serializes byte-identically (asserted by
+`tests/server/contract.test.ts`); nothing is ever persisted. The seventh
+(`hunt-contract-007`) has no defect at all: it rides a **server-only
+compiled delta** resolved by the `verify-consumer` endpoint.
+
+| Hunt | Defect | Surface | Expected (clean) | Actual (bug-hunt) |
+|---|---|---|---|---|
+| `hunt-contract-001` | `CONTRACT-001` | `GET /api/v1/products/{slug}` response body | `stockStatus` present (required); validator green | `stockStatus` omitted from the serialized detail — the `required` assertion at `/stockStatus` fires |
+| `hunt-contract-002` | `CONTRACT-002` | `GET /api/v1/products` (+detail) `priceCents` | integer cents | serialized as JSON string (`"2400"`); the `type` assertion at `/priceCents` fires |
+| `hunt-contract-003` | `CONTRACT-003` | `GET /api/v1/products` `stockStatus` | `in_stock\|low_stock\|out_of_stock` | emitted `IN_STOCK` (casing drift outside the enum); the `enum` assertion fires |
+| `hunt-contract-004` | `CONTRACT-004` | `POST /api/v1/orders/{reference}/cancel` | `200` + `OrderDetail` JSON body | `204 No Content` + empty body — HTTP-legal, contract-breaking; the status-code assertion fires |
+| `hunt-contract-005` | `CONTRACT-005` | `GET /api/v1/products` list items | no such field | items gain undocumented `supplierCostCents` (60% of the unit price); `additionalProperties: false` readers reject the payload |
+| `hunt-contract-006` | `CONTRACT-006` | `GET /api/v1/orders` + `GET /api/v1/orders/{reference}` `createdAt` | ISO-8601 `date-time` string | epoch-seconds integer (`1763308800`); `type` + `format` assertions fire |
+| `hunt-contract-007` | — (no defect) | `POST /api/v1/contract/verify-consumer` with `provider-product-v2-latest` | resolves to the additive v2 fixture; verifications pass | resolves to the server-only drifted payload (`categoryName`→`category`, `stockStatus` casing `IN_STOCK`); the `required` assertion on the renamed field fires. Exit the hunt ⇒ additive again immediately |
+
+**hunt-contract-007 mechanism (never client-visible):** the drift lives in
+`src/server/contractDeltas.ts` as a compiled module constant; no endpoint
+returns it as a payload. It is consumed solely server-side by the two
+`verify-consumer` paths: the session-aware `provider-product-v2-latest`
+alias (hunt-007 bug-hunt session ⇒ drift; every other caller ⇒ additive
+v2) and the explicitly named `provider-product-v2-drift` drill used by
+`contract-adv-consumer-broken-01` (any session). Leak lint covers all
+seven ids and every reveal fragment; the delta literal never crosses the
+wire (asserted in `tests/server/contract.test.ts` — the response carries
+assertions only).
+
+**Branch sites (exactly one `isDefectActive('CONTRACT-00n')` per defect):**
+`src/server/catalogue.ts` (`toProductResponse`, locus-gated list/detail)
+for CONTRACT-001/002/003/005; `src/server/checkout.ts` (`createdAtDefectActive`
+for CONTRACT-006; `cancelSuccessResponse` for CONTRACT-004). The
+`hunt-contract-007` alias is computed from the caller's live session
+(`mode === 'bug_hunt' && hunt_id === 'hunt-contract-007'`), never from a
+request parameter.
+
 ## Defect coverage against the phase-plan areas
 
 | Area (plan §5) | Defect(s) |
@@ -416,6 +458,12 @@ without the delta).
 | authN / token lifecycle | `AUTHN-001` |
 | RBAC / role boundaries | `RBAC-001` |
 | mass assignment | `MASS-001` |
+| contract / required | `CONTRACT-001` |
+| contract / wire typing | `CONTRACT-002`, `CONTRACT-006` |
+| contract / vocabularies | `CONTRACT-003` |
+| contract / additive vs strict | `CONTRACT-005` |
+| contract / status semantics | `CONTRACT-004` |
+| contract / consumer drift | `hunt-contract-007` (no defect — fixture delta) |
 
 ## Maintenance notes
 

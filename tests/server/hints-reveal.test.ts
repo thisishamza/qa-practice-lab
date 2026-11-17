@@ -23,7 +23,7 @@ const AMARA = { email: 'amara.okafor@example.com', password: 'demo-amara-1001' }
 const DEFECT_IDS = DEFECTS.map((defect) => defect.id)
 const DEFECT_TITLES = DEFECTS.map((defect) => defect.title)
 // Phase 4 (kind 'ui' or unspecified) hunts — the SQL hunts and exercises have their own registries (src/server/sqlHints.ts, sqlReveals.ts) covered by tests/server/sql.test.ts.
-const RUNNABLE_IDS = HUNTS.filter((hunt) => hunt.kind !== 'sql').map((hunt) => hunt.id)
+const RUNNABLE_IDS = HUNTS.filter((hunt) => hunt.kind === undefined || hunt.kind === 'ui').map((hunt) => hunt.id)
 
 function sessionCookieHeader(token: string) {
   return { cookie: `mpl_session=${token}` }

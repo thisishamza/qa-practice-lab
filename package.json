@@ -25,6 +25,7 @@
     "db:reset:local": "wrangler d1 execute qa-practice-lab-db --local --file=db/maintenance/reset-local.sql"
   },
   "dependencies": {
+    "@cfworker/json-schema": "^4.1.6",
     "hono": "^4.13.18",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

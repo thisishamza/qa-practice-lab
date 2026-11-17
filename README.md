@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 5 deployed 2026-11-16; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 11). Previously Phase 4 (PR #5). Deployment `aaa0e2a6`, source commit `3ecfb41` (merge of PR #8).
+> **Production:** https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 13). Deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, source commit `8000b77` (reviewed Phase 7 source `43a7d3e` + documentation-only `8000b77`; NOT merged into git `main`). Previously Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). Phase 7 (Contract Testing Lab) was deployed 2026-11-17 after explicit maintainer authorization: verified pre-migration export → migration `0013_contract_lab_schema.sql` (zero DDL) applied to production D1 → production acceptance (see `docs/phase-7-exit-audit.md` §23).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -97,10 +97,38 @@ curriculum — including 13 QA scenarios — plus **eight deterministic database
 hunts** (`hunt-db-001`…`hunt-db-008`) wired into the same hunt engine (progressive
 hints, structured reports, deterministic scoring, progress tracking). Learner SQL
 never leaves the browser worker; evaluation happens server-side on result sets
-only. Phase 6 M1 merged to `main` via PR #9 and M2 is implemented on
-`feat/phase-6-m2-database-learning`; see
-[docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and
+only. Phase 6 M1 and M2 are merged to `main` (PRs #9/#10, `94cc7fa`/`eeded31`) and
+deployed to production (2026-11-17, migration `0012`, `schema_version` 12); see
+[docs/phase-6-exit-audit.md](docs/phase-6-exit-audit.md) for the audit and release record and
 [docs/phase-6-database-testing-plan.md](docs/phase-6-database-testing-plan.md) for the plan.
+
+Phase 7 (Contract Testing Lab) is **RELEASED TO PRODUCTION (2026-11-17)** —
+verified pre-migration export → migration `0013` (zero DDL, `schema_version`
+12 → **13**) → Pages deploy → production acceptance, per the maintainer-approved
+release sequence. The production alias serves the reviewed source
+`8000b77` (Phase 7 implementation at `43a7d3e`, documentation-only
+`8000b77` on top); deployment
+`47680bf9-7290-4c8a-a5c9-25490dff7fc4` (project `qa-practice-lab`,
+production branch `main`). It adds the **Contract Testing** track at
+`/contract`: a
+validate workspace (assertion-level diagnostics against six synthetic
+contracts, including the live platform contract), a compatibility review
+workspace (breaking / backward-compatible / review-required verdicts with
+R1–R21 rule ids, request/response locus semantics and consumer/provider
+impact notes), a consumer-driven verification workspace (minimal
+expectations, C1–C7 rubric, the provider-drift drill), a **24-exercise**
+catalogue (8/9/7), **seven contract bug hunts** (`hunt-contract-001…007`,
+six live-API defects + one server-only fixture-drift consumer hunt) wired
+into the same hunt engine, and OpenAPI **1.2.0 / 42 operations**. Learner
+input is data-only — nothing is compiled or executed; evaluation is
+deterministic and server-side. See
+[docs/phase-7-contract-testing-plan.md](docs/phase-7-contract-testing-plan.md) for the approved plan,
+[docs/phase-7-exit-audit.md](docs/phase-7-exit-audit.md) for the criterion-by-criterion verification, and
+[docs/bug-hunt-catalogue.md](docs/bug-hunt-catalogue.md) §Contract for the internal expected/actual notes.
+**Production is the Phase 7 release; production D1 is on `0001..0013`
+(`schema_version` 13). Phase 7 is NOT merged into git `main` — the production
+deployment was made from the reviewed source per the maintainer-approved
+release sequence; merge/PR is a separate, unapproved step.**
 
 ## What you can do now
 
@@ -116,6 +144,14 @@ only. Phase 6 M1 merged to `main` via PR #9 and M2 is implemented on
 | `/progress` | Real progress dashboard: per-hunt status, attempts/reports, discovery (finding-check only), best/average score, recent submissions, guest vs signed-in durability note |
 | `/practice` | Live health check, bug-hunt mode controls (list/start/switch/reset the ten registered hunts), the ordered recommended path through the wired hunts with curriculum outcome lines and live completion state (a report counts as a completion; discovery shown separately), structured bug reporting with deterministic evaluation for the active hunt, planned practice formats and safety boundaries |
 | `/about` | What works today, what comes next, honest guest/signed-in progress durability, the published report-evaluation rubric (weights, verdict bands, discovery vs report quality) at `/about#evaluation`, synthetic-environment limits |
+| `/database` | Isolated SQL lab on a synthetic commerce snapshot: playground, schema explorer, 36 checked exercises, 8 database bug hunts, progress rings |
+| `/database/playground` | Free-form SQL practice with a hard 3 s budget and automatic reseed — your SQL never leaves the browser worker |
+| `/database/exercises/:exerciseId` | Guided SQL exercise with hint ladder, gated reveal and server-side result-set evaluation |
+| `/contract` | Contract Testing lab: validate payloads, diff contract versions, verify consumer expectations — 24 exercises, 7 contract bug hunts |
+| `/contract/validate` | Paste a payload; get the assertion list (path, keyword, expected, actual) against a fixture or the live contract |
+| `/contract/compare` | Diff two contract versions; classify every change with R1–R21 and both perspectives; copyable Markdown report |
+| `/contract/consumer` | Write a minimal consumer expectation, verify the provider fixture, and watch it fail the drift |
+| `/contract/exercises/:exerciseId` | Guided contract exercise with hint ladder, gated reveal and deterministic server-side scoring |
 | `/api-reference` | The machine-checkable description of every `/api/v1` route: methods, paths, parameters, request/response bodies, error envelopes and codes, rate-limit notes, and the documented bearer/cookie security schemes. Download `openapi.json` from the page; every operation deep-links into the API Lab |
 | `/api-lab` | Same-origin-only in-browser API console (method, path, query, headers, body) with status, timing, headers and byte-capped inert-text body; copy-as-curl; component-state-only history (cleared on refresh); deep-linkable from the reference and wired scenario pages; includes a signed-in-only **practice API token helper** |
 | `/shop` | Meridian Outfitters catalogue: search, filter, sort, paginate |
@@ -287,8 +323,12 @@ src/server/maintenance.ts  Bounded cleanup sweep + staff-only POST /api/v1/admin
 src/server/hunts.ts        Hunt registry (code); src/server/defects.ts — defect registry + isDefectActive
 src/shared/commerce.ts     Shared catalogue, cart and order contracts (types, currency constant)
 src/shared/learning.ts     Shared Phase 4 attempt/report contracts (learner-safe)
+src/shared/contractTypes.ts Shared assertion/finding/diff types (browser + server)
+src/shared/contractValidation.ts Shared validation wrapper — budgets, local-$ref resolution, assertion mapping
+src/shared/contractDiff.ts R1–R21 compatibility engine (pure, deterministic)
+src/shared/contracts/      Meridian Ledger fixtures (client-safe; drift is server-only)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0011; production D1 is on 0001..0011)
+db/migrations/             D1 SQL migrations (0001..0013; production D1 is on 0001..0013, `schema_version` 13, since the 2026-11-17 Phase 7 release)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -755,36 +795,38 @@ Do not expose the platform D1 binding as a user-facing SQL console.
 
 ## Deployment status
 
-**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 4 deployed 2026-11-16):
+**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17):
 Cloudflare Pages project `qa-practice-lab` (production branch `main`) and D1 database
-`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 10. `/api/health` reports
+`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 13. `/api/health` reports
 the deployed schema version.
 
 How it was set up (and how to reproduce or re-deploy):
 
 1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
-2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies 0001–0010 for the
-   Phase 4 release (0010 applied to production on 2026-11-16; additive-only; health reports
-   `schemaVersion: "10"`). **0011 (`api_tokens`, Phase 5) is not applied to production**; it is
-   local-only until a Phase 5 release is explicitly approved — Phase 5 deployment would claim
-   0001–0011.
+2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies migrations
+   through `0013_contract_lab_schema.sql`. `0011` was applied to production on 2026-11-16,
+   `0012` (zero-DDL `app_meta` bump to `schema_version` 12) on 2026-11-17, and `0013`
+   (zero-DDL `app_meta` bump to `schema_version` 13) on 2026-11-17, all after a verified
+   pre-migration export; `/api/health` reports `schemaVersion: "13"`.
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
-   step was required (verified via `/api/health` → `schemaVersion: "10"`). The Phase 4 release
-   deployed commit `ac53fd0` (merge of PR #5) on 2026-11-16; the deployment-specific URL is
-   https://0b1cd31b.qa-practice-lab.pages.dev.
-4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "10"`; staged smoke of the
-   Phase 4 journey passed on production (hunt start → ladder gating 409 → ordered hint unlock →
-   report → deterministic evaluation → reveal unlock/lock → `/progress` attribution banners;
-   give-up does not grant discovery; both themes × 375/768/1024/1440 px; zero unexpected console
-   errors — recorded in `PROJECT_STATE.md` §11). The maintenance sweep remains operator-invoked.
-5. **Rollback:** the previous production deployment (`99ef81ca-c8c2-44bc-ba9b-69f4f627e982`,
-   commit `1f0847f`) is still available; redeploy it to roll back code. Migrations 0010 and 0011
-   are additive-only, so the rolled-back application runs unchanged against `schema_version` 10
-   or 11; the new tables simply sit unused. Do not drop them and do not attempt a destructive
-   down-migration.
-5. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
+   step is required (verified via `/api/health` → `schemaVersion: "13"`). Deployments on
+   the Pages **production branch** (`main`) serve `https://qa-practice-lab.pages.dev`;
+   deploys made from any other branch land as Preview only. The Phase 7 release deployed
+   source `8000b77` (reviewed Phase 7 implementation `43a7d3e` plus documentation-only commit)
+   on 2026-11-17 with `--branch=main`; deployment
+   `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, alias https://qa-practice-lab.pages.dev.
+4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "13"`; the Phase 7
+   production acceptance passed on 2026-11-17 (route smoke; OpenAPI 3.1.0 / 1.2.0 / 42
+   operations / 27 error codes; contract API acceptance; both hunts verified with
+   synthetic isolated sessions; headless-Chrome matrix 40/40 both themes × 4 widths —
+   recorded in `PROJECT_STATE.md` §11 and `docs/phase-7-exit-audit.md` §23). The maintenance
+   sweep remains operator-invoked.
+5. **Rollback:** migrations `0010`–`0013` are additive-only, so a rolled-back application
+   runs unchanged against `schema_version` 10, 11, 12 or 13; the new markers simply sit
+   unused. Do not drop them and do not attempt a destructive down-migration.
+6. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
    the operator's choosing (at least weekly; daily during active classes). With a staff
    session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
    with an empty JSON body; the response reports bounded `deleted` counts and is idempotent.

@@ -78,6 +78,37 @@ import {
 } from './session'
 
 /** Opaque order reference format, e.g. ORD-1A2B3C4D5E6F7089. */
+
+/**
+ * BUG-HUNT DEFECT CONTRACT-006 (hunt-contract-006) — single isDefectActive
+ * site: true only inside a bug-hunt session carrying this defect.
+ */
+function createdAtDefectActive(c: Context<AppEnv>): Promise<boolean> {
+  return isDefectActive(c, 'CONTRACT-006')
+}
+
+function isoToEpochSeconds(iso: string): number {
+  const millis = Date.parse(iso)
+  return Number.isFinite(millis) ? Math.floor(millis / 1000) : 0
+}
+
+/**
+ * BUG-HUNT DEFECT CONTRACT-004 (hunt-contract-004) — single isDefectActive
+ * site: true only inside a bug-hunt session carrying this defect. Returns
+ * the defective 204 No Content response when active, else the documented
+ * 200 + OrderDetail — both success paths (fresh cancel, idempotent
+ * replay) funnel through this helper.
+ */
+async function cancelSuccessResponse(
+  c: Context<AppEnv>,
+  detail: OrderDetail,
+): Promise<Response> {
+  if (await isDefectActive(c, 'CONTRACT-004')) {
+    return c.body(null, 204)
+  }
+  return c.json(detail, 200)
+}
+
 export const ORDER_REFERENCE_PATTERN = /^ORD-[0-9A-F]{16}$/
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -872,6 +903,14 @@ checkoutRoutes.get('/orders', async (c) => {
     currency: COMMERCE_CURRENCY,
     createdAt: row.created_at,
   }))
+  // BUG-HUNT DEFECT CONTRACT-006 (hunt-contract-006): in a bug-hunt
+  // session carrying this defect, createdAt is emitted as epoch seconds.
+  // One isDefectActive site per defect lives in createdAtDefectActive().
+  if (await createdAtDefectActive(c)) {
+    for (const item of data) {
+      item.createdAt = isoToEpochSeconds(item.createdAt) as unknown as string
+    }
+  }
 
   return c.json({ data } satisfies OrderListResponse)
 })
@@ -906,6 +945,9 @@ checkoutRoutes.get('/orders/:reference', async (c) => {
   const detail = await orderDetailById(c.env.DB, order.id)
   if (!detail) {
     return errorJson(c, 500, 'internal_error', 'The order could not be read.')
+  }
+  if (await createdAtDefectActive(c)) {
+    detail.createdAt = isoToEpochSeconds(detail.createdAt) as unknown as string
   }
   return c.json(detail)
 })
@@ -1014,7 +1056,8 @@ checkoutRoutes.post('/orders/:reference/cancel', async (c) => {
       if (!detail) {
         return errorJson(c, 500, 'internal_error', 'The order could not be read back.')
       }
-      return c.json(detail, 200)
+      // BUG-HUNT DEFECT CONTRACT-004 active → 204 No Content (defect helper).
+      return cancelSuccessResponse(c, detail)
     }
     console.error('[api] Cancellation batch failed', error)
     return errorJson(c, 500, 'internal_error', 'The order could not be cancelled. Please try again.')
@@ -1025,5 +1068,6 @@ checkoutRoutes.post('/orders/:reference/cancel', async (c) => {
     console.error('[api] Order missing immediately after cancellation', reference)
     return errorJson(c, 500, 'internal_error', 'The order could not be read back.')
   }
-  return c.json(detail, 200)
+  // BUG-HUNT DEFECT CONTRACT-004 active → 204 No Content (defect helper).
+  return cancelSuccessResponse(c, detail)
 })
