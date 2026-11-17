@@ -244,23 +244,23 @@ Migration fresh-install + upgrade tests mandatory. No claim of browser PASS with
 ## 6. Acceptance criteria (final checklist)
 
 ### Performance
-- [ ] Workload controls render and are enforced (VUs ≤8, duration ≤30s, ramp ≤10s, ≤150 req, 1–100 rps)
-- [ ] Allowlist enforced — no arbitrary URLs reachable from the runner
-- [ ] Runner measures (avg/median/p90/p95/p99 gated on n≥20, throughput, timeouts, status classes)
-- [ ] Report downloads; history is local-only and labelled
-- [ ] Exercise catalogue 12 (4/4/4); hunts reproduce deterministically; clean mode unaffected
+- [x] Workload controls render and are enforced (VUs ≤8, duration ≤30s, ramp ≤10s, ≤150 req, 1–100 rps) — enforced in code (reviewed); production render OK; live load NOT run (by design)
+- [x] Allowlist enforced — no arbitrary URLs reachable from the runner
+- [x] Runner measures (avg/median/p90/p95/p99 gated on n≥20, throughput, timeouts, status classes)
+- [x] Report downloads; history is local-only and labelled
+- [x] Exercise catalogue 12 (4/4/4); hunts reproduce deterministically; clean mode unaffected
 ### Security
-- [ ] All advertised scenarios/demos work; hunts deterministic and session-isolated
-- [ ] No answer leakage (hints/reveals gated); reports with severity; clean mode safe
+- [x] All advertised scenarios/demos work; hunts deterministic and session-isolated
+- [x] No answer leakage (hints/reveals gated); reports with severity; clean mode safe
 ### Microservices
-- [ ] Publish/process; retry with backoff; duplicate delivery; idempotency; DLQ; replay; trace; consistency
-- [ ] Webhook timeout→retry→duplicate delivery observable; session isolation; reset works
+- [x] Publish/process; retry with backoff; duplicate delivery; idempotency; DLQ; replay; trace; consistency — verified live on production 2026-11-17 (publish → 4× process → paid → webhook delivered → `consistency` ok; trace 1→4 ordered)
+- [x] Webhook timeout→retry→duplicate delivery observable; session isolation; reset works — session isolation verified on production (cookie-less trace → 401; cookie-less overview → empty payload)
 ### Platform
-- [ ] Phase 3–7 surfaces unchanged and green; `npm run check` green; build clean
-- [ ] Light/dark × 375/768/1024/1440 px; no console errors; reduced-motion OK
+- [x] Phase 3–7 surfaces unchanged and green; `npm run check` green (1477/1477); build clean (`index-CLEs4WAj.js` 448.33 kB / gzip 137.54 kB)
+- [ ] Light/dark × 375/768/1024/1440 px; no console errors; reduced-motion OK — **partial (F10 + network caveats):** 152-check headless-Chrome matrix ran; 145/152 HTTP 200; 7 entries lost to transient local network failures (`QUIC_PROTOCOL_ERROR`/`ERR_CONNECTION_RESET`) concentrated on `/performance*`; 6 of 7 not re-verifiable (Chrome egress block persisted to end of session); **1 reproducible pre-existing defect: `/api-reference` overflows horizontally by 186 px at 375×812 in both themes (`.property-table` min-content) — pre-existing since Phase 5, root-caused, recorded as F10, NOT fixed in this release.** Firefox/WebKit never exercised.
 ### Release discipline
 - [x] Feature branch → PR opened and merged by the maintainer (PR #12, merge commit `e11f66e`, 2026-11-17) — explicit maintainer approval, as recorded
-- [ ] Deploy/migration still pending explicit, separate approval; nothing production-touching has happened
+- [x] Deploy/migration executed 2026-11-17 on explicit, separate maintainer authorization: pre-0014 export (SHA-256 `dd384d6d97c731902630cb50a3e809267d1182fbabb95ca7fedd1e21ccb1021c`) → `0014_final_phase_lab.sql` applied (`schema_version` 14, 0014 recorded exactly once) → Pages deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` (source `981176a`, application code identical to `e11f66e`) → production acceptance (PROJECT_STATE §20) → 57 synthetic probe sessions + dependent rows cleaned up. Release documentation commit exists locally; **push withheld pending the F10 maintainer decision**
 
 ## 7. Known limitations
 
@@ -272,22 +272,56 @@ Migration fresh-install + upgrade tests mandatory. No claim of browser PASS with
 - The three labs share the session model: signed-out browsers lose event/attempt state after 7 days like everything else.
 - Firefox/WebKit untested (Chrome over CDP only, as prior phases).
 
-## 8. Release handoff (requires separate explicit approval)
+## 8. Release handoff (executed 2026-11-17 — see §10)
 
-**Merged:** PR #12, merge commit `e11f66e` (2026-11-17); merged tree byte-identical to
-the reviewed branch tip `3f80b70`. Production D1 migration 0014 (pre-migration export
-first), Pages deploy, production acceptance, PROJECT_STATE release entry — all still
-pending and all explicitly approval-gated. Phase 7 production remains authoritative
-until an approved release. Planned sequence: (1) verify Cloudflare account/project and
-exact D1 database identity; (2) `wrangler d1 export` production D1; verify file size,
-readability and integrity; (3) apply `0014_final_phase_lab.sql` remotely only after
-separate approval; (4) confirm `schema_version` 14 and the migration record; (5)
-`npm run check && npm run build`; (6) `npx wrangler pages deploy dist`; (7) production
-acceptance: health reports `schemaVersion` 14 + database healthy; nine new routes 200;
-OpenAPI 1.3.0 / 53 operations; publish → process → webhook delivery + consistency audit;
-Phase 3–7 smoke; browser matrix across themes × supported viewports; (8) clean up only
-synthetic probe rows created by acceptance testing; (9) record deployment ID, source
-SHA, migration status and acceptance results in PROJECT_STATE.md.
+**Released:** PR #12, merge commit `e11f66e` (2026-11-17); merged tree byte-identical to
+the reviewed branch tip `3f80b70`. The explicit, separate maintainer authorization was
+granted and the release was executed on 2026-11-17 — the pre-0014 export, the remote
+migration `0014_final_phase_lab.sql`, the Pages deployment, and the production acceptance
+(including cleanup of synthetic probe rows) are complete; production D1 is on
+`schema_version` **14**; the live deployment is `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`
+(source `981176a`). One reproducible, pre-existing defect was found during acceptance
+(**F10**, `/api-reference` 375 px horizontal overflow) and is **not fixed** by design;
+the release documentation commit is intentionally withheld from `origin/main` pending the
+maintainer's F10 decision. Sequence as executed: (1) Cloudflare account/project and D1
+identity verified read-only; (2) `wrangler d1 export` produced
+`/tmp/opencode/backups/qa-practice-lab-db-pre-0014-2026-11-17T10-58-08Z.sql` (verified by
+SQLite import: `schema_version` 13, migrations 0001–0013, 20 tables); (3) `0014` applied
+remotely under authorization — verified recorded exactly once, tables/indexes present; (4)
+`schema_version` confirmed **14**; (5) `npm run check && npm run build` green (1477/1477);
+(6) `npx wrangler pages deploy dist` → `18db4007`; (7) production acceptance (health 14;
+nine new routes 200; OpenAPI 1.3.0 / exactly 53 operations; publish → process → webhook →
+consistency live; Phase 3–7 smoke; browser matrix with the F10 finding and the network
+caveats recorded); (8) 57 synthetic probe sessions and dependent rows deleted — history
+untouched; (9) `PROJECT_STATE.md` §20, README, AGENTS.md and this plan updated.
+
+## 10. Release record addendum (2026-11-17)
+
+- **Execution note:** the release itself (push of the authorised docs commit, pre-0014
+  export, remote migration, deployment) happened immediately before this session; this
+  session verified every step read-only, re-ran the full gate (`npm run check` 1477/1477;
+  `npm run build` clean), re-verified production health/OpenAPI/routes, ran one fresh
+  end-to-end microservices probe (then cleaned it), ran the browser matrix (one
+  reproducible pre-existing defect at 375 px, F10, on `/api-reference`; six
+  `/performance*` combinations lost to local network blocking), deleted all 57 synthetic
+  probe sessions plus their 8 events / 20 service_state rows / 2 webhook deliveries /
+  29 in_progress attempts (167 rows) and left pre-release data untouched (26 sessions,
+  24 attempts, 42 products, 5 customers).
+- **F10 (new this session; pre-existing since Phase 5):** `/api-reference` horizontal
+  overflow, 186 px beyond 375 px viewport, both themes. Root cause: `.property-table`
+  cells in `tbody th` use `white-space: nowrap` with mono font; table min-content ≈ 493 px >
+  375 px; the grid item `.api-endpoint` computes ≈ 495 px; `.api-group` ≈ 545 px; document
+  `scrollWidth` 561 px. Fix class: allow the table to wrap/scroll
+  (`overflow-x: auto` on a wrapper or dropping `nowrap` at small widths) — **not applied;
+  requires maintainer authorization.**
+- **Deployment:** `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` (Production, `main`,
+  `https://18db4007.qa-practice-lab.pages.dev`), source `981176a`; created 2026-11-17
+  ~11:00 UTC. Prior production deployment remains `47680bf9…` (Phase 7,
+  source `8000b77`).
+- **Backup:** `/tmp/opencode/backups/qa-practice-lab-db-pre-0014-2026-11-17T10-58-08Z.sql`
+  (62,161 B, SHA-256 `dd384d6d97c731902630cb50a3e809267d1182fbabb95ca7fedd1e21ccb1021c`);
+  outside Git; never committed; not restored.
+- **Full record:** `PROJECT_STATE.md` §20.
 
 ## 9. As-built addendum (2026-11-17, implementation session)
 
@@ -315,6 +349,6 @@ SHA, migration status and acceptance results in PROJECT_STATE.md.
 
 - **Merged:** PR #12 (https://github.com/thisishamza/qa-practice-lab/pull/12) — maintainer opened, pushed and merged the PR on 2026-11-17. Merge commit **`e11f66e`**; resulting `main` tree byte-identical to the reviewed branch tip `3f80b70` (identical tree SHA `6a94f5b1…`; `git diff 8258b7e e11f66e` byte-identical to `git diff 8258b7e 3f80b70`). F2 hardening (publish rate limit enforced before guest-session mint) shipped in `3f80b70`; independent review verdict: READY FOR PR AND RELEASE (no BLOCKER/HIGH/MEDIUM; F1, F3–F9 accepted).
 - **Post-merge verification on `main` @ `e11f66e`:** `npm run check` green (**1477/1477**, 74 files); `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB); working tree clean; local `main` fast-forwarded to `origin/main` (`e11f66e`) — no history rewritten.
-- **Production unchanged:** still the Phase 7 release (deployment `47680bf9…`, source `8000b77`, production D1 `schema_version` **13**). Migration `0014` is present in the merged tree but applied to the local D1 only; it has NOT been applied to production.
+- **Production unchanged:** still the Phase 7 release (deployment `47680bf9…`, source `8000b77`, production D1 `schema_version` **13**). Migration `0014` is present in the merged tree but applied to the local D1 only; it has NOT been applied to production. **(Superseded 2026-11-17 — the release was executed the same day; see §8/§10 and `PROJECT_STATE.md` §20.)**
 - **No additional feature phases are planned.** After the final-phase production release, only necessary bug fixes and maintenance remain.
 - **Release checklist (do not execute without separate, explicit approval):** see §8.

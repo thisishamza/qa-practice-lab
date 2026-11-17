@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 13). Deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, source commit `8000b77` (reviewed Phase 7 source `43a7d3e` + documentation-only `8000b77`; **merged into `main` via PR #11, merge commit `e21108a`, 2026-11-17**). Previously Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). Phase 7 (Contract Testing Lab) was deployed 2026-11-17 after explicit maintainer authorization: verified pre-migration export → migration `0013_contract_lab_schema.sql` (zero DDL) applied to production D1 → production acceptance (see `docs/phase-7-exit-audit.md` §23).
+> **Production:** https://qa-practice-lab.pages.dev (final phase RELEASED 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 14). Deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source commit `981176a` (application code identical to merged PR #12 commit `e11f66e`). Previously Phase 7 (PR #11, deployment `47680bf9`, source `8000b77`), Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). The final-phase release was executed with maintainer authorization on 2026-11-17: verified pre-migration export → migration `0014_final_phase_lab.sql` applied to production D1 → Pages deploy → production acceptance (see `PROJECT_STATE.md` §20; one pre-existing defect found — `/api-reference` horizontal overflow at 375 px, recorded as F10, not fixed; push of the release documentation pending maintainer decision).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -126,11 +126,13 @@ deterministic and server-side. See
 [docs/phase-7-contract-testing-plan.md](docs/phase-7-contract-testing-plan.md) for the approved plan,
 [docs/phase-7-exit-audit.md](docs/phase-7-exit-audit.md) for the criterion-by-criterion verification, and
 [docs/bug-hunt-catalogue.md](docs/bug-hunt-catalogue.md) §Contract for the internal expected/actual notes.
-**Production is the Phase 7 release; production D1 is on `0001..0013`
-(`schema_version` 13). Phase 7 is merged into git `main` (PR #11, merge commit
-`e21108a`, 2026-11-17); the production deployment remains the existing Phase 7
-deployment from source `8000b77` — no redeploy or migration was performed at
-merge time.**
+**Production runs the final-phase release (2026-11-17); production D1 is on `0001..0014`
+(`schema_version` 14). The merged `main` documentation commit `981176a` (application code
+identical to PR #12 merge `e11f66e`) is deployed; deployment
+`18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source `981176a`, alias
+https://qa-practice-lab.pages.dev. Migration `0014_final_phase_lab.sql` was applied
+2026-11-17 after a verified pre-migration export; see `PROJECT_STATE.md` §20 for the release
+record, including the open pre-existing defect **F10** (`/api-reference` 375 px overflow).**
 
 The **final development phase** — Performance, Security & Microservices/Event-Driven
 Testing Lab (plan:
@@ -139,7 +141,19 @@ is **MERGED INTO git `main` via PR #12** (https://github.com/thisishamza/qa-prac
 merge commit `e11f66e`, 2026-11-17; branch tip `3f80b70`, including the F2 review
 hardening — the publish rate limit is enforced before a guest session is minted).
 The merged tree is byte-identical to the independently reviewed branch (identical
-tree SHA; verdict: READY FOR PR AND RELEASE). It adds the **Performance** track at
+tree SHA; verdict: READY FOR PR AND RELEASE). **It is RELEASED TO PRODUCTION
+(2026-11-17)**: production D1 migration `0014_final_phase_lab.sql` was applied
+after a verified pre-migration export (`schema_version` 13 → **14**); the merged
+`main` documentation commit `981176a` was deployed to Cloudflare Pages
+(deployment **`18db4007-3165-4cc1-a6e7-a0d26b1f8e81`**, source `981176a`,
+application code identical to `e11f66e`); production acceptance ran
+(`/api/health` → `schemaVersion: "14"`; nine new routes 200; OpenAPI **1.3.0 /
+53 operations**; microservices pipeline publish → process → webhook → consistency
+verified live; Phase 3–7 smoke passed; synthetic probe rows cleaned up) — with
+**one reproducible, pre-existing defect found and not fixed**: `/api-reference`
+overflows horizontally by 186 px at exactly 375×812 (both themes; `property-table`
+min-content width; pre-existing since Phase 5; recorded as finding **F10** in
+`PROJECT_STATE.md` §20). It adds the **Performance** track at
 `/performance` (a bounded, same-origin load runner — real measurements with hard
 caps — plus a 12-exercise catalogue and three seeded performance hunts), the
 **Security** track at `/security` (inert SQLi/XSS/CSRF demonstrations, a
@@ -150,13 +164,14 @@ dead letters, replay, webhooks, trace, consistency audit — a 12-exercise
 catalogue and three event hunts). Migration `0014_final_phase_lab.sql` adds the
 three simulation tables (`events`, `service_state`, `webhook_deliveries`) and
 bumps `schema_version` to **14** locally; applying it to production is a
-separately approved release step (pre-migration export first). OpenAPI is
+separately approved release step (pre-migration export first) — **executed
+2026-11-17** (export → apply `0014` → deploy → acceptance; see
+`PROJECT_STATE.md` §20). OpenAPI is
 **1.3.0 / 53 operations** with **zero new error codes**; post-merge
 `npm run check` is green at **1477/1477** and `npm run build` is clean. The
 catalogue counts: **36 scored exercises (12/12/12) and 9 new bug hunts
-(`hunt-perf-*`, `hunt-sec-*`, `hunt-event-*`). Production still runs the Phase 7
-release (`schema_version` 13) until the explicitly approved production release
-happens — no additional feature phases are planned; after the release, only
+(`hunt-perf-*`, `hunt-sec-*`, `hunt-event-*`). Production runs the final-phase
+release (`schema_version` 14) — no additional feature phases are planned; only
 necessary bug fixes and maintenance remain.**
 
 ## What you can do now
@@ -357,7 +372,7 @@ src/shared/contractValidation.ts Shared validation wrapper — budgets, local-$r
 src/shared/contractDiff.ts R1–R21 compatibility engine (pure, deterministic)
 src/shared/contracts/      Meridian Ledger fixtures (client-safe; drift is server-only)
 functions/api/[[route]].ts Pages Functions catch-all; bridges /api to Hono
-db/migrations/             D1 SQL migrations (0001..0013; production D1 is on 0001..0013, `schema_version` 13, since the 2026-11-17 Phase 7 release)
+db/migrations/             D1 SQL migrations (0001..0014; production D1 is on 0001..0014, `schema_version` 14, since the 2026-11-17 final-phase release)
 db/maintenance/            Local-only housekeeping SQL (cleanup.sql, reset-local.sql)
 tests/                     Vitest tests (Node environment)
 wrangler.jsonc             Pages config + D1 binding + compatibility date
@@ -824,41 +839,43 @@ Do not expose the platform D1 binding as a user-facing SQL console.
 
 ## Deployment status
 
-**Production is deployed** at https://qa-practice-lab.pages.dev (Phase 7 deployed 2026-11-17):
+**Production is deployed** at https://qa-practice-lab.pages.dev (final phase RELEASED 2026-11-17):
 Cloudflare Pages project `qa-practice-lab` (production branch `main`) and D1 database
-`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 13. `/api/health` reports
-the deployed schema version.
+`qa-practice-lab-db` (region APAC), bound as `DB`, `schema_version` 14. `/api/health` reports
+the deployed schema version (`14`).
 
 How it was set up (and how to reproduce or re-deploy):
 
 1. `npx wrangler d1 create qa-practice-lab-db` — then set the returned `database_id` in
    `wrangler.jsonc` (binding stays `DB`). The id is not a secret but review changes to it.
 2. `npx wrangler d1 migrations apply qa-practice-lab-db --remote` — applies migrations
-   through `0013_contract_lab_schema.sql`. `0011` was applied to production on 2026-11-16,
-   `0012` (zero-DDL `app_meta` bump to `schema_version` 12) on 2026-11-17, and `0013`
-   (zero-DDL `app_meta` bump to `schema_version` 13) on 2026-11-17, all after a verified
-   pre-migration export; `/api/health` reports `schemaVersion: "13"`.
+   through `0014_final_phase_lab.sql`. `0011` was applied to production on 2026-11-16,
+   `0012` (zero-DDL `app_meta` bump to `schema_version` 12) on 2026-11-17, `0013`
+   (zero-DDL bump to `schema_version` 13) on 2026-11-17, and `0014` (three simulation
+   tables `events`/`service_state`/`webhook_deliveries` + bump to `schema_version` 14) on
+   2026-11-17 — all after a verified pre-migration export; `/api/health` reports
+   `schemaVersion: "14"`.
 3. `npm run build` then `npx wrangler pages deploy dist`. The `d1_databases` binding in
    `wrangler.jsonc` is applied to the Pages Functions at deploy time; no dashboard binding
-   step is required (verified via `/api/health` → `schemaVersion: "13"`). Deployments on
+   step is required (verified via `/api/health` → `schemaVersion: "14"`). Deployments on
    the Pages **production branch** (`main`) serve `https://qa-practice-lab.pages.dev`;
    deploys made from any other branch land as Preview only. The Phase 7 release deployed
-   source `8000b77` (reviewed Phase 7 implementation `43a7d3e` plus documentation-only commit)
-   on 2026-11-17 with `--branch=main`; deployment
-   `47680bf9-7290-4c8a-a5c9-25490dff7fc4`, alias https://qa-practice-lab.pages.dev.
-   Phase 7 was subsequently merged into `main` via PR #11 (merge commit
-   `e21108a`, 2026-11-17); the merged application code is byte-identical to the
-   deployed source (documentation-only delta), so no redeploy was performed and
-   this deployment remains authoritative.
-4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "13"`; the Phase 7
-   production acceptance passed on 2026-11-17 (route smoke; OpenAPI 3.1.0 / 1.2.0 / 42
-   operations / 27 error codes; contract API acceptance; both hunts verified with
-   synthetic isolated sessions; headless-Chrome matrix 40/40 both themes × 4 widths —
-   recorded in `PROJECT_STATE.md` §11 and `docs/phase-7-exit-audit.md` §23). The maintenance
-   sweep remains operator-invoked.
-5. **Rollback:** migrations `0010`–`0013` are additive-only, so a rolled-back application
-   runs unchanged against `schema_version` 10, 11, 12 or 13; the new markers simply sit
-   unused. Do not drop them and do not attempt a destructive down-migration.
+   source `8000b77` on 2026-11-17; the final-phase release deployed source `981176a`
+   (application code identical to PR #12 merge commit `e11f66e`) on 2026-11-17 as
+   deployment **`18db4007-3165-4cc1-a6e7-a0d26b1f8e81`**, alias
+   https://qa-practice-lab.pages.dev (see `PROJECT_STATE.md` §20).
+4. **Post-deploy verification:** `/api/health` returns `schemaVersion: "14"`; the final-phase
+   production acceptance ran on 2026-11-17 — nine new routes 200; OpenAPI 1.3.0 / 53
+   operations; microservices publish → process → webhook → consistency verified live;
+   Phase 3–7 smoke passed; synthetic probe rows cleaned up; headless-Chrome matrix ran with
+   a local-network degradation mid-run (6 `/performance*` combinations could not be
+   re-verified; Firefox/WebKit untested) and one reproducible pre-existing defect found
+   (`/api-reference` 375 px horizontal overflow, F10, not fixed) — recorded in
+   `PROJECT_STATE.md` §20. The maintenance sweep remains operator-invoked.
+5. **Rollback:** migrations `0010`–`0014` are additive-only, so a rolled-back application
+   runs unchanged against `schema_version` 10–14; the new markers simply sit
+   unused. Do not drop them and do not attempt a destructive down-migration; restore from
+   the verified pre-0014 export instead (`/tmp/opencode/backups/qa-practice-lab-db-pre-0014-2026-11-17T10-58-08Z.sql`).
 6. **Maintenance cadence:** Pages has no cron; invoke the staff sweep on a routine cadence of
    the operator's choosing (at least weekly; daily during active classes). With a staff
    session (synthetic fixture or a browser sign-in): `POST /api/v1/admin/maintenance/sweep`
