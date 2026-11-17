@@ -146,7 +146,11 @@ authRoutes.post('/auth/login', async (c) => {
   // never stored — only a SHA-256 hash in rate_limit_buckets.
   const ip = clientIp(c)
   const ipHash = ip ? await sha256Hex(ip) : null
-  if (ipHash) {
+  // BUG-HUNT DEFECT SEC-002 (hunt-sec-002): in a bug-hunt session carrying
+  // this defect, the failure-budget refusal is skipped — unlimited
+  // password attempts are answered with 401. Clean mode enforces the cap.
+  const bruteForceBypass = await isDefectActive(c, 'SEC-002')
+  if (ipHash && !bruteForceBypass) {
     const peek = await peekRateLimit(c.env.DB, 'login', ipHash)
     if (peek.count >= LOGIN_FAILURE_LIMIT) {
       c.header('Retry-After', String(peek.retryAfterSeconds))
@@ -281,7 +285,11 @@ function parseTokenBody(raw: unknown): TokenBody | null {
 authRoutes.post('/auth/token', async (c) => {
   const ip = clientIp(c)
   const ipHash = ip ? await sha256Hex(ip) : null
-  if (ipHash) {
+  // BUG-HUNT DEFECT SEC-002 (hunt-sec-002): in a bug-hunt session carrying
+  // this defect, the failure-budget refusal is skipped — unlimited
+  // password attempts are answered with 401. Clean mode enforces the cap.
+  const bruteForceBypass = await isDefectActive(c, 'SEC-002')
+  if (ipHash && !bruteForceBypass) {
     const peek = await peekRateLimit(c.env.DB, 'login', ipHash)
     if (peek.count >= LOGIN_FAILURE_LIMIT) {
       c.header('Retry-After', String(peek.retryAfterSeconds))
@@ -387,6 +395,21 @@ async function meHandler(c: Context<AppEnv>) {
   const guard = await requireActiveCustomer(c)
   if (guard.kind === 'error') {
     return guard.response
+  }
+  // BUG-HUNT DEFECT SEC-001 (hunt-sec-001): in a bug-hunt session carrying
+  // this defect, the profile response additionally serializes an internal
+  // analyst annotation that was never intended for the client (excessive
+  // data exposure). Clean mode projects through the allowlist only.
+  if (await isDefectActive(c, 'SEC-001')) {
+    const overshared = {
+      ...toCustomerProfile(guard.customer),
+      internalNotes: {
+        riskScore: 72,
+        segment: 'legacy-import',
+        analystNote: 'Synthetic practice record — never meant for the client.',
+      },
+    }
+    return c.json({ customer: overshared } as unknown as AuthResponse)
   }
   return c.json({ customer: toCustomerProfile(guard.customer) } satisfies AuthResponse)
 }

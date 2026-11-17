@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "QA Practice Lab — Meridian Outfitters Practice API",
-    "version": "1.2.0",
-    "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`) or, for the `mpl_customer` surface, `Authorization: Bearer <token>` minted by `POST /api/v1/auth/token` (SHA-256-hashed at rest, 15-900 s clamped TTL, one-time display). When a Bearer header is presented it wins over the cookie; roles always come from the stored customer row. An expired Bearer token answers 401 `token_expired`; other Bearer failures answer 401 `unauthorized`.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min), practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day) and SQL evaluation (`rate_limited`, 30/min); `POST /api/v1/sql/evaluate` accepts up to 1 MB of JSON.\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.",
+    "version": "1.3.0",
+    "description": "Machine-checkable description of the /api/v1 contract served by the QA Practice Lab (Meridian Outfitters, a fictional commerce domain). This document describes the *documented, clean-mode contract*: the behaviour a correct implementation answers with. It never says which browser sessions run in an exercise mode, and it never contains internal identifiers.\n\nGeneral rules that apply to every /api/v1 route unless stated otherwise:\n- Money is always integer cents in the fictional `USD` currency.\n- Every API error answer carries the documented envelope `{ \"error\": string, \"message\": string }` (see `Error`); per-endpoint error-code vocabularies are listed per operation and in `components.schemas.ErrorCode`.\n- All /api responses are sent with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.\n- The API is served same-origin. Authentication is cookie-based (`mpl_session`, `mpl_customer`) or, for the `mpl_customer` surface, `Authorization: Bearer <token>` minted by `POST /api/v1/auth/token` (SHA-256-hashed at rest, 15-900 s clamped TTL, one-time display). When a Bearer header is presented it wins over the cookie; roles always come from the stored customer row. An expired Bearer token answers 401 `token_expired`; other Bearer failures answer 401 `unauthorized`.\n- Mutating routes (POST/PATCH/PUT/DELETE) are subject to a shared per-IP abuse budget (`rate_limited`, 429) plus a 32 KB JSON body cap (`payload_too_large`, 413); both are abuse controls, not security boundaries. Scoped budgets exist for login (`login_rate_limited`), checkout (`rate_limited`, 30/min), bug-report submission (`rate_limited`, 30/min), practice-hunt starts (`hunt_start_cap_reached`, 20/IP/UTC day) and SQL evaluation (`rate_limited`, 30/min); `POST /api/v1/sql/evaluate` accepts up to 1 MB of JSON.\n- Ownership is concealed: unknown and not-owned/not-permitted references answer the identical 404 `not_found` envelope. Existence is never revealed.\n- The Meridian Outfitters domain is a synthetic training environment. Accounts, orders and inventory are fictitious; no real payments, credentials or personal records exist.\n\nv1.3.0 adds the final-phase lab surfaces: `POST /api/v1/labs/evaluate` (scored evaluation for the performance, security and microservices exercise catalogues) and the `/api/v1/microservices/*` event-simulation surface (deterministic, session-scoped, D1-backed; not a production message broker).",
     "contact": {
       "name": "QA Practice Lab",
       "url": "/about"
@@ -54,6 +54,14 @@
     {
       "name": "contract",
       "description": "Contract validation, compatibility comparison and consumer verification"
+    },
+    {
+      "name": "labs",
+      "description": "Scored evaluation for the performance, security and microservices exercise catalogues. Deterministic, server-authoritative, session-scoped."
+    },
+    {
+      "name": "microservices",
+      "description": "Deterministic, session-scoped event-driven simulation (publish, process, retry, replay, trace, consistency). A teaching harness on D1 — not a production broker; no network I/O is ever performed."
     }
   ],
   "paths": {
@@ -2462,6 +2470,541 @@
           },
           "429": {
             "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labs/evaluate": {
+      "post": {
+        "operationId": "evaluateLabAnswer",
+        "tags": [
+          "labs"
+        ],
+        "summary": "Score a performance/security/microservices exercise answer deterministically",
+        "description": "Scores one lab exercise answer against the exercise’s compiled server-side selection rubric (recall 70 / precision 30, pass ≥ 70). A pass stamps the caller’s attempt `submitted` with the running-max score in the same all-or-nothing write path; a fail leaves it `in_progress`. Unknown exercise ids answer 404 `exercise_not_found`; selection ids outside the exercise’s option set answer 400 `invalid_request`. Nothing the client sends can raise a score or influence what is graded. Per-IP scoped budget: 30/min (`rate_limited`); body ≤ 32 KB.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabEvaluateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The deterministic verdict: pass/fail, score 0-100, the per-check result and the attempt lifecycle status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabEvaluateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed answer or unknown option id in selections. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown exercise id. Error code: `exercise_not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted for this network (30/min). Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/overview": {
+      "get": {
+        "operationId": "getMicroservicesOverview",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Simulator overview: counts, webhook stats, service state and orders",
+        "description": "Session-scoped snapshot of the deterministic event simulation: per-status event counts, DLQ depth, webhook delivery/duplicate/dead counts, the per-service state projection (dedup markers excluded) and the 20 most recent orders. No live session → 200 with an empty payload. Nothing here touches a network or another session.",
+        "responses": {
+          "200": {
+            "description": "The overview (empty payload fields when no live session exists).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MicroservicesOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/publish": {
+      "post": {
+        "operationId": "publishMicroserviceEvent",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Publish a synthesized event into the pipeline",
+        "description": "Creates one pending event in the caller’s session. Payloads are BUILT server-side from { type, drill, quantity, totalCents, correlationId } — free-form payloads are not accepted and are never executed. `drill` selects a deterministic failure/timing profile (decline, transient, always-fails, timeout, poison, inventory shortfall/delay). Reuse `correlationId` to build out-of-order sequences. Per-session quota: 100 events (429 `rate_limited` beyond it). Scoped budget: 20/min/IP. Returns 201 with the correlation id and sequence number.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The event was accepted into the queue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPublishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown type/drill or out-of-range fields. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Scoped budget exhausted, or the 100-event session quota is reached. Error code: `rate_limited`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/process": {
+      "post": {
+        "operationId": "processMicroserviceEvents",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Process up to ten due events",
+        "description": "Handles every DUE (available_at ≤ now) event in the caller’s session, in creation/sequence order, at most 10 per call. Handlers are deterministic functions of (payload, attempts, session state): acknowledge-deliver, reserve inventory, capture payment, notify, deliver webhook. Retryable failures back off exponentially (1s → 2s → 4s, cap 8s); poison messages dead-letter without retry; redeliveries are acknowledged as no-ops by idempotent consumers. `waiting` reports events not yet due (backoff or inventory-delay).",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-event outcomes plus counts of waiting and dead-lettered events.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/events": {
+      "get": {
+        "operationId": "listMicroserviceEvents",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "List the 50 most recent events in this session",
+        "description": "Session-scoped event history, newest first: id, correlation, sequence, type, status, attempt counters and the last error. Use the correlation id with `/microservices/trace/{correlationId}` for the ordered timeline.",
+        "responses": {
+          "200": {
+            "description": "The 50 most recent events.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/events/{id}/retry": {
+      "post": {
+        "operationId": "retryMicroserviceEvent",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Re-queue one failed or dead event",
+        "description": "Sets a single failed/dead event in the caller’s session back to pending with available_at = now. 409 `invalid_request` when the event is pending or already processed; 404 for unknown ids. Attempts are preserved.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^evt_[a-z0-9-]{8,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The event was re-queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed event id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event in this session. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Only failed or dead events can be retried. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/events/replay": {
+      "post": {
+        "operationId": "replayMicroserviceEvents",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Re-queue every dead-lettered event (≤ 10)",
+        "description": "Sets all dead events in the caller’s session back to pending with available_at = now, oldest first, at most 10 per call. Returns the replayed count. Replaying is a deliberate operator action — inspect the DLQ and the trace first.",
+        "responses": {
+          "200": {
+            "description": "The number of events re-queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/reset": {
+      "post": {
+        "operationId": "resetMicroservices",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Delete this session’s simulation state",
+        "description": "Deletes the caller session’s events, webhook deliveries and service-state rows. Idempotent; touches nothing outside the session and never touches shared data. Hunt-mode behaviour is unaffected (it branches per session).",
+        "responses": {
+          "200": {
+            "description": "The session simulation state was deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/trace/{correlationId}": {
+      "get": {
+        "operationId": "traceMicroserviceCorrelation",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Ordered timeline for one correlation id",
+        "description": "Returns the events in sequence order plus the webhook deliveries for one correlation id in the caller’s session — the correlated trace across the pipeline. 404 for unknown correlations.",
+        "parameters": [
+          {
+            "name": "correlationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^corr_[a-z0-9]{6,24}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ordered event and webhook timeline.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed correlation id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No events for that correlation id in this session. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/consistency": {
+      "get": {
+        "operationId": "getMicroservicesConsistency",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Cross-service consistency audit for this session",
+        "description": "Deterministic checks across the simulated services for the caller’s session: paid without reservation, captured above order total (overcapture), paid without a completed webhook delivery. Returns ok=true when no violation is found. This is an audit, not a transaction coordinator — drift between audits is expected in an eventually consistent system.",
+        "responses": {
+          "200": {
+            "description": "The audit result and any violations found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsistencyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/microservices/events/{id}/redeliver": {
+      "post": {
+        "operationId": "redeliverMicroserviceEvent",
+        "tags": [
+          "microservices"
+        ],
+        "summary": "Force a duplicate delivery of any non-pending event",
+        "description": "Re-queues a processed, failed or dead event in the caller’s session with available_at = now. Attempt counters are preserved — this is the at-least-once duplicate-delivery drill. Handlers dedupe on the event id: clean mode acknowledges a no-op; sessions started from this lab’s hunts double-apply where the guard is missing. 409 `invalid_request` for pending events; 404 for unknown ids.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^evt_[a-z0-9-]{8,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The event was re-queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed event id. Error code: `invalid_request`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No live practice session. Error code: `session_required`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such event in this session. Error code: `not_found`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending events are already queued for delivery. Error code: `invalid_request`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4996,6 +5539,622 @@
             ]
           }
         }
+      },
+      "LabEvaluateRequest": {
+        "type": "object",
+        "required": [
+          "exerciseId",
+          "selections"
+        ],
+        "properties": {
+          "exerciseId": {
+            "type": "string",
+            "description": "A lab exercise id (perf-*, sec-*, evt-*)."
+          },
+          "selections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 40,
+            "description": "Chosen option ids from the exercise checklist."
+          }
+        },
+        "additionalProperties": false
+      },
+      "LabEvaluationCheck": {
+        "type": "object",
+        "required": [
+          "id",
+          "passed",
+          "message",
+          "points"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "additionalProperties": false
+      },
+      "LabEvaluateResponse": {
+        "type": "object",
+        "required": [
+          "passed",
+          "score",
+          "checks",
+          "feedback",
+          "attemptStatus"
+        ],
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabEvaluationCheck"
+            }
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "attemptStatus": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "submitted",
+              "revealed",
+              "none"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "MicroserviceOrder": {
+        "type": "object",
+        "required": [
+          "correlationId",
+          "orderId",
+          "quantity",
+          "totalCents",
+          "drill",
+          "reserved",
+          "paid",
+          "paymentStatus",
+          "capturedCents"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "totalCents": {
+            "type": "integer"
+          },
+          "drill": {
+            "type": "string"
+          },
+          "reserved": {
+            "type": "boolean"
+          },
+          "paid": {
+            "type": "boolean"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "none",
+              "declined",
+              "paid",
+              "failed"
+            ]
+          },
+          "capturedCents": {
+            "type": "integer"
+          }
+        }
+      },
+      "MicroservicesOverview": {
+        "type": "object",
+        "required": [
+          "persistence",
+          "quota",
+          "events",
+          "webhooks",
+          "state",
+          "orders"
+        ],
+        "properties": {
+          "persistence": {
+            "type": "string",
+            "const": "session"
+          },
+          "quota": {
+            "type": "object",
+            "required": [
+              "used",
+              "limit"
+            ],
+            "properties": {
+              "used": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              }
+            }
+          },
+          "events": {
+            "type": "object",
+            "required": [
+              "total",
+              "pending",
+              "processed",
+              "failed",
+              "dead"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "pending": {
+                "type": "integer"
+              },
+              "processed": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              },
+              "dead": {
+                "type": "integer"
+              }
+            }
+          },
+          "webhooks": {
+            "type": "object",
+            "required": [
+              "delivered",
+              "duplicates",
+              "dead"
+            ],
+            "properties": {
+              "delivered": {
+                "type": "integer"
+              },
+              "duplicates": {
+                "type": "integer"
+              },
+              "dead": {
+                "type": "integer"
+              }
+            }
+          },
+          "state": {
+            "type": "object",
+            "description": "service → key → value projection of simulation state (dedup markers omitted).",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "orders": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "$ref": "#/components/schemas/MicroserviceOrder"
+            }
+          }
+        }
+      },
+      "EventPublishRequest": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "order.created",
+              "inventory.reserved",
+              "payment.processed",
+              "webhook.deliver"
+            ]
+          },
+          "drill": {
+            "type": "string",
+            "enum": [
+              "none",
+              "inventory-short",
+              "inventory-delay",
+              "payment-decline",
+              "payment-transient",
+              "payment-always-fails",
+              "webhook-timeout",
+              "webhook-always-fail",
+              "poison"
+            ],
+            "default": "none",
+            "description": "Deterministic failure/timing drill; synthesized server-side into the payload."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 999,
+            "default": 1
+          },
+          "totalCents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000,
+            "default": 12900
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^corr_[a-z0-9]{6,24}$",
+            "description": "Reuse an existing correlation id to build out-of-order sequences; omitted starts a new one."
+          }
+        },
+        "additionalProperties": false
+      },
+      "EventPublishResponse": {
+        "type": "object",
+        "required": [
+          "correlationId",
+          "seq",
+          "type",
+          "drill",
+          "status"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "drill": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "pending"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProcessOutcome": {
+        "type": "object",
+        "required": [
+          "eventId",
+          "type",
+          "correlationId",
+          "seq",
+          "result",
+          "detail"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "processed",
+              "duplicate",
+              "failed",
+              "dead",
+              "out_of_order"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProcessResponse": {
+        "type": "object",
+        "required": [
+          "processed",
+          "waiting",
+          "dead"
+        ],
+        "properties": {
+          "processed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProcessOutcome"
+            }
+          },
+          "waiting": {
+            "type": "integer",
+            "description": "Events not yet due (backoff)."
+          },
+          "dead": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EventHistoryItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "correlation_id",
+          "seq",
+          "type",
+          "status",
+          "attempts",
+          "max_attempts",
+          "last_error",
+          "created_at",
+          "updated_at",
+          "available_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "correlation_id": {
+            "type": "string"
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processed",
+              "failed",
+              "dead"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "max_attempts": {
+            "type": "integer"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "available_at": {
+            "type": "string"
+          }
+        }
+      },
+      "EventHistoryResponse": {
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/EventHistoryItem"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TraceWebhook": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "target",
+          "status",
+          "attempts",
+          "max_attempts",
+          "http_status",
+          "last_error"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "delivered",
+              "failed",
+              "dead"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "max_attempts": {
+            "type": "integer"
+          },
+          "http_status": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TraceResponse": {
+        "type": "object",
+        "required": [
+          "correlationId",
+          "events",
+          "webhooks"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/EventHistoryItem"
+            }
+          },
+          "webhooks": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/TraceWebhook"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsistencyViolation": {
+        "type": "object",
+        "required": [
+          "correlationId",
+          "kind",
+          "detail"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "payment_without_reservation",
+              "overcapture",
+              "paid_without_webhook"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConsistencyResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "checked",
+          "violations"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "checked": {
+            "type": "integer"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyViolation"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RetryResponse": {
+        "type": "object",
+        "required": [
+          "eventId",
+          "status"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "pending"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReplayResponse": {
+        "type": "object",
+        "required": [
+          "replayed"
+        ],
+        "properties": {
+          "replayed": {
+            "type": "integer",
+            "maximum": 10
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResetResponse": {
+        "type": "object",
+        "required": [
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "additionalProperties": false
       }
     }
   }

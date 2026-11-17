@@ -10,6 +10,7 @@ import type { ProgressResponse } from '../../shared/learning'
 import type { ProgressDashboardState } from './progress-types'
 
 export type { ProgressDashboardState } from './progress-types'
+import { LabProgressSection } from './LabProgressSection'
 import { recommendedHuntScenarioIds, getScenario } from '../../data/scenarios'
 import { formatProgressDate, formatProgressDateTime } from '../../lib/progressDates'
 import { verdictDisplay } from '../../lib/reportForm'
@@ -104,9 +105,17 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
   // Database Testing groups the SQL exercises and SQL hunts beneath the hunt list.
   const isDatabaseTarget = (id: string) => id.startsWith('sql-') || id.startsWith('hunt-db-')
   const isContractTarget = (id: string) => id.startsWith('contract-') || id.startsWith('hunt-contract-')
-  const huntEntries = data.hunts.filter((entry) => !isDatabaseTarget(entry.huntId) && !isContractTarget(entry.huntId))
+  const isPerformanceTarget = (id: string) => id.startsWith('perf-') || id.startsWith('hunt-perf-')
+  const isSecurityTarget = (id: string) => id.startsWith('sec-') || id.startsWith('hunt-sec-')
+  const isEventTarget = (id: string) => id.startsWith('evt-') || id.startsWith('hunt-event-')
+  const labTargets = (id: string) =>
+    isDatabaseTarget(id) || isContractTarget(id) || isPerformanceTarget(id) || isSecurityTarget(id) || isEventTarget(id)
+  const huntEntries = data.hunts.filter((entry) => !labTargets(entry.huntId))
   const databaseEntries = data.hunts.filter((entry) => isDatabaseTarget(entry.huntId))
   const contractEntries = data.hunts.filter((entry) => isContractTarget(entry.huntId))
+  const performanceEntries = data.hunts.filter((entry) => isPerformanceTarget(entry.huntId))
+  const securityEntries = data.hunts.filter((entry) => isSecurityTarget(entry.huntId))
+  const eventEntries = data.hunts.filter((entry) => isEventTarget(entry.huntId))
   const databaseHref = (entry: { huntId: string }): string =>
     entry.huntId.startsWith('hunt-db-')
       ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
@@ -115,6 +124,18 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
     entry.huntId.startsWith('hunt-contract-')
       ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
       : `/contract/exercises/${entry.huntId}`
+  const performanceHref = (entry: { huntId: string }): string =>
+    entry.huntId.startsWith('hunt-perf-')
+      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
+      : `/performance/exercises/${entry.huntId}`
+  const securityHref = (entry: { huntId: string }): string =>
+    entry.huntId.startsWith('hunt-sec-')
+      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
+      : `/security/exercises/${entry.huntId}`
+  const eventHref = (entry: { huntId: string }): string =>
+    entry.huntId.startsWith('hunt-event-')
+      ? `/scenarios/${huntScenarioIds.get(entry.huntId) ?? ''}`
+      : `/microservices/exercises/${entry.huntId}`
 
   return (
     <div className="stack">
@@ -364,6 +385,27 @@ export function ProgressDashboard({ state }: { state: ProgressDashboardState }) 
         </ul>
       </section>
 
+      <LabProgressSection
+        id="performance-title"
+        title="Performance Testing"
+        description="Your state on the performance exercises and performance bug hunts — measure in the bounded load runner."
+        entries={performanceEntries}
+        hrefFor={performanceHref}
+      />
+      <LabProgressSection
+        id="security-title"
+        title="Security Testing"
+        description="Your state on the security exercises and security bug hunts — inert demos, scored exercises and seeded defects."
+        entries={securityEntries}
+        hrefFor={securityHref}
+      />
+      <LabProgressSection
+        id="microservices-title"
+        title="Microservices & Events"
+        description="Your state on the event-driven exercises and event bug hunts — practice happens in the deterministic simulator."
+        entries={eventEntries}
+        hrefFor={eventHref}
+      />
       <section className="content-section" aria-labelledby="recent-title">
         <SectionHeader
           id="recent-title"

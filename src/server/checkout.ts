@@ -680,12 +680,28 @@ checkoutRoutes.post('/checkout', async (c) => {
 
   const problems = blockingProblems(lines, { rejectExactStock: exactStockRejected })
   if (problems.length > 0) {
+    // BUG-HUNT DEFECT SEC-003 (hunt-sec-003): in a bug-hunt session carrying
+    // this defect, the 422 response additionally leaks synthetic internal
+    // diagnostics to the client. Clean mode emits the safe envelope only.
+    const verboseDebug = await isDefectActive(c, 'SEC-003')
     return errorJson(
       c,
       422,
       'cart_unavailable',
       'Some lines can no longer be fulfilled. Adjust the cart and try again.',
-      { lines: problems },
+      {
+        lines: problems,
+        ...(verboseDebug
+          ? {
+              debug: {
+                query: 'SELECT stock_quantity FROM inventory WHERE product_id = ?',
+                sqlstate: '23000',
+                connection: 'd1:qa-practice-lab-db (synthetic)',
+                stack: 'stockGate.checkExactBoundary (synthetic)',
+              },
+            }
+          : {}),
+      },
     )
   }
 

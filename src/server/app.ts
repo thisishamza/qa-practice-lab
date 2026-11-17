@@ -13,6 +13,8 @@ import { progressRoutes } from './progress'
 import { maintenanceRoutes } from './maintenance'
 import { sqlRoutes } from './sql'
 import { contractRoutes } from './contract'
+import { labsRoutes } from './labs'
+import { microservicesRoutes } from './microservices'
 import { clientIp, consumeRateLimit, sha256Hex, MUTATE_LIMIT } from './rateLimit'
 
 export interface Bindings {
@@ -145,6 +147,8 @@ app.route('/v1', progressRoutes)
 app.route('/v1', maintenanceRoutes)
 app.route('/v1', sqlRoutes)
 app.route('/v1', contractRoutes)
+app.route('/v1', labsRoutes)
+app.route('/v1', microservicesRoutes)
 
 app.notFound((c) =>
   c.json({ error: 'not_found', message: 'API route not found' }, 404),

@@ -2,11 +2,15 @@
 // Fresh install and upgrade paths; pre-existing data must survive verbatim.
 // Phase 7 adds no tables: contract fixtures are compiled-in modules, and
 // learning state reuses hunt_attempts exactly as it is.
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   applyRemainingMigrations,
   createMigratedD1,
 } from '../helpers/fake-d1'
+
+const migrationsDir = resolve(__dirname, '../../db/migrations')
 
 describe('migration 0013 (contract_lab_schema)', () => {
   it('applies on a fresh database and reports schema_version 13', () => {
@@ -14,7 +18,7 @@ describe('migration 0013 (contract_lab_schema)', () => {
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('13')
+    expect(row.value).toBe('14')
     // The attempts/report control-plane tables still exist, untouched.
     const tables = migrated.sqlite
       .prepare(
@@ -43,7 +47,7 @@ describe('migration 0013 (contract_lab_schema)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('13')
+    expect(after.value).toBe('14')
 
     const customer = migrated.sqlite
       .prepare("SELECT email FROM customers WHERE id = 4243")
@@ -63,7 +67,8 @@ describe('migration 0013 (contract_lab_schema)', () => {
         .all() as Array<{ name: string }>)
         .map((t) => t.name)
     const before = tables(migrated.sqlite)
-    applyRemainingMigrations(migrated, 12)
+    // Apply ONLY 0013 — 0014 adds the simulation tables on purpose.
+    migrated.sqlite.exec(readFileSync(join(migrationsDir, '0013_contract_lab_schema.sql'), 'utf8'))
     const after = tables(migrated.sqlite)
     expect(after).toEqual(before)
   })

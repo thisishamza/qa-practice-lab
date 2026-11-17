@@ -680,6 +680,240 @@ export const HUNT_CURRICULUM: Record<string, HuntCurriculum> = {
       'What must change before this merges',
     ],
   },
+  'hunt-perf-001': {
+    skillArea: 'Performance testing · measurement discipline',
+    difficulty: 'beginner',
+    conceptsPracticed: [
+      'Baseline measurement against a fixed, comparable target',
+      'p50/p95 reading for latency attribution',
+      'Hunt vs reset session A/B discipline',
+    ],
+    expectedOutcomes: [
+      'Measure elevated flat latency with the bounded runner',
+      'Separate flat cost from variance and payload cost',
+      'Report the uniform signature with numbers',
+    ],
+    investigationFocus: [
+      'Time GET /api/v1/products in this hunt with identical settings',
+      'Reset to clean mode and repeat the identical measurement',
+      'Compare p50 and p95 across the two sessions',
+      'Check whether page, perPage or q changes the picture (it should not)',
+    ],
+    reportFocus: [
+      'The measured deltas between hunt and reset sessions',
+      'Which inputs were varied and which were held constant',
+      'The uniform-shape conclusion and why payload is ruled out',
+      'The user-facing impact and the fix class',
+    ],
+  },
+  'hunt-perf-002': {
+    skillArea: 'Performance testing · pagination cost',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Offset scan cost grows with depth',
+      'Keyset (seek) pagination as the fix',
+      'Boundary localisation by bisection',
+    ],
+    expectedOutcomes: [
+      'Locate the latency step at the page-3 boundary',
+      'Explain why deep OFFSET reads degrade',
+      'Recommend keyset or indexing with bounded pages',
+    ],
+    investigationFocus: [
+      'Sweep page=1..8 with perPage fixed at 12',
+      'Tabulate latency per page and find the exact step',
+      'Verify the shape holds as other parameters change',
+      'Reset and confirm the clean sweep is flat',
+    ],
+    reportFocus: [
+      'The boundary page and the measured delta',
+      'The mechanism (deep offset discard) and why it is quadratic-ish here',
+      'The keyset alternative and its trade-offs',
+      'The blast radius on deep links and API consumers',
+    ],
+  },
+  'hunt-perf-003': {
+    skillArea: 'Performance testing · query-pattern analysis',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'N+1 signature recognition from timings',
+      'Linear-regression reading of latency vs page size',
+      'Batching vs caching fixes',
+    ],
+    expectedOutcomes: [
+      'Recover the per-row linear term from measurements',
+      'Attribute assembly cost to sequential per-row work',
+      'Specify the batched fix with a query-count budget',
+    ],
+    investigationFocus: [
+      'Measure perPage=1, 6, 12, 24 and note the slope, not the constants',
+      'Compare against the same sweep after a reset',
+      'Look for the linear term and name the per-row cost',
+      'Consider what a 48-row page would cost (≈6 s) to size the impact',
+    ],
+    reportFocus: [
+      'The measured slope and per-item cost',
+      'Why count and cache are not fixes for the shape',
+      'The batching/join remediation and the budget to enforce',
+      'How to prevent regression (query-count assertions)',
+    ],
+  },
+  'hunt-sec-001': {
+    skillArea: 'Security testing · excessive data exposure',
+    difficulty: 'beginner',
+    conceptsPracticed: [
+      'Response allowlisting vs storage-row spreading',
+      'Sensitive-field classification',
+      'Compare-hunt-to-reset diff discipline',
+    ],
+    expectedOutcomes: [
+      'Diff hunt vs reset payloads field-by-field',
+      'Classify the extra members as internal analyst annotations',
+      'Recommend an allowlist serializer at the boundary',
+    ],
+    investigationFocus: [
+      'Sign in with a demo account in this hunt and capture GET /api/v1/auth/me',
+      'Reset to clean mode and capture the same response',
+      'Diff the two bodies key by key',
+      'Decide which members belong to the documented profile shape',
+    ],
+    reportFocus: [
+      'Every extra member, verbatim',
+      'Why each one must never serialize to clients',
+      'The data class and the realistic exposure scenario',
+      'The serializer-level fix and its verification',
+    ],
+  },
+  'hunt-sec-002': {
+    skillArea: 'Security testing · brute-force protection',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'Failure-budget enforcement at the gate',
+      'Rate-limit peek vs consume semantics',
+      'Enumeration impact reasoning',
+    ],
+    expectedOutcomes: [
+      'Reproduce unlimited 401s where a 429 wall should exist',
+      'Contrast with clean-mode behaviour at the budget line',
+      'Report the missing peek with the enumeration blast radius',
+    ],
+    investigationFocus: [
+      'Fire ten wrong-password attempts rapidly in this hunt',
+      'Record each status code — look for the absent 429',
+      'Confirm a successful sign-in still works',
+      'Reset and verify the budget refuses the 6th attempt cleanly',
+    ],
+    reportFocus: [
+      'The ten attempts and their responses',
+      'The budget constant that should fire and does not',
+      'The enumeration/credential-stuffing impact',
+      'The gate-level fix and its regression check',
+    ],
+  },
+  'hunt-sec-003': {
+    skillArea: 'Security testing · error hygiene',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Safe error envelopes vs diagnostic leakage',
+      'Server-side logging vs client serialization',
+      'Defence-in-depth for 4xx responses',
+    ],
+    expectedOutcomes: [
+      'Capture the 422 envelope in the hunt session',
+      'Enumerate the diagnostic members and their classes',
+      'Specify the allowlist boundary fix',
+    ],
+    investigationFocus: [
+      'Build a cart that produces an unfulfillable line and attempt checkout',
+      'Read the full 422 body member by member',
+      'Compare with the clean-mode envelope',
+      'Classify each leaked member (connection, query text, SQLSTATE, stack)',
+    ],
+    reportFocus: [
+      'The exact leaked members',
+      'What each one teaches an attacker',
+      'The boundary fix (serializer allowlist) and where diagnostics belong',
+      'The regression check to add',
+    ],
+  },
+  'hunt-event-001': {
+    skillArea: 'Microservices · idempotency',
+    difficulty: 'intermediate',
+    conceptsPracticed: [
+      'At-least-once delivery and duplicate redelivery',
+      'Dedup markers committed with side effects',
+      'Consistency audit as verification',
+    ],
+    expectedOutcomes: [
+      'Drive an order to payment-captured in the simulator',
+      'Force a redelivery and observe the double application',
+      'Prove the invariant break with the audit',
+    ],
+    investigationFocus: [
+      'Publish and process until payments.captured_count shows 1',
+      'Use the Retry control on the reservation event and process again',
+      'Watch captured_count and captured_cents_total',
+      'Run the consistency check and read the violations',
+    ],
+    reportFocus: [
+      'The observed counters before and after redelivery',
+      'The missing dedup guard and its file-level reality',
+      'The audit output as proof',
+      'The remediation and the idempotency invariant',
+    ],
+  },
+  'hunt-event-002': {
+    skillArea: 'Microservices · retry policy',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Exponential backoff and jitter',
+      'Retry storm mechanics',
+      'Dependency protection under partial failure',
+    ],
+    expectedOutcomes: [
+      'Observe zero-spacing retries against a failing gateway',
+      'Quantify the difference from clean-mode backoff',
+      'Classify the failure mode as retry storm risk',
+    ],
+    investigationFocus: [
+      'Publish payment-always-fails in this hunt',
+      'Process repeatedly and record when retries become due',
+      'Confirm the waiting counter never shows a delay',
+      'Reset and observe clean mode’s 1s/2s spacing on the same drill',
+    ],
+    reportFocus: [
+      'The observed backoff (or absence of it) with process-call spacing',
+      'Why immediate retries amplify an outage',
+      'The 2^n backoff with cap and jitter as the fix',
+      'The retry-budget dimension for systemic protection',
+    ],
+  },
+  'hunt-event-003': {
+    skillArea: 'Microservices · message ordering',
+    difficulty: 'advanced',
+    conceptsPracticed: [
+      'Precondition guards for consumer messages',
+      'Dead-lettering unprepared messages',
+      'Consistency audits for cross-service invariants',
+    ],
+    expectedOutcomes: [
+      'Reproduce an unprepared payment being applied',
+      'Detect the violation with the consistency audit',
+      'Specify the precondition guard and its disposition',
+    ],
+    investigationFocus: [
+      'Publish a bare payment.processed into a fresh simulator',
+      'Process and inspect the order projection',
+      'Run the consistency check and capture payment_without_reservation',
+      'Reset and observe clean mode dead-letters with out_of_order_payment',
+    ],
+    reportFocus: [
+      'The applied-without-reservation evidence',
+      'The precondition that was skipped',
+      'The correct dead-letter disposition and its operator story',
+      'The audit cross-check to prevent silent recurrence',
+    ],
+  },
 }
 
 export function curriculumForHunt(huntId: string): HuntCurriculum | undefined {

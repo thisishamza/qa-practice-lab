@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { app } from '../../src/server/app'
 import { HINTS, requireHint } from '../../src/server/hints'
 import { REVEALS } from '../../src/server/reveals'
+import { LAB_HINTS, LAB_REVEALS } from '../../src/server/labLearning'
 import { DEFECTS } from '../../src/server/defects'
 import { HUNTS } from '../../src/server/hunts'
 import {
@@ -22,8 +23,39 @@ const AMARA = { email: 'amara.okafor@example.com', password: 'demo-amara-1001' }
 
 const DEFECT_IDS = DEFECTS.map((defect) => defect.id)
 const DEFECT_TITLES = DEFECTS.map((defect) => defect.title)
-// Phase 4 (kind 'ui' or unspecified) hunts — the SQL hunts and exercises have their own registries (src/server/sqlHints.ts, sqlReveals.ts) covered by tests/server/sql.test.ts.
+// Phase 4 (kind 'ui' or unspecified) hunts plus the final-phase UI hunts,
+// whose hints/reveals live in the lab registry (src/server/labLearning.ts).
 const RUNNABLE_IDS = HUNTS.filter((hunt) => hunt.kind === undefined || hunt.kind === 'ui').map((hunt) => hunt.id)
+
+interface FlatHints {
+  level1: string
+  level2: string
+  level3: string
+}
+
+interface FlatReveal {
+  expected: string
+  actual: string
+  rootCause: string
+  reproduction: string[]
+  verification: string[]
+  concepts: string[]
+  commonMisconceptions: string[]
+  solution?: string
+  explanation?: string
+}
+
+function uiHints(id: string): FlatHints {
+  const lab = LAB_HINTS[id]
+  if (lab) {
+    return { level1: lab[0], level2: lab[1], level3: lab[2] }
+  }
+  return HINTS[id]
+}
+
+function uiReveal(id: string): FlatReveal {
+  return (LAB_REVEALS[id] ?? REVEALS[id]) as FlatReveal
+}
 
 function sessionCookieHeader(token: string) {
   return { cookie: `mpl_session=${token}` }
@@ -170,7 +202,7 @@ const REVEAL_KEYS = [
 
 /** Every learner-safe string in a reveal payload — used for leak checks. */
 function revealStrings(huntId: string): string[] {
-  const reveal = REVEALS[huntId]
+  const reveal = uiReveal(huntId)
   return [
     reveal.expected,
     reveal.actual,
@@ -184,26 +216,30 @@ function revealStrings(huntId: string): string[] {
 
 function hintStrings(): string[] {
   return RUNNABLE_IDS.flatMap((huntId) => {
-    const hints = HINTS[huntId]
+    const hints = uiHints(huntId)
     return [hints.level1, hints.level2, hints.level3]
   })
 }
 
 describe('hint registry (content, completeness, leakage)', () => {
   it('covers exactly the registered runnable hunts with three levels each', () => {
-    expect(Object.keys(HINTS).sort()).toEqual([...RUNNABLE_IDS].sort())
-    expect(Object.keys(REVEALS).sort()).toEqual([...RUNNABLE_IDS].sort())
+    const coveredHints = new Set([...Object.keys(HINTS), ...Object.keys(LAB_HINTS)])
+    const coveredReveals = new Set([...Object.keys(REVEALS), ...Object.keys(LAB_REVEALS)])
     for (const huntId of RUNNABLE_IDS) {
-      expect(HINTS[huntId].level1.trim().length).toBeGreaterThan(0)
-      expect(HINTS[huntId].level2.trim().length).toBeGreaterThan(0)
-      expect(HINTS[huntId].level3.trim().length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].expected.trim().length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].actual.trim().length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].rootCause.trim().length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].reproduction.length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].verification.length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].concepts.length).toBeGreaterThan(0)
-      expect(REVEALS[huntId].commonMisconceptions.length).toBeGreaterThan(0)
+      expect(coveredHints.has(huntId), `hints missing for ${huntId}`).toBe(true)
+      expect(coveredReveals.has(huntId), `reveal missing for ${huntId}`).toBe(true)
+      const hints = uiHints(huntId)
+      const reveal = uiReveal(huntId)
+      expect(hints.level1.trim().length).toBeGreaterThan(0)
+      expect(hints.level2.trim().length).toBeGreaterThan(0)
+      expect(hints.level3.trim().length).toBeGreaterThan(0)
+      expect(reveal.expected.trim().length).toBeGreaterThan(0)
+      expect(reveal.actual.trim().length).toBeGreaterThan(0)
+      expect(reveal.rootCause.trim().length).toBeGreaterThan(0)
+      expect(reveal.reproduction.length).toBeGreaterThan(0)
+      expect(reveal.verification.length).toBeGreaterThan(0)
+      expect(reveal.concepts.length).toBeGreaterThan(0)
+      expect(reveal.commonMisconceptions.length).toBeGreaterThan(0)
     }
   })
 
@@ -239,8 +275,8 @@ describe('hint registry (content, completeness, leakage)', () => {
   it('hint text never contains reveal content (content lint)', () => {
     const normalize = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase()
     for (const huntId of RUNNABLE_IDS) {
-      const hints = HINTS[huntId]
-      const reveal = REVEALS[huntId]
+      const hints = uiHints(huntId)
+      const reveal = uiReveal(huntId)
       const revealBlob = normalize(
         [reveal.expected, reveal.actual, reveal.rootCause, ...reveal.concepts].join(' '),
       )

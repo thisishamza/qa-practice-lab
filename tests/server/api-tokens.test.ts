@@ -168,7 +168,7 @@ describe('migration 0011 (api_tokens)', () => {
     const row = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(row.value).toBe('13')
+    expect(row.value).toBe('14')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'api_tokens'")
@@ -199,7 +199,7 @@ describe('migration 0011 (api_tokens)', () => {
     const after = migrated.sqlite
       .prepare("SELECT value FROM app_meta WHERE key = 'schema_version'")
       .get() as { value: string }
-    expect(after.value).toBe('13')
+    expect(after.value).toBe('14')
 
     const tables = migrated.sqlite
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'api_tokens'")

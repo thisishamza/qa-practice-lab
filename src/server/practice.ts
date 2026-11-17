@@ -248,7 +248,7 @@ practiceRoutes.post('/practice/hunts/:huntId/start', async (c) => {
   // by the global mutation backstop and the one-in_progress-attempt-per-target
   // unique index.
   const ip = clientIp(c)
-  if (ip && hunt.kind !== 'sql' && hunt.kind !== 'contract') {
+  if (ip && hunt.kind !== 'sql' && hunt.kind !== 'contract' && hunt.kind !== 'event') {
     const day = new Date().toISOString().slice(0, 10)
     const allowed = await consumeHuntStart(c.env.DB, day, await sha256Hex(ip))
     if (!allowed) {

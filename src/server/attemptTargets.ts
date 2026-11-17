@@ -11,13 +11,17 @@ import { SQL_EXERCISES as CLIENT_EXERCISES } from '../data/sqlExercises'
 import { findSqlExercise } from './sqlExercises'
 import { CONTRACT_EXERCISES as CLIENT_CONTRACT_EXERCISES } from '../data/contractExercises'
 import { findContractExercise } from './contractExercises'
+import { PERFORMANCE_EXERCISES } from '../data/performanceExercises'
+import { SECURITY_EXERCISES } from '../data/securityExercises'
+import { EVENT_EXERCISES } from '../data/eventExercises'
+import { findLabExercise } from './labExercises'
 
 export interface AttemptTarget {
   id: string
   title: string
   /** Catalogue scenario the target wires to, if any (SQL/contract exercises: none). */
   scenarioId?: string
-  kind: 'ui' | 'sql' | 'contract' | 'exercise'
+  kind: 'ui' | 'sql' | 'contract' | 'event' | 'exercise'
 }
 
 /** Client-safe exercise titles, keyed by id (the client module is safe to read). */
@@ -25,10 +29,13 @@ const EXERCISE_TITLES = new Map(CLIENT_EXERCISES.map((exercise) => [exercise.id,
 const CONTRACT_EXERCISE_TITLES = new Map(
   CLIENT_CONTRACT_EXERCISES.map((exercise) => [exercise.id, exercise.title]),
 )
+const LAB_EXERCISES = [...PERFORMANCE_EXERCISES, ...SECURITY_EXERCISES, ...EVENT_EXERCISES]
+const LAB_EXERCISE_TITLES = new Map(LAB_EXERCISES.map((exercise) => [exercise.id, exercise.title]))
 
-function huntKind(hunt: { kind?: 'ui' | 'sql' | 'contract' }): 'ui' | 'sql' | 'contract' {
+function huntKind(hunt: { kind?: 'ui' | 'sql' | 'contract' | 'event' }): 'ui' | 'sql' | 'contract' | 'event' {
   if (hunt.kind === 'sql') return 'sql'
   if (hunt.kind === 'contract') return 'contract'
+  if (hunt.kind === 'event') return 'event'
   return 'ui'
 }
 
@@ -59,10 +66,18 @@ export function resolveAttemptTarget(id: string): AttemptTarget | null {
       kind: 'exercise',
     }
   }
+  const labExercise = findLabExercise(id)
+  if (labExercise) {
+    return {
+      id: labExercise.id,
+      title: LAB_EXERCISE_TITLES.get(labExercise.id) ?? labExercise.id,
+      kind: 'exercise',
+    }
+  }
   return null
 }
 
-/** All attemptable targets in registry order (UI hunts, SQL hunts, contract hunts, SQL exercises, contract exercises). */
+/** All attemptable targets in registry order (UI hunts, SQL hunts, contract hunts, event hunts, SQL/contract/lab exercises). */
 export function allAttemptTargets(): AttemptTarget[] {
   return [
     ...HUNTS.map((hunt) => ({
@@ -79,6 +94,11 @@ export function allAttemptTargets(): AttemptTarget[] {
     ...CLIENT_CONTRACT_EXERCISES.map((exercise) => ({
       id: exercise.id,
       title: exercise.title,
+      kind: 'exercise' as const,
+    })),
+    ...LAB_EXERCISES.map((exercise) => ({
+      id: exercise.id,
+      title: LAB_EXERCISE_TITLES.get(exercise.id) ?? exercise.id,
       kind: 'exercise' as const,
     })),
   ]

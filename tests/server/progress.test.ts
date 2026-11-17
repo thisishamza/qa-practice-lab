@@ -628,7 +628,12 @@ describe('GET /api/v1/practice/progress — learner-safe payload', () => {
       ].sort(),
     )
     for (const hunt of body.hunts) {
-      const isExercise = hunt.huntId.startsWith('sql-') || (hunt.huntId.startsWith('contract-') && !hunt.huntId.startsWith('hunt-contract-'))
+      const isExercise =
+        hunt.huntId.startsWith('sql-')
+        || hunt.huntId.startsWith('perf-')
+        || hunt.huntId.startsWith('sec-')
+        || hunt.huntId.startsWith('evt-')
+        || (hunt.huntId.startsWith('contract-') && !hunt.huntId.startsWith('hunt-contract-'))
       const base = [
         'attempts',
         'bestScore',

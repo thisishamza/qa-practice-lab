@@ -40,6 +40,17 @@ const spec = JSON.parse(
 
 /** The curated registry of every /api/v1 operation the server implements. */
 const EXPECTED_ROUTES: ReadonlyArray<readonly [string, string]> = [
+  ['post', '/api/v1/labs/evaluate'],
+  ['get', '/api/v1/microservices/overview'],
+  ['post', '/api/v1/microservices/publish'],
+  ['post', '/api/v1/microservices/process'],
+  ['get', '/api/v1/microservices/events'],
+  ['post', '/api/v1/microservices/events/{id}/retry'],
+  ['post', '/api/v1/microservices/events/{id}/redeliver'],
+  ['post', '/api/v1/microservices/events/replay'],
+  ['post', '/api/v1/microservices/reset'],
+  ['get', '/api/v1/microservices/trace/{correlationId}'],
+  ['get', '/api/v1/microservices/consistency'],
   ['get', '/api/v1/products'],
   ['get', '/api/v1/products/{slug}'],
   ['get', '/api/v1/categories'],
@@ -126,7 +137,7 @@ describe('openapi.json — document shape', () => {
     expect(spec.servers).toEqual([{ url: '/', description: expect.any(String) }])
     const tags = spec.tags.map((tag) => tag.name).sort()
     expect(tags).toEqual(
-      ['account', 'admin', 'auth', 'cart', 'catalogue', 'checkout', 'contract', 'orders', 'practice'].sort(),
+      ['account', 'admin', 'auth', 'cart', 'catalogue', 'checkout', 'contract', 'labs', 'microservices', 'orders', 'practice'].sort(),
     )
   })
 
@@ -137,7 +148,7 @@ describe('openapi.json — document shape', () => {
 })
 
 describe('openapi.json — route coverage', () => {
-  it('documents exactly the curated set of 42 operations', () => {
+  it('documents exactly the curated set of 53 operations', () => {
     const documented: string[] = []
     for (const [path, item] of Object.entries(spec.paths)) {
       for (const method of Object.keys(item)) {
@@ -147,7 +158,7 @@ describe('openapi.json — route coverage', () => {
       }
     }
     expect(documented.sort()).toEqual(EXPECTED_ROUTES.map(([m, p]) => `${m} ${p}`).sort())
-    expect(documented).toHaveLength(42)
+    expect(documented).toHaveLength(53)
   })
 
   it('every documented operation is registered in the server source', () => {
