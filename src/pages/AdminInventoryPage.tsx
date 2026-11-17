@@ -29,6 +29,7 @@ export function AdminInventoryPage() {
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
+          { label: 'Practice App' },
           { label: 'Inventory (staff)' },
         ]}
       />
@@ -60,7 +61,7 @@ export function AdminInventoryPage() {
           icon="lock"
           action={
             <Link className="button button-small" to="/login">
-              <Icon name="lock" size={15} />
+              <Icon name="lock" size={16} />
               Sign in with another demo account
             </Link>
           }
@@ -74,7 +75,7 @@ export function AdminInventoryPage() {
           icon="lock"
           action={
             <Link className="button button-small" to="/login">
-              <Icon name="lock" size={15} />
+              <Icon name="lock" size={16} />
               Sign in with a demo account
             </Link>
           }
@@ -88,7 +89,7 @@ export function AdminInventoryPage() {
           icon="lock"
           action={
             <Link className="button button-small" to="/account">
-              <Icon name="user" size={15} />
+              <Icon name="user" size={16} />
               Back to your account
             </Link>
           }

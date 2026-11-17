@@ -47,7 +47,7 @@ const FACTS: readonly { key: string; value: string }[] = [
   { key: 'Exercises', value: '24' },
   { key: 'Bug hunts', value: '7' },
   { key: 'Fixtures', value: '6' },
-  { key: 'Operations', value: '42' },
+  { key: 'Operations', value: '53' },
 ]
 
 function bandRing(completed: number, total: number) {
@@ -115,6 +115,7 @@ export function ContractHubPage() {
 
       <PageHeader
         eyebrow="Learn · Contract testing"
+        className="lab-hub"
         title="Contract Testing"
         description="Practise the promise-checking loop behind every API integration — validate payloads against the documented contract, diff contract versions for breaking changes, and verify consumer-driven expectations before your next release ships."
         actions={
@@ -163,8 +164,7 @@ export function ContractHubPage() {
               <li key={step.title} className="database-step">
                 <span className="database-step-index" aria-hidden="true">{index + 1}</span>
                 <span className="database-step-copy">
-                  <strong>{step.title}</strong>
-                  <span>{step.detail}</span>
+                  <strong>{step.title}.</strong> {step.detail}
                 </span>
               </li>
             ))}

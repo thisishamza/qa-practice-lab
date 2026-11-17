@@ -75,7 +75,7 @@ export function RevealPanelView({
             <Icon name="alert" size={16} /> {state.message}
           </p>
           <Button variant="ghost" size="sm" onClick={onRetry}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         </div>

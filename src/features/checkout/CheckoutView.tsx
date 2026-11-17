@@ -222,8 +222,7 @@ export function CheckoutView({
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Shop', to: '/shop' },
-          { label: 'Cart', to: '/cart' },
+          { label: 'Practice App' },
           { label: 'Checkout' },
         ]}
       />
@@ -251,7 +250,7 @@ export function CheckoutView({
           }
           action={
             <Button size="sm" onClick={onRetry}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -265,7 +264,7 @@ export function CheckoutView({
           icon="cart"
           action={
             <Link className="button button-small" to="/shop">
-              <Icon name="shop" size={15} />
+              <Icon name="shop" size={16} />
               Browse the shop
             </Link>
           }
@@ -475,7 +474,7 @@ export function CheckoutView({
                 loading={busy}
                 disabled={!checkoutable || busy}
               >
-                <Icon name="lock" size={15} />
+                <Icon name="lock" size={16} />
                 Place practice order
               </Button>
               <p className="checkout-hint checkout-hint-submit">
@@ -515,7 +514,7 @@ export function CheckoutView({
                 sum of the lines, always calculated on the server.
               </p>
               <Link className="button button-ghost button-small" to="/cart">
-                <Icon name="cart" size={15} />
+                <Icon name="cart" size={16} />
                 Back to the cart
               </Link>
             </aside>

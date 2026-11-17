@@ -212,11 +212,11 @@ export function ApiReferenceView({ spec }: { spec: OpenApiDocument }) {
         actions={
           <>
             <a className="button button-secondary" href="/openapi.json" download="openapi.json">
-              <Icon name="book" size={17} />
+              <Icon name="book" size={16} />
               Download openapi.json
             </a>
             <Link className="button" to="/api-lab">
-              <Icon name="api" size={17} />
+              <Icon name="api" size={16} />
               Open the API Lab
             </Link>
           </>

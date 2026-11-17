@@ -126,6 +126,7 @@ export function LabHub({
 
       <PageHeader
         eyebrow={`Learn · ${trackLabel}`}
+        className="lab-hub"
         title={title}
         description={description}
         actions={
@@ -165,8 +166,7 @@ export function LabHub({
               <li key={step.title} className="database-step">
                 <span className="database-step-index" aria-hidden="true">{index + 1}</span>
                 <span className="database-step-copy">
-                  <strong>{step.title}</strong>
-                  <span>{step.detail}</span>
+                  <strong>{step.title}.</strong> {step.detail}
                 </span>
               </li>
             ))}

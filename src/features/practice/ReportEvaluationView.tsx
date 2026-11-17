@@ -80,11 +80,11 @@ export function ReportEvaluationView({
 
       <div className="button-row">
         <Button variant="secondary" size="sm" onClick={onRevise}>
-          <Icon name="reset" size={15} />
+          <Icon name="reset" size={16} />
           Revise and resubmit
         </Button>
         <Button variant="ghost" size="sm" onClick={onDownload}>
-          <Icon name="book" size={15} />
+          <Icon name="book" size={16} />
           Download the report (.md)
         </Button>
       </div>

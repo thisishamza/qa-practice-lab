@@ -94,7 +94,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 disabled={outOfStock || pending || quantity <= 1}
                 aria-label="Decrease quantity"
               >
-                <Icon name="minus" size={15} />
+                <Icon name="minus" size={16} />
               </button>
               <input
                 id="product-add-quantity"
@@ -123,7 +123,7 @@ export function ProductDetail({ product }: { product: Product }) {
                 disabled={outOfStock || pending || quantity >= MAX_LINE_QUANTITY}
                 aria-label="Increase quantity"
               >
-                <Icon name="plus" size={15} />
+                <Icon name="plus" size={16} />
               </button>
             </div>
           </div>
@@ -149,13 +149,13 @@ export function ProductDetail({ product }: { product: Product }) {
           </Button>
           {error ? (
             <p className="cart-line-note" role="alert">
-              <Icon name="alert" size={15} />
+              <Icon name="alert" size={16} />
               <span>{error}</span>
             </p>
           ) : null}
           <Link className="text-link" to="/cart">
             View the cart
-            <Icon name="arrow-right" size={14} />
+            <Icon name="arrow-right" size={16} />
           </Link>
         </div>
 

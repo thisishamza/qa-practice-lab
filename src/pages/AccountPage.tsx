@@ -73,7 +73,7 @@ export function AccountPage() {
           description={`${loadState.message} Check that the practice API is running, then try again.`}
           action={
             <Button size="sm" onClick={refresh}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Try again
             </Button>
           }
@@ -97,11 +97,11 @@ export function AccountPage() {
       {loadState.status === 'ready' && !suspended && !customer ? (
         <EmptyState
           title="You’re browsing as a guest"
-          description="Guests can browse the shop, fill the cart and complete a practice checkout without an account. Sign in with a fictional demo account to see a customer profile and order history."
+          description="Guests can browse the shop, fill the cart and complete a practice checkout without an account. Guest activity expires with this browser’s practice session (7 days). Sign in with a fictional demo account to keep your progress permanently and to see a customer profile and order history."
           icon="user"
           action={
             <Link className="button button-small" to="/login">
-              <Icon name="lock" size={15} />
+              <Icon name="lock" size={16} />
               Sign in with a demo account
             </Link>
           }

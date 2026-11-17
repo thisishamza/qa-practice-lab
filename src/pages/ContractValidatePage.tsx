@@ -372,7 +372,7 @@ export function ContractValidatePage() {
                 title="The contract could not be loaded"
                 description={liveError ?? 'Unknown error'}
                 action={
-                  <button type="button" className="button" onClick={() => { setLiveState('loading'); setReloadToken((n) => n + 1) }}>
+                  <button type="button" className="button button-secondary" onClick={() => { setLiveState('loading'); setReloadToken((n) => n + 1) }}>
                     Try again
                   </button>
                 }

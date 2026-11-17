@@ -68,12 +68,13 @@ export function GuideDetailPage() {
             { label: 'Not found' },
           ]}
         />
+        <h1 className="sr-only">Guide not found</h1>
         <EmptyState
           title="That guide does not exist"
           description="The guide may not be published yet, or the link may be incomplete."
           icon="book"
           action={
-            <Link className="button" to="/guides">
+            <Link className="button button-secondary" to="/guides">
               Back to the guide library
             </Link>
           }
@@ -113,7 +114,7 @@ export function GuideDetailPage() {
       <div className="meta-row">
         <LevelMeter level={guide.level} />
         <span className="meta-item">
-          <Icon name="clock" size={15} />
+          <Icon name="clock" size={16} />
           {formatMinutes(guide.readingMinutes)} read
         </span>
         <span className="meta-item">{guide.concepts.length} concepts</span>
@@ -139,7 +140,7 @@ export function GuideDetailPage() {
       </details>
 
       <div className="detail-layout guide-layout">
-        <article className="detail-main guide-article">
+        <article className="detail-main guide-article" data-density="spacious">
           <section id="introduction" className="content-section guide-section">
             <h2>Introduction</h2>
             {guide.introduction.map((paragraph) => (
@@ -202,7 +203,7 @@ export function GuideDetailPage() {
               {guide.expectedResults.map((result) => (
                 <li key={result}>
                   <span className="check-list-icon" aria-hidden="true">
-                    <Icon name="check" size={14} />
+                    <Icon name="check" size={16} />
                   </span>
                   <span>{result}</span>
                 </li>
@@ -216,7 +217,7 @@ export function GuideDetailPage() {
               {guide.commonMistakes.map((mistake) => (
                 <li key={mistake}>
                   <span className="mistake-icon" aria-hidden="true">
-                    <Icon name="alert" size={14} />
+                    <Icon name="alert" size={16} />
                   </span>
                   <span>{mistake}</span>
                 </li>
@@ -281,10 +282,10 @@ export function GuideDetailPage() {
             )}
           </nav>
 
-          <Callout tone="neutral" title="Exercises are still placeholders">
-            Reading a guide does not require a runnable exercise. When the related
-            scenarios become available, this page will link directly to their launch
-            controls.
+          <Callout tone="neutral" title="Put the guide to work">
+            The exercises linked above carry their real availability status — ready
+            scenarios launch directly; the rest stay labelled as placeholders until they
+            are implemented.
           </Callout>
         </article>
 

@@ -282,7 +282,7 @@
   margin: 0;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -324,10 +324,11 @@
   background: var(--surface-raised);
   color: var(--ink-strong);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   z-index: 1;
+  font-weight: var(--weight-semibold);
 }
 
 .sql-results-table tbody tr:hover {
@@ -372,7 +373,7 @@
 .schema-version-line {
   margin: 0 0 0.35rem;
   color: var(--ink-subtle);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   font-family: var(--font-mono);
 }
 
@@ -433,7 +434,7 @@
 .schema-column-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
 }
 
 .schema-column-table th,
@@ -481,9 +482,10 @@
   margin: 0 0 0.2rem;
   color: var(--ink-subtle);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  font-weight: var(--weight-semibold);
 }
 
 .schema-list {
@@ -546,9 +548,10 @@
   margin: 0 0 0.35rem;
   color: var(--ink-subtle);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  font-weight: var(--weight-semibold);
 }
 
 .sql-samples-list {
@@ -563,7 +566,7 @@
   border-radius: 999px;
   background: var(--surface-raised);
   color: var(--ink);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   cursor: pointer;
 }
 
@@ -607,6 +610,11 @@
   margin-top: 0.5rem;
   color: var(--ink-muted);
   font-size: var(--text-meta);
+}
+
+.database-step-copy {
+  display: block;
+  min-inline-size: 0;
 }
 
 .database-steps {
@@ -891,8 +899,8 @@
 
 .filter-chip-active,
 .filter-chip-active:hover {
-  border-color: var(--action);
-  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  background: var(--surface-selected);
   color: var(--ink-strong);
 }
 
@@ -980,7 +988,7 @@
 
 .database-exercise-meta {
   color: var(--ink-muted);
-  font-size: var(--text-micro);
+  font-size: var(--text-kicker);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }

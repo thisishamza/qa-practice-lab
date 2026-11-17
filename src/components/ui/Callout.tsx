@@ -31,7 +31,7 @@ export function Callout({
   return (
     <div className={`callout callout-${tone}`}>
       <span className="callout-icon" aria-hidden="true">
-        <Icon name={icon ?? toneIcons[tone]} size={18} />
+        <Icon name={icon ?? toneIcons[tone]} size={16} />
       </span>
       <div className="callout-body">
         {title ? <p className="callout-title">{title}</p> : null}

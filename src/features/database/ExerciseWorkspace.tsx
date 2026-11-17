@@ -320,7 +320,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: SqlExerciseDef }) {
           <div className="exercise-attempt-row">
             <AttemptStatusChip status={attempt?.status ?? 'none'} bestQualityScore={attempt?.bestQualityScore ?? null} />
             <button type="button" className="button button-ghost button-small" onClick={resetDatabase} disabled={outcome === 'running' || checking}>
-              <Icon name="reset" size={15} />
+              <Icon name="reset" size={16} />
               Reset database
             </button>
           </div>
@@ -412,7 +412,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: SqlExerciseDef }) {
                 <ul className="exercise-checks">
                   {evaluation.checks.map((check) => (
                     <li key={check.id} className={check.passed ? 'exercise-check-pass' : 'exercise-check-fail'}>
-                      <Icon name={check.passed ? 'check' : 'alert'} size={14} />
+                      <Icon name={check.passed ? 'check' : 'alert'} size={16} />
                       <span><strong>{check.id}</strong> — {check.message}</span>
                     </li>
                   ))}
@@ -449,7 +449,7 @@ export function ExerciseWorkspace({ exercise }: { exercise: SqlExerciseDef }) {
         <p className="exercise-exit">
           <Link className="button button-ghost button-small" to="/database">
             Back to all exercises
-            <Icon name="arrow-right" size={14} />
+            <Icon name="arrow-right" size={16} />
           </Link>
         </p>
       </div>

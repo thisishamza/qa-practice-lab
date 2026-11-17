@@ -90,7 +90,7 @@ describe('AboutPage — accuracy of the build description', () => {
 
   it('describes the real, session-scoped progress page honestly', () => {
     expect(html).toContain('never sample data')
-    expect(html).toContain('labelled demo figures')
+    expect(html).not.toContain('labelled demo figures')
   })
 
   it('no longer claims the health check is the only live API call', () => {

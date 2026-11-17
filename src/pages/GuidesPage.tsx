@@ -2,7 +2,7 @@ import { learningTracks } from '../data/tracks'
 import { getGuidesForTrack, guides } from '../data/guides'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
-import { SectionHeader } from '../components/ui/PageChrome'
+import { SectionHeader, Breadcrumbs } from '../components/ui/PageChrome'
 import { GuideCard } from '../features/guides/GuideCard'
 
 export function GuidesPage() {
@@ -17,6 +17,8 @@ export function GuidesPage() {
 
   return (
     <div className="stack">
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Guides' }]} />
+
       <PageHeader
         eyebrow="Learning library"
         title="Guides"
@@ -26,7 +28,7 @@ export function GuidesPage() {
       <p className="guides-note">
         {guides.length} guides across {groups.length} disciplines — all readable today.
         The exercises they support are labelled with their own availability on the
-        scenarios page.
+        Exercises page.
       </p>
 
       {groups.map(({ track, trackGuides }) => (

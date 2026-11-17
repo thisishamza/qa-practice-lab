@@ -15,6 +15,7 @@ export function MicroservicesExercisePage() {
     return (
       <div className="stack">
         <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Microservices & Event-Driven Testing', to: '/microservices' }, { label: 'Not found' }]} />
+        <h1 className="sr-only">Exercise not found</h1>
         <Callout tone="danger" title="No such practice exercise">
           The link may be outdated.{' '}
           <Link className="text-link" to="/microservices">Back to the exercise catalogue</Link>

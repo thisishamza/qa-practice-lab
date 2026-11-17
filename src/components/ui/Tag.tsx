@@ -29,7 +29,7 @@ export function Tag({ tone = 'neutral', icon, children, className }: TagProps) {
   return (
     <span className={['tag', `tag-${tone}`, className].filter(Boolean).join(' ')}>
       {showDot ? <span className="tag-dot" aria-hidden="true" /> : null}
-      {!showDot && icon ? <Icon name={icon} size={14} /> : null}
+      {!showDot && icon ? <Icon name={icon} size={16} /> : null}
       {children}
     </span>
   )

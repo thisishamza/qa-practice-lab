@@ -5,7 +5,7 @@ import { guides } from '../data/guides'
 import {
   recommendedScenarioIds,
 } from '../data/demo'
-import { countScenariosByTrack } from '../lib/catalog'
+import { countScenariosByTrack, countScenariosByStatus } from '../lib/catalog'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { difficultyLabels, formatMinutes, pluralize } from '../lib/labels'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -13,37 +13,13 @@ import { SectionHeader } from '../components/ui/PageChrome'
 import { StatusTag } from '../components/ui/Tag'
 import { Meta } from '../components/ui/Meta'
 import { Icon } from '../components/ui/Icon'
-
-const startSteps: {
-  kicker: string
-  title: string
-  detail: string
-  to: string
-}[] = [
-  {
-    kicker: 'Guide',
-    title: 'Read the manual-testing guide',
-    detail: 'Test design, oracles, and evidence — the foundation every track builds on.',
-    to: '/guides/guide-manual-test-design',
-  },
-  {
-    kicker: 'Scenario',
-    title: 'Inspect the cart-totals scenario',
-    detail: 'Objectives, prerequisites, and its real availability status — exercises are labelled, never faked.',
-    to: '/scenarios/manual-cart-totals',
-  },
-  {
-    kicker: 'Track',
-    title: 'Review the API testing track',
-    detail: 'What the track covers, what is usable today, and where it goes next.',
-    to: '/tracks/api-testing',
-  },
-]
+import { NextStepPanel } from '../features/dashboard/NextStepPanel'
 
 export function DashboardPage() {
   useDocumentTitle('Dashboard')
 
   const scenariosPerTrack = countScenariosByTrack(scenarios)
+  const availability = countScenariosByStatus(scenarios)
 
   const featured = learningTracks.slice(0, 6)
   const recommended = recommendedScenarioIds.flatMap((id) => {
@@ -56,7 +32,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="QA learning environment"
         title="Practise testing across the whole stack."
-        description="Twelve learning tracks, twenty-four catalogued scenarios, and six practical guides. Start with the path below — every page is labelled with exactly what is usable today."
+        description={`Twelve learning tracks, ${scenarios.length} catalogued scenarios — ${availability.ready} ready to run — and ${guides.length} practical guides. Start with the path below — every page is labelled with exactly what is usable today.`}
         actions={
           <div className="button-row">
             <Link className="button" to="/scenarios">
@@ -70,34 +46,7 @@ export function DashboardPage() {
         }
       />
 
-      <section className="content-section" aria-labelledby="start-path-title">
-        <SectionHeader
-          id="start-path-title"
-          title="Your start path"
-          description="Three steps, in order. Guides and tracks are readable now."
-        />
-        <ol className="start-path-list">
-          {startSteps.map((step, index) => (
-            <li key={step.to}>
-              <Link className="start-step" to={step.to}>
-                <span className="start-step-number" aria-hidden="true">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <span className="start-step-copy">
-                  <span className="start-step-kicker">{step.kicker}</span>
-                  <span className="start-step-title">{step.title}</span>
-                  <span className="start-step-detail">{step.detail}</span>
-                </span>
-                <Icon name="arrow-right" size={16} />
-              </Link>
-            </li>
-          ))}
-        </ol>
-        <p className="dashboard-note">
-          Scenario exercises are catalogued but are not runnable yet — each scenario
-          page carries its real status.
-        </p>
-      </section>
+      <NextStepPanel />
 
       <section className="content-section" aria-labelledby="curriculum-title">
         <SectionHeader
@@ -107,7 +56,7 @@ export function DashboardPage() {
           action={
             <Link className="text-link" to="/tracks">
               All 12 tracks
-              <Icon name="arrow-right" size={14} />
+              <Icon name="arrow-right" size={16} />
             </Link>
           }
         />
@@ -116,7 +65,7 @@ export function DashboardPage() {
             <li key={track.id}>
               <Link className="track-row" to={`/tracks/${track.id}`}>
                 <span className="track-icon" aria-hidden="true">
-                  <Icon name={track.icon} size={18} />
+                  <Icon name={track.icon} size={20} />
                 </span>
                 <span className="track-row-copy">
                   <strong>{track.name}</strong>
@@ -144,26 +93,30 @@ export function DashboardPage() {
         <SectionHeader
           id="catalogue-title"
           title="Scenario catalogue"
-          description="Structured placeholders for every planned exercise."
+          description="Every catalogued scenario — search, filter and check each one's real status."
           action={
             <Link className="text-link" to="/scenarios">
               Open the catalogue
-              <Icon name="arrow-right" size={14} />
+              <Icon name="arrow-right" size={16} />
             </Link>
           }
         />
         <p className="catalogue-counts">
-          {pluralize(scenarios.length, 'scenario')}
+          {scenarios.length} scenarios
           <span className="meta-sep" aria-hidden="true">
             ·
           </span>
-          {pluralize(learningTracks.length, 'track')}
+          {availability.ready} ready to run
           <span className="meta-sep" aria-hidden="true">
             ·
           </span>
-          {pluralize(guides.length, 'guide')}
+          {learningTracks.length} tracks
+          <span className="meta-sep" aria-hidden="true">
+            ·
+          </span>
+          {guides.length} guides
         </p>
-        <ul className="scenario-row-list">
+        <ul className="scenario-row-list" data-density="compact">
           {recommended.map((scenario) => {
             const track = getTrack(scenario.trackId)
 

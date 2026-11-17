@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { isNavItemActive, primaryNav, staffNavItem } from '../../lib/navigation'
+import { isNavItemActive, navGroups, staffNavItem, utilityNavItem } from '../../lib/navigation'
 import { useAuth } from '../../features/auth/useAuth'
 import { Icon } from '../ui/Icon'
 import { IconButton } from '../ui/IconButton'
@@ -122,36 +122,47 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         </div>
 
         <nav className="mobile-nav-list" aria-label="Primary">
-          {[...primaryNav, ...(isStaff ? [staffNavItem] : [])].map((item) => {
-            const active = isNavItemActive(item, pathname)
+          {navGroups.map((group) => (
+            <div key={group.id} className={`mobile-nav-group mobile-nav-group-${group.id}`}>
+              <p className="mobile-nav-group-heading">
+                {group.icon ? (
+                  <Icon name={group.icon} size={16} className="mobile-nav-group-heading-icon" />
+                ) : null}
+                {group.label}
+              </p>
+              <p className="mobile-nav-group-note">{group.note}</p>
+              {(group.id === 'practice-app' && isStaff ? [...group.items, staffNavItem] : group.items).map((item) => {
+                const active = isNavItemActive(item, pathname)
 
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`mobile-nav-link${active ? ' is-active' : ''}`}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => onClose(false)}
-              >
-                <Icon name={item.icon} size={19} />
-                <span>
-                  <span className="mobile-nav-label">{item.label}</span>
-                  <span className="mobile-nav-description">{item.description}</span>
-                </span>
-              </Link>
-            )
-          })}
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`mobile-nav-link${active ? ' is-active' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => onClose(false)}
+                  >
+                    <Icon name={item.icon} size={20} />
+                    <span>
+                      <span className="mobile-nav-label">{item.label}</span>
+                      <span className="mobile-nav-description">{item.description}</span>
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="mobile-nav-footer">
           <Link
-            to="/about"
+            to={utilityNavItem.to}
             className="mobile-nav-utility"
-            aria-current={pathname === '/about' ? 'page' : undefined}
+            aria-current={pathname === utilityNavItem.to ? 'page' : undefined}
             onClick={() => onClose(false)}
           >
-            <Icon name="info" size={17} />
-            <span>About this build</span>
+            <Icon name={utilityNavItem.icon} size={20} />
+            <span>{utilityNavItem.label}</span>
           </Link>
         </div>
       </div>

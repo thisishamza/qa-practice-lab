@@ -27,8 +27,8 @@
 .workspace-title {
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -39,8 +39,8 @@
   align-items: center;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -90,8 +90,8 @@
 .workspace-key {
   color: var(--ink-subtle);
   font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-kicker);
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }

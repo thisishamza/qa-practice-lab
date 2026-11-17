@@ -28,16 +28,17 @@ export function ScenarioDetailPage() {
         <Breadcrumbs
           items={[
             { label: 'Dashboard', to: '/' },
-            { label: 'Scenario catalog', to: '/scenarios' },
+            { label: 'Exercises', to: '/scenarios' },
             { label: 'Not found' },
           ]}
         />
+        <h1 className="sr-only">Scenario not found</h1>
         <EmptyState
           title="That scenario does not exist"
           description="It may have been renamed or removed from the catalogue."
           icon="scenarios"
           action={
-            <Link className="button" to="/scenarios">
+            <Link className="button button-secondary" to="/scenarios">
               Back to the catalogue
             </Link>
           }
@@ -61,7 +62,7 @@ export function ScenarioDetailPage() {
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/' },
-          { label: 'Scenario catalog', to: '/scenarios' },
+          { label: 'Exercises', to: '/scenarios' },
           ...(track ? [{ label: track.shortName, to: `/tracks/${track.id}` }] : []),
           { label: scenario.title },
         ]}
@@ -78,7 +79,7 @@ export function ScenarioDetailPage() {
         <LevelMeter level={scenario.difficulty} />
         <span className="meta-item">{scenarioModeLabels[scenario.mode]}</span>
         <span className="meta-item">
-          <Icon name="clock" size={15} />
+          <Icon name="clock" size={16} />
           {formatMinutes(scenario.estimatedMinutes)}
         </span>
         {category ? <span className="meta-item">{category.name}</span> : null}
@@ -101,7 +102,7 @@ export function ScenarioDetailPage() {
               {scenario.objectives.map((objective) => (
                 <li key={objective}>
                   <span className="check-list-icon" aria-hidden="true">
-                    <Icon name="check" size={14} />
+                    <Icon name="check" size={16} />
                   </span>
                   <span>{objective}</span>
                 </li>
@@ -121,7 +122,7 @@ export function ScenarioDetailPage() {
                   {scenario.curriculum.conceptsPracticed.map((concept) => (
                     <li key={concept}>
                       <span className="check-list-icon" aria-hidden="true">
-                        <Icon name="check" size={14} />
+                        <Icon name="check" size={16} />
                       </span>
                       <span>{concept}</span>
                     </li>
@@ -138,7 +139,7 @@ export function ScenarioDetailPage() {
                 <ul className="plain-list">
                   {scenario.curriculum.investigationFocus.map((focus) => (
                     <li key={focus}>
-                      <Icon name="target" size={14} />
+                      <Icon name="target" size={16} />
                       {focus}
                     </li>
                   ))}
@@ -155,7 +156,7 @@ export function ScenarioDetailPage() {
                   {scenario.curriculum.expectedOutcomes.map((outcome) => (
                     <li key={outcome}>
                       <span className="check-list-icon" aria-hidden="true">
-                        <Icon name="check" size={14} />
+                        <Icon name="check" size={16} />
                       </span>
                       <span>{outcome}</span>
                     </li>
@@ -172,7 +173,7 @@ export function ScenarioDetailPage() {
                 <ul className="plain-list">
                   {scenario.curriculum.reportFocus.map((item) => (
                     <li key={item}>
-                      <Icon name="target" size={14} />
+                      <Icon name="target" size={16} />
                       {item}
                     </li>
                   ))}
@@ -206,7 +207,7 @@ export function ScenarioDetailPage() {
             <ul className="plain-list">
               {scenario.prerequisites.map((prerequisite) => (
                 <li key={prerequisite}>
-                  <Icon name="target" size={14} />
+                  <Icon name="target" size={16} />
                   {prerequisite}
                 </li>
               ))}
@@ -225,7 +226,7 @@ export function ScenarioDetailPage() {
                   <li key={guide.id}>
                     <Link to={`/guides/${guide.id}`}>
                       <span className="guide-link-icon" aria-hidden="true">
-                        <Icon name="book" size={17} />
+                        <Icon name="book" size={16} />
                       </span>
                       <span>
                         <strong>{guide.title}</strong>
@@ -307,7 +308,7 @@ export function ScenarioDetailPage() {
                 {relatedScenarios.map((entry) => (
                   <li key={entry.id}>
                     <Link to={`/scenarios/${entry.id}`}>
-                      <Icon name="scenarios" size={15} />
+                      <Icon name="scenarios" size={16} />
                       {entry.title}
                     </Link>
                   </li>

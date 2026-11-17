@@ -2,12 +2,12 @@ import { Link, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { PageHeader } from '../components/ui/PageHeader'
-import { SectionHeader } from '../components/ui/PageChrome'
+import { SectionHeader, Breadcrumbs } from '../components/ui/PageChrome'
 import { Callout } from '../components/ui/Callout'
 import { EvaluationTransparency } from '../features/evaluation/EvaluationTransparency'
 
 export function AboutPage() {
-  useDocumentTitle('About this build')
+  useDocumentTitle('About & scoring')
   const location = useLocation()
 
   // Client-side navigation to /about#evaluation does not scroll or move
@@ -28,51 +28,83 @@ export function AboutPage() {
 
   return (
     <div className="stack">
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'About & scoring' }]} />
+
       <PageHeader
         eyebrow="About"
-        title="About this build"
-        description="QA Practice Lab is a learner-facing environment for practising software testing end to end. This page records what is real, what is planned, and how the lab is built."
+        title="About & scoring"
+        description="QA Practice Lab is a learner-facing environment for practising software testing end to end. This page records what is real today, what is only planned, and how every report is scored."
       />
 
+      <nav className="about-toc" aria-label="On this page">
+        <span className="about-toc-label">On this page</span>
+        <ul>
+          <li>
+            <a href="#what-works">What works today</a>
+          </li>
+          <li>
+            <a href="#what-comes-next">What comes next</a>
+          </li>
+          <li>
+            <a href="#durability">How long progress lasts</a>
+          </li>
+          <li>
+            <a href="#evaluation">Learning &amp; evaluation</a>
+          </li>
+        </ul>
+      </nav>
+
       <div className="split-grid">
-        <section className="content-section" aria-labelledby="real-title">
+        <section
+          id="what-works"
+          className="content-section"
+          aria-labelledby="real-title"
+          tabIndex={-1}
+        >
           <SectionHeader
             id="real-title"
             title="What works today"
-            description="The shell, the shop, ten runnable bug-hunt exercises and two ready practice exercises."
+            description="The shell, the shop, the scored labs, and 34 runnable bug-hunt exercises."
           />
-          <div className="panel">
+          <div className="panel panel-sunken">
             <p className="panel-note">
               Navigation, search, tracks, the scenario catalogue, and the written guides are
               implemented and usable. The catalogue supports filtering and carries a query in the
               URL, so a search can be linked or shared.
             </p>
             <p className="panel-note">
-              Ten bug-hunt exercises are runnable against the fictional Meridian Outfitters
+              Thirty-four bug-hunt exercises are runnable against the fictional Meridian Outfitters
               shop — defects are deterministic, scoped to your browser session, and never affect
-              anyone else. Two clean exercises (catalogue pagination and the API token lifecycle)
-              are also ready. The remaining catalogue scenarios are labelled placeholders and are
-              not runnable yet.
+              anyone else. Thirty-nine of the 53 catalogued scenarios are ready to run, alongside
+              five clean (non-hunt) exercises such as catalogue pagination, session expiry and the
+              contract-consumer drills. The five hands-on labs — SQL, contract, performance,
+              security and microservices — ship 96 scored exercises between them. The remaining
+              14 catalogue scenarios are labelled placeholders and are not runnable yet.
             </p>
             <p className="panel-note">
-              Progress is real on this server: the progress page shows your own attempts, scores,
-              discoveries and hint usage — never sample data. The dashboard still shows labelled
-              demo figures.
+              Progress is real on this server: the progress page and the dashboard show your own
+              attempts, scores, discoveries and hint usage — never sample data.
             </p>
           </div>
         </section>
 
-        <section className="content-section" aria-labelledby="planned-title">
+        <section
+          id="what-comes-next"
+          className="content-section"
+          aria-labelledby="planned-title"
+          tabIndex={-1}
+        >
           <SectionHeader
             id="planned-title"
             title="What comes next"
-            description="Scoped later phases, nothing faked."
+            description="Planned work, labelled as planned — nothing below is available today."
           />
-          <div className="panel">
+          <div className="panel panel-sunken">
             <p className="panel-note">
-              Later phases add more defects to the library, a browser-isolated SQL sandbox,
-              performance and accessibility exercises, and richer accounts. Every target will be
-              first-party, synthetic, and bounded by the project safety rules.
+              <strong>Planned — not shipped.</strong> Follow-on work adds more defects to the
+              library, accessibility exercises, and richer accounts. Every target will be
+              first-party, synthetic, and bounded by the project safety rules. Until an item
+              moves into “What works today”, treat it as a direction, not a deliverable.
             </p>
             <div className="button-row">
               <Link className="button button-small" to="/tracks">
@@ -86,14 +118,19 @@ export function AboutPage() {
         </section>
       </div>
 
-      <section className="content-section" aria-labelledby="durability-title">
+      <section
+        id="durability"
+        className="content-section"
+        aria-labelledby="durability-title"
+        tabIndex={-1}
+      >
         <SectionHeader
           id="durability-title"
           title="How long your progress lasts"
           description="Two kinds of durability, stated plainly."
         />
         <div className="split-grid">
-          <div className="panel">
+          <div className="panel panel-sunken">
             <h3>As a guest</h3>
             <p className="panel-note">
               Progress belongs to this browser&rsquo;s anonymous practice session. It is
@@ -106,7 +143,7 @@ export function AboutPage() {
               made it.
             </p>
           </div>
-          <div className="panel">
+          <div className="panel panel-sunken">
             <h3>Signed in</h3>
             <p className="panel-note">
               Reports submitted while signed in are attributed to the synthetic training customer
@@ -137,6 +174,12 @@ export function AboutPage() {
           title="Learning and evaluation"
           description="How bug reports are scored, what discovery means, and what hints count for."
         />
+        <nav className="about-scoring-nav" aria-label="Scoring sections">
+          <a href="#rubric-checks">The ten checks</a>
+          <a href="#verdict-bands">Verdict bands</a>
+          <a href="#discovery-vs-score">Discovery vs score</a>
+          <a href="#hints-and-reveals">Hints &amp; reveals</a>
+        </nav>
         <EvaluationTransparency />
       </section>
 

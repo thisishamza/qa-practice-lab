@@ -78,7 +78,7 @@ export function InventoryManager() {
         }
         action={
           <Button size="sm" onClick={retry}>
-            <Icon name="reset" size={15} />
+            <Icon name="reset" size={16} />
             Try again
           </Button>
         }
@@ -282,7 +282,7 @@ export function InventoryManager() {
                     </div>
                   </div>
                   <Button type="submit" size="sm" loading={busy} disabled={busy}>
-                    <Icon name="plus" size={15} />
+                    <Icon name="plus" size={16} />
                     {busy ? 'Restocking…' : 'Restock'}
                   </Button>
                   {feedback ? (
@@ -295,7 +295,7 @@ export function InventoryManager() {
                     >
                       <Icon
                         name={feedback.kind === 'success' ? 'check' : 'alert'}
-                        size={15}
+                        size={16}
                       />
                       <span>{feedback.message}</span>
                     </p>

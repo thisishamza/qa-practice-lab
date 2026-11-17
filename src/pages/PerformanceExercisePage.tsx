@@ -15,6 +15,7 @@ export function PerformanceExercisePage() {
     return (
       <div className="stack">
         <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Performance Testing', to: '/performance' }, { label: 'Not found' }]} />
+        <h1 className="sr-only">Exercise not found</h1>
         <Callout tone="danger" title="No such practice exercise">
           The link may be outdated.{' '}
           <Link className="text-link" to="/performance">Back to the exercise catalogue</Link>
