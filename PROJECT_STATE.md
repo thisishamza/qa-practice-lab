@@ -19,7 +19,8 @@
 - **R4 — Visual Polish — IMPLEMENTED, UNCOMMITTED, NOT DEPLOYED on `ui-ux-redesign` (2026-11-18).** A coherent visual-language pass, no functional changes: two-surface grammar (raised = actions/inputs, sunken = results/reference/output, tinted = selected) formalized and applied (`.panel-sunken` on About/guide TOCs, code examples, rubric/verdict lists, `/about` panels, sunken dashed empty-state wells); dark/workspace `--surface-selected` retuned (`night-600` → `night-700`); structural mono labels raised from 12 px to 13 px weight 600 (`--text-kicker`), helper/error text to 0.875 rem; density variants (`[data-density="compact|cozy|spacious"]` consuming `--list-gap`/`--row-pad-y`/`--row-pad-x`; compact applied to `/progress` exercise lists, `/practice` hunt lists and the dashboard recommended row list, spacious to the guide article); icons normalised to the 16/20 px pair; one-solid-CTA-per-view audited and enforced (competing solids demoted to secondary); footer now `QA Practice Lab · v0.2.0` with a `Changelog & scoring` link; guest empty states on `/account`, `/account/orders` and `/account/orders/:reference` now state the 7-day durability window and no-migration rule; a stale `/about` sentence ("dashboard still shows labelled demo figures") removed as contradicted by Phase 4; lab-hub page titles get the 2.25 rem step via optional `PageHeader className`; eight invalid-id not-found detail branches gained a visually-hidden `<h1 className="sr-only">` (they previously rendered zero headings). No backend/API/D1/migration/scoring/hunt/route changes. `npm run check` **1504/1504**; `npm run build` clean (entry `index-BA9US9FO.js`, 458.20 kB / gzip 140.99 kB); headless-Chrome sweep over **35 routes × 4 widths × light/dark** — one h1 per page, zero unexpected console errors, zero overflow except the maintainer-accepted **F10 `/api-reference` 375 px overflow (excluded; not investigated)**; a final 72-render confirmation pass on the final build reproduced the same. Full record in §26 and the route-inventory post-R4 addendum. **All work remains uncommitted on `ui-ux-redesign`. F10 remains excluded and unfixed.** A post-R4 follow-up (2026-11-18, §27) then made the commerce-mode banner contextual to the Practice App surfaces and aligned the /practice mode-card copy — still uncommitted, behaviour unchanged.
 - **R4 follow-up (mobile storefront) — the `/shop` grid defect and the 320 px shell overflow are fixed (2026-11-18, §28).** `repeat(auto-fill, minmax(0, 1fr))` had collapsed the grid into ~1 px tracks (cards ~50 px wide); ≤760 px is now one full-width column; the topbar keeps only the QA mark below 400 px. `npm run check` 1504/1504; build clean (`index-CRWZaeVp.js`, 458.41 kB / 141.10 kB gzip). Still uncommitted.
 - **Final UI/UX audit closure verification (2026-11-18, §29).** All R1–R4 milestones, the post-R4 copy correction (§27) and the `/shop` mobile repair (§28) are confirmed implemented and re-verified in this session: **Firefox 155 (108 renders: 72 light across 24 routes × 3 widths + 36 dark across 12 routes × 3 widths) — 0 failures**; 200 % zoom reflow equivalents (CSS viewports 720×450 / 640×400; 72 renders, both themes) — 0 overflow, one h1; `prefers-reduced-motion: reduce` emulation — global override active (transitions forced to 0.01 ms, `scroll-behavior: auto`); keyboard probe — skip link first with a 2 px solid ring, every probed control carries a visible focus affordance (search uses its designed `:focus-within` box-shadow); programmatic landmark/label/heading probes across 19 routes — 1 banner/nav/main/contentinfo, 0 unlabeled controls, 0 heading skips, single h1, skip links present; staff-mode (Rowan Ellison) — Inventory appears under **Practice App** and `/admin/inventory` renders h1 "Inventory"; `/shop` re-measured at 320/375/390/760 px (light/dark) — one full-width column, `scrollWidth === innerWidth`, one h1. **WebKit/Safari could not be tested (Playwright WebKit aborts with a snap-core20 glibc `__libc_pthread_init` symbol conflict in WPENetworkProcess — environment defect, not app); screen readers untested (none installed — none installed); human usability testing not performed.** No new defects were found; no code changes were made beyond `.gitignore` (local audit screenshots now excluded from git). Findings classified in §29; **F10 remains open, accepted, excluded and untouched**; `docs/audit-screenshots/` is untracked, never committed in any branch/history, now git-ignored, 40 files preserved on disk. **Repository is ready for final maintainer staging/commit approval (not staged, not committed).**
-- **Last updated:** 2026-11-18 (final UI/UX audit closure verification, §29 — Firefox cross-browser matrix, 200 % reflow, reduced-motion, keyboard and programmatic a11y probes, staff-mode check, `.gitignore` for `docs/audit-screenshots/`; no application code changes; R4 in §26; copy correction in §27; `/shop` fix in §28; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25; production untouched: deployment `18db4007-…`, source `981176a`, D1 `schema_version` 14). Previously: 2026-11-18 (post-R4 mobile `/shop` fix, §28 — on top of the §27 copy correction; R4 in §26; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25).
+- **FINAL UI/UX RELEASE (2026-11-18) — COMPLETE, MERGED AND DEPLOYED TO PRODUCTION.** PR #13 (https://github.com/thisishamza/qa-practice-lab/pull/13, "Complete QA Practice Lab UI/UX redesign"; base `main`, head `ui-ux-redesign`; 1 commit, 89 files, +4996/−963) was **merged with method `merge` on 2026-11-17T23:35:57Z** → merge commit **`91ba58a`** (`Merge pull request #13 from thisishamza/ui-ux-redesign`); `ui-ux-redesign` branch preserved (not deleted); local `main` fast-forwarded to `origin/main` (`main == origin/main == 91ba58a`). No branch protection, no required checks, no CI (consistent with PRs #5–#12). `npm run check` green on merged `main` (**1504/1504**, 77 files); `npm run build` clean (entry `index-CRWZaeVp.js`). **Production deployment `1573feaf-df8f-4d86-9c51-accf38d906b2`** — Environment Production, Branch `main`, **Source `91ba58a`**, created 2026-11-17 ~23:36 UTC; alias https://qa-practice-lab.pages.dev serves the byte-identical `index-CRWZaeVp.js` (SHA-256 `b4ecce05…`, verified served bytes == local build); `/api/health` → `schemaVersion: "14"`; 13 routes probed 200; **Firefox 20/20 renders clean** (1440/375 px × 10 routes); Chrome 18/20 pass — `/` and `/tracks` at 375 px hit `ERR_QUIC_PROTOCOL_ERROR`/`ERR_CONNECTION_RESET` (known local Chrome-to-edge egress block; curl and Firefox unaffected; same condition as 2026-11-17). **No migration applied; schema stays 14; no backend change.** Full record in §30. **All planned work is now released. `docs/audit-screenshots/` remains local, git-ignored, untracked and uncommitted.**
+- **Last updated:** 2026-11-18 (final UI/UX audit closure verification, §29; production release, §30 — PR #13 merged `91ba58a`, deployment `1573feaf-…` sourced at `91ba58a`, `schema_version` 14; R4 in §26; copy correction in §27; `/shop` fix in §28; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25). Previously: 2026-11-18 (final UI/UX audit closure verification, §29 — Firefox cross-browser matrix, 200 % reflow, reduced-motion, keyboard and programmatic a11y probes, staff-mode check, `.gitignore` for `docs/audit-screenshots/`).
 
 ## 2. Product principles
 
@@ -4321,3 +4322,104 @@ Alternative two-commit split if preferred: (1) application code + tests
 the prepared report). On approval: stage exactly the list above, run
 `npm run check` once more if anything changed since 2026-11-18, then commit —
 **no push, no PR, no merge, no deploy** without separate explicit authorisation.
+
+## 30. Final UI/UX redesign — PRODUCTION RELEASE record (2026-11-17/18)
+
+> **Scope.** Maintainer-authorised release of the completed R1–R4 UI/UX redesign
+> programme, the post-R4 copy correction (§27) and the `/shop` mobile repair
+> (§28), together with the audit deliverables and final closure verification
+> (§29). Released through the established workflow — no scope expansion, no new
+> features, no backend/API/D1/migration/scoring/hunt-engine/auth/persistence
+> changes, no dependency changes.
+
+### Release sequence (all executed 2026-11-17/18)
+
+1. **Pre-release verification** — `npm run check` green (lint, typecheck ×3,
+   **1504/1504 tests**, 77 files); `npm run build` clean (entry
+   `index-CRWZaeVp.js`, 458.41 kB / gzip 141.10 kB); no backend/migration/
+   server/config changes in the diff (verified file-by-file); no secrets or
+   generated artefacts; `docs/audit-screenshots/` excluded (git-ignored in
+   `.gitignore`, untouched on disk); Firefox 155 re-sweep 72/72; `/shop`
+   re-measured at 320/375/390/760 px (one full-width column, zero overflow,
+   both themes); commerce-mode banner scope re-probed (commerce routes only).
+2. **Commit** `9992351` — `feat: complete authorised UI/UX redesign (R1–R4)`
+   on `ui-ux-redesign` (89 files, +4996/−963; matches the §29.8 proposed
+   contents exactly, including the R3 deletion of
+   `src/features/progress/LabProgressSection.tsx`).
+3. **Push** — `origin/ui-ux-redesign` created (HTTPS, VS Code askpass
+   credentials); no force-push; remote did not move unexpectedly.
+4. **PR #13** — https://github.com/thisishamza/qa-practice-lab/pull/13 —
+   base `main`, head `ui-ux-redesign`; title "Complete QA Practice Lab UI/UX
+   redesign"; body records R1–R4 + corrections, verification, limitations
+   (F10 exclusion, WebKit/SR limitations, screenshot exclusion) and release
+   notes. Inspected after creation: **mergeable `true`, mergeable_state
+   `clean`, 89 changed files, 0 screenshot files, 0 forbidden-area files**;
+   `main` not protected (HTTP 404 on the protection endpoint — consistent with
+   PRs #5–#12); **no required checks, no CI**; zero check-runs on the head
+   commit; nothing bypassed. (PR created via the GitHub REST API because no
+   `gh` CLI is installed in this environment; the machine's existing
+   git credential was used once per API call and the credential files were
+   deleted immediately after each use; the token was never printed.)
+5. **Merge** — method `merge` (project convention, e.g. PR #8): **PR #13
+   merged 2026-11-17T23:35:57Z**; merge commit **`91ba58a`** (`Merge pull
+   request #13 from thisishamza/ui-ux-redesign`, parents `297a030` and
+   `9992351`). Local `main` fast-forwarded to `origin/main` (`main == origin/
+   main == 91ba58a`). The merged tree is byte-identical to the verified PR
+   head `9992351` (`git diff 9992351 91ba58a` empty).
+6. **Pre-deploy gate** — `npm run check` green on the merged `main`
+   (1504/1504); `npm run build` clean (identical entry hash).
+7. **Production deployment** — established mechanism `npx wrangler pages deploy
+   dist` (wrangler 4.162.0; Cloudflare Pages project `qa-practice-lab`,
+   production branch `main`, `pages_build_output_dir: ./dist`; production D1
+   binding untouched). **No migration applied or required (schema stays 14).**
+   **Deployment `1573feaf-df8f-4d86-9c51-accf38d906b2`** — Environment
+   Production, Branch `main`, **Source `91ba58a`**, created 2026-11-17 ≈ 23:36
+   UTC ("13 seconds ago" at first listing). Deployment URL
+   https://1573feaf.qa-practice-lab.pages.dev; alias
+   **https://qa-practice-lab.pages.dev**.
+8. **Post-deployment verification** (this session):
+   - `/api/health` → `{"status":"ok","service":"qa-practice-lab","version":
+     "0.2.0","database":"ok","schemaVersion":"14"}` (2026-11-17T23:37:26Z).
+   - **13 routes return HTTP 200** (`/`, `/tracks`, `/scenarios`, `/progress`,
+     `/practice`, `/api-lab`, `/database/playground`, `/shop`, `/cart`,
+     `/about`, `/guides`, `/contract`, `/microservices`).
+   - **Production bundle is byte-identical to the merged-main build**
+     (`index-CRWZaeVp.js`; SHA-256 of the served bytes equals the local
+     `dist/` file: `b4ecce0531f9c9ec7a69e9ae37d9199df1bc50d580340c668e73678d8
+     81281a9c`).
+   - **Firefox 155: 20/20 renders clean** (1440 × 900 and 375 × 812 × the 10
+     representative routes; 0 overflow, one h1, 0 unexpected console errors).
+   - **Chromium/Chrome: 18/20 pass**; `/` and `/tracks` at 375 px failed with
+     `net::ERR_QUIC_PROTOCOL_ERROR` / `ERR_CONNECTION_RESET` — the known local
+     Chrome-to-edge egress block (curl returns 200 for the same URLs; Firefox
+     renders them cleanly; identical condition to the 2026-11-17 final-phase
+     acceptance). No 401 console errors beyond the expected signed-out
+     `/api/v1/auth/me` probe.
+   - **F10 (`/api-reference` 375 px overflow) remains untouched, open and
+     excluded** — not investigated, fixed or re-measured.
+   - No checkout performed; no production data mutated; no probe rows were
+     created on production by this release's verification (read-only + GETs).
+
+### Accepted/known limitations carried forward
+
+F10 (accepted, open, excluded) · F-018 (36 px small buttons, desktop density) ·
+F-021 residual (global top-bar cart badge, retained as-is by maintainer
+decision 2026-11-18) · WebKit/Safari unverified (environment cannot run
+Playwright WebKit — snap-core20 glibc conflict) · screen readers unverified ·
+human usability testing not performed · Chrome-to-edge network on this machine
+intermittently hardens into a block (QUIC/CONNECTION_RESET) — not an app
+defect · audit screenshots remain untracked/git-ignored/local only.
+
+### Final state
+
+- Production: https://qa-practice-lab.pages.dev — deployment
+  **`1573feaf-df8f-4d86-9c51-accf38d906b2`**, source **`91ba58a`**,
+  `schema_version` **14**, D1 `qa-practice-lab-db` (migrations 0001–0014 only).
+- Git: `main == origin/main == 91ba58a` (release documentation commits for
+  this record land on `main` after deployment, documentation-only, matching the
+  established release pattern; production stays on the `91ba58a` deployment).
+  `ui-ux-redesign` branch preserved at `9992351` (contains the intended release
+  history; not deleted). No other branches were created.
+- Working tree: clean (this release added no uncommitted files).
+- **All planned UI/UX work is complete and released. Only necessary bug fixes
+  and maintenance remain; no new phases are planned.**
