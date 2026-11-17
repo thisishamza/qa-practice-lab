@@ -1,6 +1,6 @@
 # QA Practice Lab
 
-> **Production:** https://qa-practice-lab.pages.dev (final phase RELEASED 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 14). Deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source commit `981176a` (application code identical to merged PR #12 commit `e11f66e`). Previously Phase 7 (PR #11, deployment `47680bf9`, source `8000b77`), Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). The final-phase release was executed with maintainer authorization on 2026-11-17: verified pre-migration export → migration `0014_final_phase_lab.sql` applied to production D1 → Pages deploy → production acceptance (see `PROJECT_STATE.md` §20; one pre-existing defect found — `/api-reference` horizontal overflow at 375 px, recorded as F10, not fixed; push of the release documentation pending maintainer decision).
+> **Production:** https://qa-practice-lab.pages.dev (final phase RELEASED 2026-11-17; Cloudflare Pages project `qa-practice-lab`, D1 `qa-practice-lab-db`, `schema_version` 14). Deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source commit `981176a` (application code identical to merged PR #12 commit `e11f66e`). Previously Phase 7 (PR #11, deployment `47680bf9`, source `8000b77`), Phase 6 (PR #10, deployment `2c32a721`, source `eeded31`) and Phase 5 (PR #8, deployment `aaa0e2a6`). The final-phase release was executed with maintainer authorization on 2026-11-17: verified pre-migration export → migration `0014_final_phase_lab.sql` applied to production D1 → Pages deploy → production acceptance (see `PROJECT_STATE.md` §20; one pre-existing defect found — `/api-reference` horizontal overflow at 375 px, recorded as F10, not fixed; **F10 disposition (2026-11-17): accepted by maintainer as a pre-existing maintenance defect; no CSS change and no redeploy. Retain for necessary maintenance only**; release documentation pushed to `origin/main` as `a936017`).
 
 A safe, phased practice environment for software testing. The project is being built one
 verifiable slice at a time; **Phases 1 and 2 are implemented, the Phase 2.5 UI redesign
@@ -132,7 +132,7 @@ identical to PR #12 merge `e11f66e`) is deployed; deployment
 `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`, source `981176a`, alias
 https://qa-practice-lab.pages.dev. Migration `0014_final_phase_lab.sql` was applied
 2026-11-17 after a verified pre-migration export; see `PROJECT_STATE.md` §20 for the release
-record, including the open pre-existing defect **F10** (`/api-reference` 375 px overflow).**
+record, including the accepted pre-existing defect **F10** (`/api-reference` 375 px overflow — accepted by maintainer 2026-11-17 as a documented pre-existing maintenance defect; no CSS change, no redeploy. Retain for necessary maintenance only).**
 
 The **final development phase** — Performance, Security & Microservices/Event-Driven
 Testing Lab (plan:

@@ -260,7 +260,7 @@ Migration fresh-install + upgrade tests mandatory. No claim of browser PASS with
 - [ ] Light/dark × 375/768/1024/1440 px; no console errors; reduced-motion OK — **partial (F10 + network caveats):** 152-check headless-Chrome matrix ran; 145/152 HTTP 200; 7 entries lost to transient local network failures (`QUIC_PROTOCOL_ERROR`/`ERR_CONNECTION_RESET`) concentrated on `/performance*`; 6 of 7 not re-verifiable (Chrome egress block persisted to end of session); **1 reproducible pre-existing defect: `/api-reference` overflows horizontally by 186 px at 375×812 in both themes (`.property-table` min-content) — pre-existing since Phase 5, root-caused, recorded as F10, NOT fixed in this release.** Firefox/WebKit never exercised.
 ### Release discipline
 - [x] Feature branch → PR opened and merged by the maintainer (PR #12, merge commit `e11f66e`, 2026-11-17) — explicit maintainer approval, as recorded
-- [x] Deploy/migration executed 2026-11-17 on explicit, separate maintainer authorization: pre-0014 export (SHA-256 `dd384d6d97c731902630cb50a3e809267d1182fbabb95ca7fedd1e21ccb1021c`) → `0014_final_phase_lab.sql` applied (`schema_version` 14, 0014 recorded exactly once) → Pages deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` (source `981176a`, application code identical to `e11f66e`) → production acceptance (PROJECT_STATE §20) → 57 synthetic probe sessions + dependent rows cleaned up. Release documentation commit exists locally; **push withheld pending the F10 maintainer decision**
+- [x] Deploy/migration executed 2026-11-17 on explicit, separate maintainer authorization: pre-0014 export (SHA-256 `dd384d6d97c731902630cb50a3e809267d1182fbabb95ca7fedd1e21ccb1021c`) → `0014_final_phase_lab.sql` applied (`schema_version` 14, 0014 recorded exactly once) → Pages deployment `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` (source `981176a`, application code identical to `e11f66e`) → production acceptance (PROJECT_STATE §20) → 57 synthetic probe sessions + dependent rows cleaned up. Release documentation pushed to `origin/main` (`a936017`, 2026-11-17); **F10 disposition (2026-11-17): accepted by maintainer as a pre-existing maintenance defect; no CSS change and no redeploy. Retain for necessary maintenance only.**
 
 ## 7. Known limitations
 
@@ -282,8 +282,9 @@ migration `0014_final_phase_lab.sql`, the Pages deployment, and the production a
 `schema_version` **14**; the live deployment is `18db4007-3165-4cc1-a6e7-a0d26b1f8e81`
 (source `981176a`). One reproducible, pre-existing defect was found during acceptance
 (**F10**, `/api-reference` 375 px horizontal overflow) and is **not fixed** by design;
-the release documentation commit is intentionally withheld from `origin/main` pending the
-maintainer's F10 decision. Sequence as executed: (1) Cloudflare account/project and D1
+the maintainer accepted F10 as a documented pre-existing maintenance defect on
+2026-11-17 (no CSS change, no redeploy — retain for necessary maintenance only) and the
+release documentation was pushed to `origin/main` (`a936017`). Sequence as executed: (1) Cloudflare account/project and D1
 identity verified read-only; (2) `wrangler d1 export` produced
 `/tmp/opencode/backups/qa-practice-lab-db-pre-0014-2026-11-17T10-58-08Z.sql` (verified by
 SQLite import: `schema_version` 13, migrations 0001–0013, 20 tables); (3) `0014` applied
@@ -312,8 +313,8 @@ untouched; (9) `PROJECT_STATE.md` §20, README, AGENTS.md and this plan updated.
   cells in `tbody th` use `white-space: nowrap` with mono font; table min-content ≈ 493 px >
   375 px; the grid item `.api-endpoint` computes ≈ 495 px; `.api-group` ≈ 545 px; document
   `scrollWidth` 561 px. Fix class: allow the table to wrap/scroll
-  (`overflow-x: auto` on a wrapper or dropping `nowrap` at small widths) — **not applied;
-  requires maintainer authorization.**
+  (`overflow-x: auto` on a wrapper or dropping `nowrap` at small widths) — **not applied.**
+  **F10 disposition (2026-11-17): accepted by maintainer as a pre-existing maintenance defect; no CSS change and no redeploy. Retain for necessary maintenance only.**
 - **Deployment:** `18db4007-3165-4cc1-a6e7-a0d26b1f8e81` (Production, `main`,
   `https://18db4007.qa-practice-lab.pages.dev`), source `981176a`; created 2026-11-17
   ~11:00 UTC. Prior production deployment remains `47680bf9…` (Phase 7,
