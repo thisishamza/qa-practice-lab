@@ -135,23 +135,29 @@ merge time.**
 The **final development phase** — Performance, Security & Microservices/Event-Driven
 Testing Lab (plan:
 [docs/final-phase-performance-security-distributed-testing-plan.md](docs/final-phase-performance-security-distributed-testing-plan.md)) —
-is **implemented and verified on branch
-`feat/performance-security-distributed-testing-lab`** (NOT merged, NOT pushed,
-NOT deployed, production untouched, migration `0014` applied locally only).
-It adds the **Performance** track at `/performance` (a bounded, same-origin load
-runner — real measurements with hard caps — plus a 12-exercise catalogue and
-three seeded performance hunts), the **Security** track at `/security`
-(inert SQLi/XSS/CSRF demonstrations, a 12-exercise catalogue and three seeded
-security hunts), and the **Microservices** track at `/microservices` (a
-deterministic, session-scoped order-pipeline simulator — publish, process,
-retry/backoff, duplicate delivery, idempotency, dead letters, replay, webhooks,
-trace, consistency audit — a 12-exercise catalogue and three event hunts).
-Migration `0014_final_phase_lab.sql` adds the three simulation tables
-(`events`, `service_state`, `webhook_deliveries`) and bumps `schema_version`
-to **14** locally; the action is a separately approved release step. OpenAPI is
-**1.3.0 / 53 operations** with **zero new error codes**. The catalogue counts:
-**36 scored exercises (12/12/12) and 9 new bug hunts (`hunt-perf-*`, `hunt-sec-*`,
-`hunt-event-*`) — production remains the Phase 7 release.**
+is **MERGED INTO git `main` via PR #12** (https://github.com/thisishamza/qa-practice-lab/pull/12,
+merge commit `e11f66e`, 2026-11-17; branch tip `3f80b70`, including the F2 review
+hardening — the publish rate limit is enforced before a guest session is minted).
+The merged tree is byte-identical to the independently reviewed branch (identical
+tree SHA; verdict: READY FOR PR AND RELEASE). It adds the **Performance** track at
+`/performance` (a bounded, same-origin load runner — real measurements with hard
+caps — plus a 12-exercise catalogue and three seeded performance hunts), the
+**Security** track at `/security` (inert SQLi/XSS/CSRF demonstrations, a
+12-exercise catalogue and three seeded security hunts), and the **Microservices**
+track at `/microservices` (a deterministic, session-scoped order-pipeline
+simulator — publish, process, retry/backoff, duplicate delivery, idempotency,
+dead letters, replay, webhooks, trace, consistency audit — a 12-exercise
+catalogue and three event hunts). Migration `0014_final_phase_lab.sql` adds the
+three simulation tables (`events`, `service_state`, `webhook_deliveries`) and
+bumps `schema_version` to **14** locally; applying it to production is a
+separately approved release step (pre-migration export first). OpenAPI is
+**1.3.0 / 53 operations** with **zero new error codes**; post-merge
+`npm run check` is green at **1477/1477** and `npm run build` is clean. The
+catalogue counts: **36 scored exercises (12/12/12) and 9 new bug hunts
+(`hunt-perf-*`, `hunt-sec-*`, `hunt-event-*`). Production still runs the Phase 7
+release (`schema_version` 13) until the explicitly approved production release
+happens — no additional feature phases are planned; after the release, only
+necessary bug fixes and maintenance remain.**
 
 ## What you can do now
 

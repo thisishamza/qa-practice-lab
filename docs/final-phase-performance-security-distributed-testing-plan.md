@@ -259,7 +259,8 @@ Migration fresh-install + upgrade tests mandatory. No claim of browser PASS with
 - [ ] Phase 3–7 surfaces unchanged and green; `npm run check` green; build clean
 - [ ] Light/dark × 375/768/1024/1440 px; no console errors; reduced-motion OK
 ### Release discipline
-- [ ] Feature branch only; no push/PR/merge/deploy/migration without explicit approval
+- [x] Feature branch → PR opened and merged by the maintainer (PR #12, merge commit `e11f66e`, 2026-11-17) — explicit maintainer approval, as recorded
+- [ ] Deploy/migration still pending explicit, separate approval; nothing production-touching has happened
 
 ## 7. Known limitations
 
@@ -271,10 +272,22 @@ Migration fresh-install + upgrade tests mandatory. No claim of browser PASS with
 - The three labs share the session model: signed-out browsers lose event/attempt state after 7 days like everything else.
 - Firefox/WebKit untested (Chrome over CDP only, as prior phases).
 
-## 8. Release handoff (out of scope without approval)
+## 8. Release handoff (requires separate explicit approval)
 
-Merge (PR), production D1 migration 0014 (pre-migration export first), Pages deploy, production acceptance,
-PROJECT_STATE release entry. Phase 7 production remains authoritative until an approved release.
+**Merged:** PR #12, merge commit `e11f66e` (2026-11-17); merged tree byte-identical to
+the reviewed branch tip `3f80b70`. Production D1 migration 0014 (pre-migration export
+first), Pages deploy, production acceptance, PROJECT_STATE release entry — all still
+pending and all explicitly approval-gated. Phase 7 production remains authoritative
+until an approved release. Planned sequence: (1) verify Cloudflare account/project and
+exact D1 database identity; (2) `wrangler d1 export` production D1; verify file size,
+readability and integrity; (3) apply `0014_final_phase_lab.sql` remotely only after
+separate approval; (4) confirm `schema_version` 14 and the migration record; (5)
+`npm run check && npm run build`; (6) `npx wrangler pages deploy dist`; (7) production
+acceptance: health reports `schemaVersion` 14 + database healthy; nine new routes 200;
+OpenAPI 1.3.0 / 53 operations; publish → process → webhook delivery + consistency audit;
+Phase 3–7 smoke; browser matrix across themes × supported viewports; (8) clean up only
+synthetic probe rows created by acceptance testing; (9) record deployment ID, source
+SHA, migration status and acceptance results in PROJECT_STATE.md.
 
 ## 9. As-built addendum (2026-11-17, implementation session)
 
@@ -293,8 +306,15 @@ PROJECT_STATE release entry. Phase 7 production remains authoritative until an a
 - **Event semantics verified by 22 server tests** (full pipeline, backoff gating, DLQ →
   replay, poison, idempotency, out-of-order, webhook timeout→retry→deliver→duplicate, EVT-001/2/3
   hunt containment, reset, session isolation) plus a browser end-to-end pass.
-- **Verification:** `npm run check` green (1473/1473, 74 files); `npm run build` clean
-  (entry 448.33 kB / gzip 137.54 kB); migration fresh+upgrade tests (`migration-0014.test.ts`);
+- **Verification:** `npm run check` green (1473/1473, 74 files) at implementation time; after the F2 review hardening, **1477/1477** (74 files); `npm run build` clean (entry 448.33 kB / gzip 137.54 kB); migration fresh+upgrade tests (`migration-0014.test.ts`);
   browser acceptance green (40/40 render matrix; pipeline end-to-end; 100/100 exercise pass via
   UI; PERF-001 containment ~40→~400 ms→~40 ms; both themes; mobile nav; zero console errors).
-- **Not released:** no push/PR/merge/deploy/production migration. Local D1 only for 0014.
+- **Not released at implementation:** no push/PR/merge/deploy/production migration. Local D1 only for 0014.
+
+## 10. Post-merge addendum (2026-11-17)
+
+- **Merged:** PR #12 (https://github.com/thisishamza/qa-practice-lab/pull/12) — maintainer opened, pushed and merged the PR on 2026-11-17. Merge commit **`e11f66e`**; resulting `main` tree byte-identical to the reviewed branch tip `3f80b70` (identical tree SHA `6a94f5b1…`; `git diff 8258b7e e11f66e` byte-identical to `git diff 8258b7e 3f80b70`). F2 hardening (publish rate limit enforced before guest-session mint) shipped in `3f80b70`; independent review verdict: READY FOR PR AND RELEASE (no BLOCKER/HIGH/MEDIUM; F1, F3–F9 accepted).
+- **Post-merge verification on `main` @ `e11f66e`:** `npm run check` green (**1477/1477**, 74 files); `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB); working tree clean; local `main` fast-forwarded to `origin/main` (`e11f66e`) — no history rewritten.
+- **Production unchanged:** still the Phase 7 release (deployment `47680bf9…`, source `8000b77`, production D1 `schema_version` **13**). Migration `0014` is present in the merged tree but applied to the local D1 only; it has NOT been applied to production.
+- **No additional feature phases are planned.** After the final-phase production release, only necessary bug fixes and maintenance remain.
+- **Release checklist (do not execute without separate, explicit approval):** see §8.

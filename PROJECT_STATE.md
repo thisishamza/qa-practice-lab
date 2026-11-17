@@ -14,7 +14,7 @@
 - **Phase 6 — Database & SQL Testing Lab — is MERGED TO `main` and DEPLOYED TO PRODUCTION (2026-11-17):** M1 merged via PR #9 (`94cc7fa`); M2 merged via PR #10 (`eeded31`). Production D1 migration `0012_sql_lab_schema.sql` (zero DDL) applied 2026-11-17 after a verified pre-migration export (`/tmp/opencode/qa-practice-lab-db-pre-0012.sql`); production `schema_version` **12**; Pages deployment **`2c32a721-8374-46af-8a20-e560839f88b1`** (source `eeded31`; alias `https://qa-practice-lab.pages.dev`); production acceptance passed 2026-11-17 — see §11 (2026-11-17 release entry), §15 and `docs/phase-6-exit-audit.md`. 36 exercises (12/13/11) with result-based server evaluation (`POST /api/v1/sql/evaluate`), 13 SQL-QA scenario tags, 8 database bug hunts (`hunt-db-001`…`008`), `/database/exercises/:exerciseId`, a Database Testing section on `/progress`, 1106/1106 tests.
 - **Phase 7 — Contract Testing Lab — is RELEASED TO PRODUCTION (2026-11-17) and MERGED INTO `main` (2026-11-17, PR #11):** the approved plan was implemented, corrected and maintainer-review-approved; the maintainer confirmed D-P7-8 (ACCEPT), F-C7 (ACCEPT WITH DISCLOSURE) and D-P7-1 (ACCEPT) and authorized the production release sequence. **Production D1 migration `0013` (zero DDL) applied 2026-11-17 after a verified pre-migration export** (`/tmp/opencode/backups/qa-practice-lab-db-pre-0013-2026-11-17T08-13-49Z.sql` — 57,655 B, SHA-256 `225c744464fb3426e291c35cb189a46c582e1ff6b2406c7ef24680b32c780730`; structure + all row counts verified); production `schema_version` **13**; Pages deployment **`47680bf9-7290-4c8a-a5c9-25490dff7fc4`** (project `qa-practice-lab`, production branch `main`, source commit **`8000b77`**; the production alias serves `index-KeIJVV6-.js`); production acceptance passed (health `schemaVersion` 13; all 15 core routes 200; OpenAPI 3.1.0 / 1.2.0 / exactly 42 operations / 27 ErrorCodes / four contract paths; validate/compare/verify/evaluate contract API accepted; both hunts 002/007 verified end-to-end via synthetic isolated sessions; browser matrix 40/40 across themes × 4 widths with zero overflow, zero unexpected console errors, zero exceptions; Phase 3–6 smoke passed; probe records cleaned up — see `docs/phase-7-exit-audit.md` §23). `npm run check` green on the release source (**1417/1417**, 70 files). Five routes lazy; validator absent from the eager entry (D-P7-8 accepted). Phase 8 must not be started. The `backup/unpublished-phase6-7-docs` branch must not be deleted, pushed or merged. **Merged (2026-11-17): PR #11 (https://github.com/thisishamza/qa-practice-lab/pull/11) → merge commit `e21108a` ("Merge pull request #11 from thisishamza/feat/phase-7-contract-testing-lab"), parents `eeded31` (previous `main`) and `04a6013` (reviewed head); `main == origin/main == `e21108a`; merged tree identical to `04a6013` (`git diff 04a6013..main` empty); application code (`src/`, `public/`, `db/`, `functions/`, `package.json`, `wrangler.jsonc`) unchanged from the deployed release source `8000b77` — delta documentation-only; migration `0013` remains ordered after `0012`; post-merge `npm run check` green (lint, typecheck ×3, **1417/1417** tests, 70 files) and `npm run build` clean (entry `index-KeIJVV6-.js`, 417.79 kB / gzip 127.74 kB — identical filename/size to the deployed entry). Production was NOT redeployed and NO migration was applied at merge time — the existing Phase 7 deployment remains authoritative.**
 - **Phase 6 planning (2026-11-17):** the Phase 6 — Database & SQL Testing Lab — implementation plan is `docs/phase-6-database-testing-plan.md`. **Deployed** — production `schema_version` was 12; since advanced to **13** by the 2026-11-17 Phase 7 release.
-- **Final development phase — Performance, Security & Microservices/Event-Driven Testing Lab — implemented and verified on branch `feat/performance-security-distributed-testing-lab` (created 2026-11-17 from `main` @ `8258b7e` after pushing the pending Phase 7 documentation commit with explicit authorization); NOT merged, pushed, PR'd, deployed or migrated in production.** Delivered: `/performance` (bounded same-origin load runner — VUs ≤ 8, duration ≤ 30 s, ramp ≤ 10 s, ≤ 150 requests/run, 5 s/request timeout, rps token-bucket guard, p50/p90/p95/p99 nearest-rank gated at n ≥ 20, Markdown report download, local-only history in localStorage; the runner cannot target any origin outside the allowlist), 12-exercise catalogue + three performance bug hunts (`hunt-perf-001..003`); `/security` (inert SQLi/XSS/CSRF/security-header demonstrations incl. a sandboxed iframe XSS render; 12-exercise catalogue + three security bug hunts `hunt-sec-001..003`); `/microservices` (deterministic D1-backed, session-scoped order-pipeline simulator — publish/process/retry with 1s→2s→4s→8s backoff/bounded attempts/duplicate delivery/idempotent consumers/dead-letter queue/replay/webhook delivery simulation/correlation ids/ordered trace/consistency audit; 12-exercise catalogue + three event bug hunts `hunt-event-001..003` gated by `isDefectActive`). Migration `0014_final_phase_lab.sql` (adds `events`, `service_state`, `webhook_deliveries` — session-scoped with `ON DELETE CASCADE`, `schema_version` 13 → **14**; applied to **local D1 only**). Learning integration reuses the Phase 4 engine unchanged (attempts, hints, reveals, reports, progress): the three labs have 36 scored exercises (12/12/12; selection rubric recall 70 / precision 30, pass ≥ 70, scored server-side via `POST /api/v1/labs/evaluate` + `src/server/labExercises.ts` answer keys + `src/server/labLearning.ts` hints/reveals), and hunt set now **34 hunts / 25 defects**. Navigation gains three entries (Performance, Security, Microservices) after Contract Testing; `/progress` gains three sections; three new guides added. OpenAPI **1.3.0 / 53 operations** (11 new operations: `labs/evaluate` + 10 microservices routes) with **zero new error codes**; `npm run check` green (**1473/1473, 74 files**), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB), browser acceptance green (Chrome over raw CDP: 40/40 render matrix across themes × 375/768/1024/1440 with zero overflow and zero console errors; simulator pipeline publish → paid → webhook delivered → consistency OK; exercise flow 100/100 through the real UI; PERF-001 hunt vs reset verified ~400 ms vs ~40 ms in-browser; reset verified; mobile nav confirmed). Migration fresh-install AND upgrade tests included (`migration-0014.test.ts`). No Phase 3–7 functionality regressed. Full as-built record in §17 and plan in `docs/final-phase-performance-security-distributed-testing-plan.md`. **Release discipline: no push/PR/merge/deploy/production migration without explicit maintainer authorization — none has been given; the Phase 7 production deployment remains authoritative.**
+- **Final development phase — Performance, Security & Microservices/Event-Driven Testing Lab — implemented and verified on branch `feat/performance-security-distributed-testing-lab` (created 2026-11-17 from `main` @ `8258b7e` after pushing the pending Phase 7 documentation commit with explicit authorization); NOT merged, pushed, PR'd, deployed or migrated in production.** Delivered: `/performance` (bounded same-origin load runner — VUs ≤ 8, duration ≤ 30 s, ramp ≤ 10 s, ≤ 150 requests/run, 5 s/request timeout, rps token-bucket guard, p50/p90/p95/p99 nearest-rank gated at n ≥ 20, Markdown report download, local-only history in localStorage; the runner cannot target any origin outside the allowlist), 12-exercise catalogue + three performance bug hunts (`hunt-perf-001..003`); `/security` (inert SQLi/XSS/CSRF/security-header demonstrations incl. a sandboxed iframe XSS render; 12-exercise catalogue + three security bug hunts `hunt-sec-001..003`); `/microservices` (deterministic D1-backed, session-scoped order-pipeline simulator — publish/process/retry with 1s→2s→4s→8s backoff/bounded attempts/duplicate delivery/idempotent consumers/dead-letter queue/replay/webhook delivery simulation/correlation ids/ordered trace/consistency audit; 12-exercise catalogue + three event bug hunts `hunt-event-001..003` gated by `isDefectActive`). Migration `0014_final_phase_lab.sql` (adds `events`, `service_state`, `webhook_deliveries` — session-scoped with `ON DELETE CASCADE`, `schema_version` 13 → **14**; applied to **local D1 only**). Learning integration reuses the Phase 4 engine unchanged (attempts, hints, reveals, reports, progress): the three labs have 36 scored exercises (12/12/12; selection rubric recall 70 / precision 30, pass ≥ 70, scored server-side via `POST /api/v1/labs/evaluate` + `src/server/labExercises.ts` answer keys + `src/server/labLearning.ts` hints/reveals), and hunt set now **34 hunts / 25 defects**. Navigation gains three entries (Performance, Security, Microservices) after Contract Testing; `/progress` gains three sections; three new guides added. OpenAPI **1.3.0 / 53 operations** (11 new operations: `labs/evaluate` + 10 microservices routes) with **zero new error codes**; `npm run check` green (**1473/1473, 74 files**), `npm run build` clean (entry `index-CLEs4WAj.js`, 448.33 kB / gzip 137.54 kB), browser acceptance green (Chrome over raw CDP: 40/40 render matrix across themes × 375/768/1024/1440 with zero overflow and zero console errors; simulator pipeline publish → paid → webhook delivered → consistency OK; exercise flow 100/100 through the real UI; PERF-001 hunt vs reset verified ~400 ms vs ~40 ms in-browser; reset verified; mobile nav confirmed). Migration fresh-install AND upgrade tests included (`migration-0014.test.ts`). No Phase 3–7 functionality regressed. Full as-built record in §17 and plan in `docs/final-phase-performance-security-distributed-testing-plan.md`. **Release discipline: no push/PR/merge/deploy/production migration without explicit maintainer authorization — none has been given; the Phase 7 production deployment remains authoritative.** **Update (2026-11-17): the maintainer opened, pushed and merged PR #12 (merge commit `e11f66e`); the merged tree is byte-identical to the reviewed branch (`3f80b70`); post-merge `npm run check` green 1477/1477; production was NOT redeployed — the release (export → apply 0014 → deploy → acceptance) still requires separate explicit authorization. See §18 and §19.**
 - **Last updated:** 2026-11-17 (final development phase implemented and verified on `feat/performance-security-distributed-testing-lab`; git `main` == `origin/main` == `8258b7e`; production unchanged).
 
 ## 2. Product principles
@@ -2999,4 +2999,98 @@ release remains a separate, explicitly authorized operation.
 
 Note: `AGENTS.md` still carries pre-handoff counts (1473 tests, "NOT merged/pushed…");
 it was deliberately left untouched to keep this diff minimal — refresh it as part of the
-release documentation step, alongside `README.md` if desired.
+release documentation step, alongside `README.md` if desired. → **Resolved 2026-11-17 (§19).**
+
+## 19. Final phase — merged to `main` (PR #12) and post-merge verification; production release pending (2026-11-17)
+
+### The merge (maintainer-opened and -merged)
+
+- PR: **#12** — https://github.com/thisishamza/qa-practice-lab/pull/12 ("The final
+  development phase", final release gate → PR). Maintainer opened, pushed and merged it
+  on **2026-11-17**.
+- Merge commit: **`e11f66e`** (`e11f66edf7cc6516651a0802c82116bf838a53ae`),
+  `Merge pull request #12 from thisishamza/feat/performance-security-distributed-testing-lab`.
+  `origin/main` moved `8258b7e` → `e11f66e`.
+- Contents: implementation `36b0ad3` + documentation `03a6334` + F2 review hardening
+  `3f80b70` (publish rate limit enforced before guest-session mint; independent review
+  verdict READY FOR PR AND RELEASE).
+- **Merged tree is byte-identical to the reviewed branch.** `git rev-parse 3f80b70^{tree}`
+  == `git rev-parse e11f66e^{tree}` == `6a94f5b1fb0811a540f5a0b1e00c1e0e36538af4`;
+  `git diff 8258b7e e11f66e` is byte-identical to `git diff 8258b7e 3f80b70`. Zero
+  unexpected differences; no secrets; no generated/binary artifacts; migrations 0001–0013
+  untouched.
+- Local `main` fast-forwarded to `origin/main` (`8258b7e..e11f66e`, `--ff-only`); no
+  history rewritten, no force, feature branch untouched, `backup/unpublished-phase6-7-docs`
+  untouched. Working tree clean.
+- Migration `0014_final_phase_lab.sql` verified present in the merged tree, sequenced after
+  `0013`, stamps `schema_version` 14. Applied to the **local D1 only**; **NOT applied to
+  production** (production D1 unchanged, `schema_version` **13**).
+
+### Post-merge verification on `main` @ `e11f66e` (2026-11-17)
+
+- `npm run check` — lint clean · typecheck ×3 clean · **1477/1477 tests, 74 files**.
+- `npm run build` — clean; entry `index-CLEs4WAj.js`, **448.33 kB / gzip 137.54 kB** (unchanged).
+- Working tree: clean at `e11f66e`.
+
+### Documentation refreshed in this pass
+
+`AGENTS.md` (current-state + workflow entries: merged via PR #12, 1477/1477, production
+still Phase 7 / `schema_version` 13, release separate-and-explicit), `README.md`
+(final-phase entry: merged, counts, release boundary), `docs/final-phase-performance-security-distributed-testing-plan.md`
+(§6 release-discipline checkboxes, §8 release handoff sequence, §10 post-merge addendum,
+§9 stale counts refreshed), `PROJECT_STATE.md` (§1 snapshot note, §18 AGENTS note resolved,
+this section). `AGENTS.md` counts now match reality (1477).
+
+### Accepted findings (preserved verbatim from the independent review — none re-opened)
+
+- **F1 (LOW)** — overlapping `process` calls can double-handle the same due event (no
+  claim transaction); false `overcapture` only, session-scoped synthetic data; UI disables
+  the button mid-run. Deferred hardening option: transactional claim.
+- **F3 (LOW)** — failed selection evaluation returns `missing:`/`not supported:` option ids
+  to the client (inherited Phase 4/6/7 rubric pattern; session-scoped).
+- **F4 (INFO)** — OpenAPI documents `401` on publish/process that mint-on-first-use never emits.
+- **F5 (INFO)** — no index on `webhook_deliveries.event_id` (fine at practice scale).
+- **F6 (INFO)** — publish 100-event quota / `seq MAX+1` are non-transactional (tiny bounded overshoot).
+- **F7 (INFO)** — runner's 150-request cap is cooperative (overshoot ≤ #VUs−1).
+- **F8 (INFO)** — SecurityDemosPage copy nit ("browser engine penalty").
+- **F9 (INFO)** — pre-existing moderate Dependabot alert on the default branch (maintainer's, not this phase).
+
+### Production state (unchanged)
+
+Production still runs the **Phase 7** release — deployment `47680bf9-7290-4c8a-a5c9-25490dff7fc4`,
+source `8000b77`, production D1 `schema_version` **13**. Migration `0014` has NOT been
+applied remotely. No production command of any kind was run in this session.
+
+**No additional feature phases are planned. After the final-phase production release,
+only necessary bug fixes and maintenance remain.**
+
+### Exact production release sequence (all steps require explicit maintainer approval; do NOT run unprompted)
+
+1. Verify Cloudflare account/project identity and the exact D1 database (`qa-practice-lab-db`,
+   `database_id` in `wrangler.jsonc` — reads/config inspection only).
+2. Export production D1: `npx wrangler d1 export qa-practice-lab-db --remote` (or the
+   maintainer-approved equivalent); verify the export file's size, readability and integrity
+   (e.g. `sqlite3` open + `schema_version` spot check = 13, object counts).
+3. Only after separate, explicit approval: apply `db/migrations/0014_final_phase_lab.sql`
+   remotely; confirm migration record and production `schema_version` = **14**.
+4. `npm run check && npm run build`.
+5. Deploy: `npx wrangler pages deploy dist` (maintainer-approved).
+6. Production acceptance: `/api/health` reports `schemaVersion` 14 and database healthy;
+   nine new routes return 200 (`/performance`, `/performance/workspace`,
+   `/performance/exercises/:id`, `/security`, `/security/demos`,
+   `/security/exercises/:id`, `/microservices`, `/microservices/simulator`,
+   `/microservices/exercises/:id`); OpenAPI reports `info.version` **1.3.0** and **53**
+   operations; end-to-end publish → process → webhook delivery → consistency audit;
+   Phase 3–7 smoke suite; browser acceptance across themes × 375/768/1024/1440 px with
+   zero console errors.
+7. Clean up **only** the synthetic probe rows created by acceptance testing (session-scoped
+   simulation rows, disposable practice sessions); delete nothing pre-existing.
+8. Record deployment ID, source SHA, migration status (`schema_version` 14) and acceptance
+   results in `PROJECT_STATE.md` (new §20), the plan's exit checklist and `AGENTS.md`.
+
+### Exact next action
+
+Request **explicit production release authorization** from the maintainer. Until it is
+given, production remains the Phase 7 release (`schema_version` 13) and migration `0014`
+stays unapplied remotely. Documentation changes in this pass are committed locally on
+`main` and are NOT pushed (no push authorization given).
