@@ -6,6 +6,7 @@ import { IconButton } from '../ui/IconButton'
 import { useCart } from '../../features/cart/useCart'
 import { useAuth } from '../../features/auth/useAuth'
 import { searchSite } from '../../lib/siteSearch'
+import { isCommerceRoute } from '../../lib/commerceRoutes'
 
 interface TopBarProps {
   mobileOpen: boolean
@@ -25,6 +26,9 @@ export function TopBar({
   const { cart } = useCart()
   const { customer, loadState } = useAuth()
   const cartCount = cart?.itemCount ?? 0
+  // The cart affordance belongs to the Meridian commerce Practice App only;
+  // unrelated lab, learning and meta routes never render it (issue #16).
+  const showCart = isCommerceRoute(location.pathname)
   const cartLabel =
     cartCount === 0 ? 'Cart, 0 items' : `Cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`
   const accountLabel =
@@ -342,14 +346,16 @@ export function TopBar({
           <Link className="icon-button topbar-search-link" to="/scenarios" aria-label="Search the exercises catalogue">
             <Icon name="search" size={20} />
           </Link>
-          <Link className="icon-button topbar-cart" to="/cart" aria-label={cartLabel}>
-            <Icon name="cart" size={20} />
-            {cartCount > 0 ? (
-              <span className="cart-badge" aria-hidden="true">
-                {cartCount > 99 ? '99+' : cartCount}
-              </span>
-            ) : null}
-          </Link>
+          {showCart ? (
+            <Link className="icon-button topbar-cart" to="/cart" aria-label={cartLabel}>
+              <Icon name="cart" size={20} />
+              {cartCount > 0 ? (
+                <span className="cart-badge" aria-hidden="true">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
           <Link className="topbar-account" to={accountDestination} aria-label={accountLabel}>
             <Icon name="user" size={20} />
             <span className="topbar-account-label">{accountText}</span>

@@ -5,6 +5,7 @@ import { MobileNav } from './MobileNav'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { ModeBanner } from '../../features/practice/ModeBanner'
+import { isCommerceRoute } from '../../lib/commerceRoutes'
 
 const SIDEBAR_STORAGE_KEY = 'qa-practice-lab-sidebar-collapsed'
 
@@ -13,23 +14,9 @@ const SIDEBAR_STORAGE_KEY = 'qa-practice-lab-sidebar-collapsed'
  * only. The mode banner renders exclusively on the commerce surfaces where
  * the mode actually changes behaviour — the storefront, cart, checkout,
  * orders and the shop-side account/admin/login flows. Unrelated QA labs
- * never see it.
+ * never see it. The classification lives in `lib/commerceRoutes` so the
+ * top bar can apply the same boundary for the cart button.
  */
-const COMMERCE_ROUTE_PREFIXES = [
-  '/shop',
-  '/cart',
-  '/checkout',
-  '/orders',
-  '/account',
-  '/admin/inventory',
-  '/login',
-] as const
-
-function isCommerceModeRoute(pathname: string): boolean {
-  return COMMERCE_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  )
-}
 
 /** Accessible, non-blocking fallback shown while a route chunk downloads. */
 function RouteFallback() {
@@ -132,7 +119,7 @@ export function AppShell() {
 
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="page-container">
-            {isCommerceModeRoute(pathname) ? <ModeBanner /> : null}
+            {isCommerceRoute(pathname) ? <ModeBanner /> : null}
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>

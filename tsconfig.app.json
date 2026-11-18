@@ -45,7 +45,8 @@
     "tests/pages/sql-editor.test.tsx",
     "tests/pages/contract-pages.test.tsx",
     "tests/lib/sql-client.test.ts",
-    "tests/database/exercise-workspace.test.tsx"
+    "tests/database/exercise-workspace.test.tsx",
+    "tests/pages/topbar-cart-visibility.test.tsx"
   ],
   "exclude": [
     "src/server"
