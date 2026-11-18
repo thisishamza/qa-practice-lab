@@ -1,8 +1,9 @@
 # Issue evidence — 2026-11-18 backlog verification
 
-Screenshots captured on 2026-11-18 against production
+Annotated screenshots captured on 2026-11-18 against production
 (https://qa-practice-lab.pages.dev, deployment `1573feaf-df8f-4d86-9c51-accf38d906b2`,
 source `91ba58a`) in fresh anonymous guest sessions with headless Firefox 155.
+The defect zone in each image is highlighted with a red outline and a label.
 They evidence the verification comments on the repository's open backlog issues
 (#14–#36). Every image shows only public, synthetic surfaces — no accounts, no
 personal data, no credentials, no production data.
