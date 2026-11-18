@@ -20,7 +20,8 @@
 - **R4 follow-up (mobile storefront) — the `/shop` grid defect and the 320 px shell overflow are fixed (2026-11-18, §28).** `repeat(auto-fill, minmax(0, 1fr))` had collapsed the grid into ~1 px tracks (cards ~50 px wide); ≤760 px is now one full-width column; the topbar keeps only the QA mark below 400 px. `npm run check` 1504/1504; build clean (`index-CRWZaeVp.js`, 458.41 kB / 141.10 kB gzip). Still uncommitted.
 - **Final UI/UX audit closure verification (2026-11-18, §29).** All R1–R4 milestones, the post-R4 copy correction (§27) and the `/shop` mobile repair (§28) are confirmed implemented and re-verified in this session: **Firefox 155 (108 renders: 72 light across 24 routes × 3 widths + 36 dark across 12 routes × 3 widths) — 0 failures**; 200 % zoom reflow equivalents (CSS viewports 720×450 / 640×400; 72 renders, both themes) — 0 overflow, one h1; `prefers-reduced-motion: reduce` emulation — global override active (transitions forced to 0.01 ms, `scroll-behavior: auto`); keyboard probe — skip link first with a 2 px solid ring, every probed control carries a visible focus affordance (search uses its designed `:focus-within` box-shadow); programmatic landmark/label/heading probes across 19 routes — 1 banner/nav/main/contentinfo, 0 unlabeled controls, 0 heading skips, single h1, skip links present; staff-mode (Rowan Ellison) — Inventory appears under **Practice App** and `/admin/inventory` renders h1 "Inventory"; `/shop` re-measured at 320/375/390/760 px (light/dark) — one full-width column, `scrollWidth === innerWidth`, one h1. **WebKit/Safari could not be tested (Playwright WebKit aborts with a snap-core20 glibc `__libc_pthread_init` symbol conflict in WPENetworkProcess — environment defect, not app); screen readers untested (none installed — none installed); human usability testing not performed.** No new defects were found; no code changes were made beyond `.gitignore` (local audit screenshots now excluded from git). Findings classified in §29; **F10 remains open, accepted, excluded and untouched**; `docs/audit-screenshots/` is untracked, never committed in any branch/history, now git-ignored, 40 files preserved on disk. **Repository is ready for final maintainer staging/commit approval (not staged, not committed).**
 - **FINAL UI/UX RELEASE (2026-11-18) — COMPLETE, MERGED AND DEPLOYED TO PRODUCTION.** PR #13 (https://github.com/thisishamza/qa-practice-lab/pull/13, "Complete QA Practice Lab UI/UX redesign"; base `main`, head `ui-ux-redesign`; 1 commit, 89 files, +4996/−963) was **merged with method `merge` on 2026-11-17T23:35:57Z** → merge commit **`91ba58a`** (`Merge pull request #13 from thisishamza/ui-ux-redesign`); `ui-ux-redesign` branch preserved (not deleted); local `main` fast-forwarded to `origin/main` (`main == origin/main == 91ba58a`). No branch protection, no required checks, no CI (consistent with PRs #5–#12). `npm run check` green on merged `main` (**1504/1504**, 77 files); `npm run build` clean (entry `index-CRWZaeVp.js`). **Production deployment `1573feaf-df8f-4d86-9c51-accf38d906b2`** — Environment Production, Branch `main`, **Source `91ba58a`**, created 2026-11-17 ~23:36 UTC; alias https://qa-practice-lab.pages.dev serves the byte-identical `index-CRWZaeVp.js` (SHA-256 `b4ecce05…`, verified served bytes == local build); `/api/health` → `schemaVersion: "14"`; 13 routes probed 200; **Firefox 20/20 renders clean** (1440/375 px × 10 routes); Chrome 18/20 pass — `/` and `/tracks` at 375 px hit `ERR_QUIC_PROTOCOL_ERROR`/`ERR_CONNECTION_RESET` (known local Chrome-to-edge egress block; curl and Firefox unaffected; same condition as 2026-11-17). **No migration applied; schema stays 14; no backend change.** Full record in §30. **All planned work is now released. `docs/audit-screenshots/` remains local, git-ignored, untracked and uncommitted.**
-- **Last updated:** 2026-11-18 (final UI/UX audit closure verification, §29; production release, §30 — PR #13 merged `91ba58a`, deployment `1573feaf-…` sourced at `91ba58a`, `schema_version` 14; R4 in §26; copy correction in §27; `/shop` fix in §28; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25). Previously: 2026-11-18 (final UI/UX audit closure verification, §29 — Firefox cross-browser matrix, 200 % reflow, reduced-motion, keyboard and programmatic a11y probes, staff-mode check, `.gitignore` for `docs/audit-screenshots/`).
+- **F-021 RELEASE (2026-11-18) — cart affordance scoped to the Practice App commerce experience — MERGED, DEPLOYED AND VERIFIED.** `main` gained **`9e9d18e`** (`fix(topbar): scope cart affordance to commerce routes`; pushed `5a7b594..9e9d18e`; direct to `main` under maintainer authorization). The top-bar cart button/badge now renders only on commerce routes via shared `src/lib/commerceRoutes.ts` (`isCommerceRoute`, boundary-aware; consumers: `AppShell` mode banner and `TopBar` cart affordance). `npm run check` green (**1561/1561**, 79 files); `npm run build` clean. Production deployment **`9e5124a6-3a96-4351-83b8-f4ddee0a197e`** (Environment Production, branch `main`, source **`9e9d18e`**); `/api/health` → `schemaVersion: "14"`; 132-render Chrome-over-CDP matrix green (presence/absence per class, badge `2` + `aria-label="Cart, 2 items"` verified via a session-scoped guest cart that was **cleared afterwards** — zero production footprint; navigation flip verified; keyboard `Tab` → `:focus-visible` verified; zero overflow/console errors). Two renders failed on local Chrome→edge network flakes and were re-verified individually. **Firefox unverified this round. Issue #16 closed.** Full record in §31.
+- **Last updated:** 2026-11-18 (F-021 release, §31 — `9e9d18e` on `main`, production deployment `9e5124a6-…` sourced at `9e9d18e`, `schema_version` 14, issue #16 closed; final UI/UX release, §30 — PR #13 merged `91ba58a`, deployment `1573feaf-…`; R4 in §26; copy correction in §27; `/shop` fix in §28; R1 in §22, R2 in §23, R2 follow-up in §24, R3 in §25). Previously: 2026-11-18 (final UI/UX audit closure verification, §29 — Firefox cross-browser matrix, 200 % reflow, reduced-motion, keyboard and programmatic a11y probes, staff-mode check, `.gitignore` for `docs/audit-screenshots/`).
 
 ## 2. Product principles
 
@@ -4150,8 +4151,8 @@ Severity in brackets as logged in the audit.
   override active (chevron transition computes `1e-05 s`), `scroll-behavior: auto`, disclosure
   toggles remain fully functional. (Simulator/load-runner internals not exhaustively re-probed;
   no reduced-motion-specific user report exists.)
-- **F-021** (P2, cart chrome on every page) — **Partially addressed; residual recorded, not
-  changed.** The sidebar now isolates all commerce chrome under the PRACTICE APP group
+- **F-021** (P2, cart chrome on every page) — **SUPERSEDED — fixed and released
+  2026-11-18 (see §31; top-bar cart now commerce-scoped, issue #16 closed).** The sidebar now isolates all commerce chrome under the PRACTICE APP group
   (R2 follow-up) and the mode banner is commerce-scoped (§27). The **top-bar cart icon/badge
   remains visible on all routes by design** (QA usage: the shop is the app under test from
   any lab); moving or hiding it was not in any authorised milestone and would be a
@@ -4244,7 +4245,7 @@ the working tree; local D1 only; no production contact):**
 
 - F10 (`/api-reference` 375 px overflow) — **accepted, open, excluded; not fixed.**
 - F-018 (36 px small-button height) — accepted desktop-density trade-off.
-- F-021 residual (global top-bar cart badge) — recorded for maintainer review.
+- F-021 residual (global top-bar cart badge) — **resolved 2026-11-18** (§31; commerce-scoped; issue #16 closed).
 - The audit's "41 screenshots" figure vs **40 files actually on disk** in
   `docs/audit-screenshots/` — one screenshot cited in the audit narrative appears to
   have never been saved or was lost; **no file was deleted**; the figure is recorded
@@ -4404,7 +4405,7 @@ the prepared report). On approval: stage exactly the list above, run
 
 F10 (accepted, open, excluded) · F-018 (36 px small buttons, desktop density) ·
 F-021 residual (global top-bar cart badge, retained as-is by maintainer
-decision 2026-11-18) · WebKit/Safari unverified (environment cannot run
+decision 2026-11-18) — **superseded and resolved 2026-11-18 (§31)** · WebKit/Safari unverified (environment cannot run
 Playwright WebKit — snap-core20 glibc conflict) · screen readers unverified ·
 human usability testing not performed · Chrome-to-edge network on this machine
 intermittently hardens into a block (QUIC/CONNECTION_RESET) — not an app
@@ -4413,8 +4414,9 @@ defect · audit screenshots remain untracked/git-ignored/local only.
 ### Final state
 
 - Production: https://qa-practice-lab.pages.dev — deployment
-  **`1573feaf-df8f-4d86-9c51-accf38d906b2`**, source **`91ba58a`**,
-  `schema_version` **14**, D1 `qa-practice-lab-db` (migrations 0001–0014 only).
+  **`9e5124a6-3a96-4351-83b8-f4ddee0a197e`**, source **`9e9d18e`** (F-021 fix; see
+  §31), `schema_version` **14**, D1 `qa-practice-lab-db` (migrations 0001–0014 only).
+  (Previous release deployment `1573feaf-df8f-4d86-9c51-accf38d906b2`, source `91ba58a`.)
 - Git: `main == origin/main == 91ba58a` (release documentation commits for
   this record land on `main` after deployment, documentation-only, matching the
   established release pattern; production stays on the `91ba58a` deployment).
@@ -4423,3 +4425,71 @@ defect · audit screenshots remain untracked/git-ignored/local only.
 - Working tree: clean (this release added no uncommitted files).
 - **All planned UI/UX work is complete and released. Only necessary bug fixes
   and maintenance remain; no new phases are planned.**
+## 31. F-021 release — cart affordance scoped to commerce routes (2026-11-18)
+
+**Status: MERGED TO `main`, RELEASED TO PRODUCTION AND VERIFIED IN PRODUCTION (2026-11-18).**
+GitHub issue #16 (audit finding F-021, audit P2) is closed.
+
+### What shipped
+
+- Root cause: `TopBar.tsx` rendered `.topbar-cart` (button + badge) unconditionally
+  on every route. The commerce-route classification already existed for the
+  clean/bug-hunt mode banner but was private to `AppShell.tsx`.
+- The classification now lives in **`src/lib/commerceRoutes.ts`**
+  (`COMMERCE_ROUTE_PREFIXES`, `isCommerceRoute` — boundary-aware prefix match;
+  `/shop*`, `/cart*`, `/checkout*`, `/orders*`, `/account*`, `/admin/inventory*`,
+  `/login*`). Consumers: `AppShell` (mode banner, unchanged behaviour) and
+  `TopBar` (cart affordance). Unrelated lab/learning/meta routes render no cart
+  chrome and no empty header gap.
+- Cart functionality, badge count, auth flows, navigation labels, layout,
+  styling, backend APIs, D1 and checkout are unchanged. No migration.
+
+### Verification
+
+- `npm run check`: lint + typecheck ×3 + **1561/1561 tests (79 files)** green
+  (new: `tests/lib/commerce-routes.test.ts` unit suite;
+  `tests/pages/topbar-cart-visibility.test.tsx` route-aware visibility + badge tests).
+- `npm run build`: clean (entry `index-CsPy-_HN.js`, 458.42 kB / 141.13 kB gzip).
+- Production-equivalent local run: Chrome headless over CDP — **132/132 renders
+  pass** (22 routes × light/dark × 1440×900/768×1024/375×812): cart + badge `2` +
+  `aria-label="Cart, 2 items"` on commerce routes; absent on all 12 non-commerce
+  routes; one h1 per page; zero horizontal overflow; zero console errors/exceptions.
+- Production: deployment **`9e5124a6-3a96-4351-83b8-f4ddee0a197e`** (Environment
+  Production, branch `main`, source **`9e9d18e`**); `/api/health` →
+  `schemaVersion: "14"`. The same matrix was run live against production:
+  **127/132 renders passed outright**; 5 failures were all local Chrome→edge
+  network flakes (`ERR_QUIC_PROTOCOL_ERROR` / chrome-error pages — the same
+  documented condition as 2026-11-17/18), both affected routes (`/shop` light-1440,
+  `/guides` dark) were **re-verified individually and render correctly**.
+  Commerce presence/absence, badge, h1 and overflow all green; navigation flip
+  `security→shop→progress→cart→api-lab` verified; keyboard `Tab` reaches the cart
+  link with `:focus-visible`.
+- A session-scoped synthetic guest cart (2 items) was created via the public API
+  purely to verify the badge, then **cleared** (`DELETE /api/v1/cart` → 0 items).
+  No accounts, orders or purchases; no production customer data touched.
+
+### Notes & limitations
+
+- 401 log entries on guest pages are the expected signed-out `/api/v1/auth/me`
+  probe (pre-existing, not an error condition).
+- **Firefox unverified for this release** (headless Firefox exits code 3 in this
+  environment); WebKit/screen readers/human usability remain unverified.
+- Vitest/tsconfig toolchain quirk observed: a `.tsx` test file created under the
+  exact name `topbar-cart.test.tsx` was systematically JSX-classic transformed
+  (`React is not defined`) regardless of tsconfig registration; the identical
+  file passes under any other name (committed as `topbar-cart-visibility.test.tsx`).
+- Release sequence: commit `9e9d18e` on `main` (direct push, maintainer
+  authorization) → Pages deployment `9e5124a6-3a96-4351-83b8-f4ddee0a197e` sourced at
+  `9e9d18e` → production-verified. The `PROJECT_STATE.md` documentation update is
+  committed to `main` after deployment (documentation-only); per maintainer
+  instruction, production was redeployed from the documentation commit
+  (deployment ID recorded in the §1 snapshot) — no application change
+  (`dist` byte-identical, entry `index-CsPy-_HN.js`), health re-verified.
+  This final documentation commit itself is documentation-only and is not
+  redeployed, matching the established release pattern (§30).
+
+### GitHub issue
+
+- Issue **#16** (F-021): fix summary comment posted after verification, then the
+  issue was closed once the fix was merged to `main`, deployed and production-verified
+  (2026-11-18). URL: https://github.com/thisishamza/qa-practice-lab/issues/16
